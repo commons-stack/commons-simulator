@@ -1,0 +1,32 @@
+<h1>{{ name }}</h1>
+
+<form method="post">
+  <div>
+    <label>Alpha</label><br>
+    <input type="range" min="0" max="1" step="0.05" value={{alpha}} name="alpha" id="alpha">
+    <span id="alpha-output"></span>
+  </div>
+  <div>
+    <label>Exit fee</label><br>
+    <input type="range" min="0" max="1" step="0.01" value={{exit_fee}} name="exit_fee" id="exit_fee">
+    <span id="exit_fee-output"></span>
+  </div>
+  <button>Run</button>
+</form>
+
+{% for i in range(n_results)%}
+  <img src="plot8-{{i}}.png" />
+{% endfor %}
+
+<script>
+;['alpha', 'exit_fee'].forEach(variable => {
+var slider = document.getElementById(variable);
+var output = document.getElementById(variable+"-output");
+output.innerHTML = slider.value; // Display the default slider value
+
+// Update the current slider value (each time you drag the slider handle)
+slider.oninput = function() {
+  output.innerHTML = this.value;
+}
+})
+</script>

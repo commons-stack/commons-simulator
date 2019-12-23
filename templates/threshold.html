@@ -2,11 +2,6 @@
 
 <form method="post">
   <div>
-    <label>Alpha</label><br>
-    <input type="range" min="0" max="1" step="0.05" value={{alpha}} name="alpha" id="alpha">
-    <span id="alpha-output"></span>
-  </div>
-  <div>
     <label>Beta</label><br>
     <input type="range" min="0" max="1" step="0.05" value={{beta}} name="beta" id="beta">
     <span id="beta-output"></span>
@@ -19,12 +14,19 @@
   <button>Run</button>
 </form>
 
+<form method="post" action="step2">
+  <input type="hidden" name="beta" value={{beta}} />
+  <input type="hidden" name="rho" value={{rho}} />
+  <button id="next">Next</button>
+</form>
+
 <img src={{ url1}} alt="Chart">
 
 <img src={{ url2}}>
 
+
 <script>
-;['alpha', 'beta', 'rho'].forEach(variable => {
+;['beta', 'rho'].forEach(variable => {
 var slider = document.getElementById(variable);
 var output = document.getElementById(variable+"-output");
 output.innerHTML = slider.value; // Display the default slider value
@@ -32,6 +34,7 @@ output.innerHTML = slider.value; // Display the default slider value
 // Update the current slider value (each time you drag the slider handle)
 slider.oninput = function() {
   output.innerHTML = this.value;
+  document.getElementById('next').disabled = true;
 }
 })
 </script>

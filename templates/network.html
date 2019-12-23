@@ -1,0 +1,76 @@
+<h1>{{ name }}</h1>
+
+<form method="post">
+  <div>
+    <label>Beta</label><br>
+    <input type="range" min="0" max="1" step="0.05" value={{beta}} name="beta" id="beta">
+    <span id="beta-output"></span>
+  </div>
+  <div>
+    <label>Rho</label><br>
+    <input type="range" min="0" max="0.1" step="0.005" value={{rho}} name="rho" id="rho">
+    <span id="rho-output"></span>
+  </div>
+  <div>
+    <label>Initial participants</label><br>
+    <input type="range" min="0" max="100" step="1" value={{n}} name="n" id="n">
+    <span id="n-output"></span>
+  </div>
+  <div>
+    <label>Initial proposals</label><br>
+    <input type="range" min="0" max="10" step="1" value={{m}} name="m" id="m">
+    <span id="m-output"></span>
+  </div>
+  <div>
+    <label>Initial sentiment</label><br>
+    <input type="range" min="0" max="1" step="0.05" value={{initial_sentiment}} name="initial_sentiment" id="initial_sentiment">
+    <span id="initial_sentiment-output"></span>
+  </div>
+  <div>
+    <label>Theta</label><br>
+    <input type="range" min="0" max="1" step="0.05" value={{theta}} name="theta" id="theta">
+    <span id="theta-output"></span>
+  </div>
+  <div>
+    <label>Kappa</label><br>
+    <input type="range" min="0" max="10" step="1" value={{kappa}} name="kappa" id="kappa">
+    <span id="kappa-output"></span>
+  </div>
+  <div>
+    <label>Sale price</label><br>
+    <input type="range" min="0" max="1" step="0.05" value={{sale_price}} name="sale_price" id="sale_price">
+    <span id="sale_price-output"></span>
+  </div>
+  <button>Run</button>
+</form>
+
+<form action="step3" method="post">
+  <button id="next">Next</button>
+</form>
+
+<p>Invariant: {{invariant}}</p>
+<p>Initial reserve: {{initial_reserve}}</p>
+<p>Initial funds: {{initial_funds}}</p>
+<p>Initial price: {{initial_price}}</p>
+<p>Initial supply: {{initial_supply}}</p>
+
+<img src={{'plot3-'+plot_name+'.png'}} />
+<img src={{'plot4-'+plot_name+'.png'}} />
+<img src={{'plot5-'+plot_name+'.png'}} />
+<img src={{'plot6-'+plot_name+'.png'}} />
+<img src={{'plot7-'+plot_name+'.png'}} />
+
+
+<script>
+;['beta', 'rho', 'n', 'm', 'initial_sentiment', 'theta', 'kappa', 'sale_price'].forEach(variable => {
+var slider = document.getElementById(variable);
+var output = document.getElementById(variable+"-output");
+output.innerHTML = slider.value; // Display the default slider value
+
+// Update the current slider value (each time you drag the slider handle)
+slider.oninput = function() {
+  output.innerHTML = this.value;
+  document.getElementById('next').disabled = true;
+}
+})
+</script>
