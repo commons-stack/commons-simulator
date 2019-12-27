@@ -13,7 +13,7 @@ To run in a docker container
 
 ```sh
 docker build -t cvdemo .
-docker run -p 5000:5000 cvd
+docker run -p 5000:5000 cvdemo
 ```
 
 Go to http://localhost:5000/
