@@ -1,4 +1,4 @@
-# Convcition Voting Demo
+# Conviction Voting Demo
 
 ## Usage
 
