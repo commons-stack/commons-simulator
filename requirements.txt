@@ -8,4 +8,4 @@ matplotlib
 seaborn
 networkx
 flask
-pyyaml
+flask-cors

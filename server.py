@@ -1,4 +1,5 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, jsonify
+from flask_cors import CORS
 import os
 import glob
 
@@ -16,6 +17,7 @@ from conviction_system_logic3 import *
 from bonding_curve_eq import *
 
 app = Flask(__name__, static_url_path='')
+CORS(app)
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 def getInteger(name, default_value = 1):
@@ -25,21 +27,27 @@ def getInteger(name, default_value = 1):
     else:
       return default_value
 
-def getFloat(name, default_value = 0.5):
+def getFloat(name, default_value = None):
     value = request.form.get(name)
     if value:
-      return float(value)
+        return float(value)
+    elif default_value != None:
+        return default_value
     else:
-      return default_value
+        raise Exception(name + ' not defined')
 
 @app.route('/')
 def index():
     return '<h1>Conviction Voting demo</h1><form action="step1" method="post"><button>Start</button></form>'
 
-@app.route('/step1', methods = ['POST'])
-def demoStep1():
-  beta = getFloat('beta', .2)
-  rho = getFloat('rho', .02)
+@app.route('/conviction', methods = ['POST'])
+def conviction():
+  try:
+      beta = getFloat('beta')
+      rho = getFloat('rho')
+  except Exception as err:
+      print(err)
+      return str(err), 422
   plot_name = str(beta)+str(rho)
 
   def trigger_threshold(requested, funds, supply, beta=beta , rho=rho):
@@ -79,13 +87,25 @@ def demoStep1():
 
   plt.savefig('static/plot2-'+plot_name+'.png')
   plt.clf()
-  return render_template('threshold.html', name = 'Threshold', beta = beta, rho = rho, url1 ='plot1-'+plot_name+'.png', url2 ='plot2-'+plot_name+'.png')
+  return jsonify({'beta': beta, 'rho': rho, 'url1': 'plot1-'+plot_name+'.png', 'url2': 'plot2-'+plot_name+'.png'})
 
-@app.route('/step2', methods = ['GET', 'POST'])
-def demoStep2():
+@app.route('/community', methods = ['GET', 'POST'])
+def community():
+    try:
+        beta = getFloat('beta')
+        rho = getFloat('rho')
 
-    beta = getFloat('beta', .2)
-    rho = getFloat('rho', .02)
+        n = getInteger('participants') #initial participants
+        m = getInteger('proposals') #initial proposals
+
+        initial_sentiment = getFloat('initial_sentiment')
+
+        theta = getFloat('theta')
+        sale_price = getFloat('sale_price')
+
+    except Exception as err:
+        return str(err), 422
+
     plot_name = str(beta)+str(rho)
 
     def trigger_threshold(requested, funds, supply, beta=beta , rho=rho):
@@ -96,22 +116,12 @@ def demoStep2():
       else:
           return np.inf
 
-    n= getInteger('n', 60) #initial participants
-    m= getInteger('m', 3) #initial proposals
-
-    initial_sentiment = getFloat('initial_sentiment', .6)
-
-    theta =getFloat('theta', .35)
-    kappa = getInteger('kappa', 6)
-    sale_price = getFloat('sale_price', .1)
-
     def TFGTS(total_supply):
         #wrap initializer params to pass the function correctly
         return total_funds_given_total_supply(total_supply, theta = theta, initial_price = sale_price)
 
-    #initializers
+    #initializer
     network, initial_funds, initial_supply, total_requested = initialize_network(n,m,TFGTS,trigger_threshold)
-    initial_reserve, invariant, initial_price= initialize_bonding_curve(initial_supply, initial_price = sale_price, kappa =kappa, theta = theta)
 
     proposals = get_nodes_by_type(network, 'proposal')
     participants = get_nodes_by_type(network, 'participant')
@@ -163,62 +173,68 @@ def demoStep2():
     plt.clf()
 
     nx.write_gpickle(network, 'static/network.gpickle')
-    initial_conditions = {
-      'supply': float(initial_supply),
-      'funds': float(initial_funds),
-      'reserve': float(initial_reserve),
-      'spot_price': float(initial_price),
-      'sentiment': float(initial_sentiment),
-    }
-    params = {
-        'beta': float(beta),
-        'rho': float(rho),
-        'invariant': float(invariant),
-        'kappa': float(kappa)
-    }
-    with open(r'static/conditions.yaml', 'w') as file:
-      yaml.dump(initial_conditions, file)
-    with open(r'static/params.yaml', 'w') as file:
-      yaml.dump(params, file)
 
-    return render_template(
-      'network.html',
-      name = 'Network',
-      plot_name=plot_name,
+    return jsonify({
       # inputs
-      beta=beta,
-      rho=rho,
-      m=m,
-      n=n,
-      initial_sentiment=initial_sentiment,
-      theta=theta,
-      kappa=kappa,
-      sale_price=sale_price,
+      'beta': beta,
+      'rho': rho,
+      'participants': m,
+      'proposals': n,
+      'initial_sentiment': initial_sentiment,
+      'theta': theta,
+      'sale_price': sale_price,
       # outputs
-      invariant=invariant,
-      initial_supply=initial_supply,
-      initial_funds=initial_funds,
-      initial_reserve=initial_reserve,
-      initial_price=initial_price
-    )
+      'initial_supply': initial_supply,
+      'initial_funds': initial_funds,
+      'results': [
+        'plot3-'+plot_name+'.png',
+        'plot4-'+plot_name+'.png',
+        'plot5-'+plot_name+'.png',
+        'plot6-'+plot_name+'.png',
+        'plot7-'+plot_name+'.png',
+      ]
+    })
 
+@app.route('/abc', methods = ['GET', 'POST'])
+def abc():
+    try:
+        initial_supply = getFloat('initial_supply')
+        initial_price = getFloat('initial_price')
+        kappa = getInteger('kappa')
+        theta = getFloat('theta')
+    except Exception as err:
+        return str(err), 422
+    initial_reserve, invariant, initial_price= initialize_bonding_curve(initial_supply, initial_price = sale_price, kappa = kappa, theta = theta)
+    return jsonify({
+        # outputs
+        'initial_reserve': initial_reserve,
+        'invariant': invariant,
+        'initial_price': initial_price
+    })
 
-@app.route('/step3', methods = ['GET', 'POST'])
-def demoStep3():
+@app.route('/cadcad', methods = ['GET', 'POST'])
+def cadcad():
 
-    alpha = getFloat('alpha', 0.9)
-    exit_fee = getFloat('exit_fee', .02)
+    try:
+        alpha = getFloat('alpha')
+        exit_fee = getFloat('exit_fee')
 
-    with open(r'static/conditions.yaml') as file:
-        initial_conditions = yaml.load(file, Loader=yaml.FullLoader)
-        initial_conditions['network'] = nx.read_gpickle('static/network.gpickle')
+        kappa = getFloat('kappa')
+        invariant = getFloat('invariant')
+        beta = getFloat('beta')
+        rho = getFloat('rho')
 
-    with open(r'static/params.yaml') as file:
-        params = yaml.load(file, Loader=yaml.FullLoader)
-    kappa = params['kappa']
-    invariant = params['invariant']
-    beta = params['beta']
-    rho = params['rho']
+        initial_conditions = {
+          'supply': getFloat('initial_supply'),
+          'funds': getFloat('initial_funds'),
+          'reserve': getFloat('initial_reserve'),
+          'spot_price': getFloat('initial_price'),
+          'sentiment': getFloat('initial_sentiment'),
+          'network': nx.read_gpickle('static/network.gpickle')
+        }
+
+    except Exception as err:
+        return str(err), 422
 
     def trigger_threshold(requested, funds, supply, beta=beta, rho=rho):
 
@@ -358,6 +374,6 @@ def demoStep3():
         r.plot(x='timestep', y='funds')
         plt.savefig('static/plot8-'+str(ind)+'.png')
         plt.clf()
-    return render_template(
-      'cadcad.html',
-      name = 'cadCAD simulation', alpha=alpha, exit_fee=exit_fee, n_results=len(results))
+    return jsonify({
+        'results': ['plot8-0.png']
+    })
