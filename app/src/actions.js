@@ -1,14 +1,14 @@
-const serverURI = 'http://localhost:5000'
+import { serverURI } from './config'
 
-const generalAction = action => body => fetch(action, {
+const generalAction = action => setter => body => fetch(action, {
   method: 'POST',
   body
-})
+}).then(async result => result.ok && setter(await result.json()))
 
-export const communityAction = generalAction(`${serverURI}/community`)
+export const communityAction = setter => generalAction(`${serverURI}/community`)(setter)
 
-export const hatchAction = generalAction(`${serverURI}/hatch`)
+export const hatchAction = setter => generalAction(`${serverURI}/hatch`)(setter)
 
-export const abcAction = generalAction(`${serverURI}/abc`)
+export const abcAction = setter => generalAction(`${serverURI}/abc`)(setter)
 
-export const convictionAction = generalAction(`${serverURI}/conviction`)
+export const convictionAction = setter => generalAction(`${serverURI}/conviction`)(setter)

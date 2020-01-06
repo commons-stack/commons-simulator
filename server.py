@@ -87,7 +87,7 @@ def conviction():
 
   plt.savefig('static/plot2-'+plot_name+'.png')
   plt.clf()
-  return jsonify({'beta': beta, 'rho': rho, 'url1': 'plot1-'+plot_name+'.png', 'url2': 'plot2-'+plot_name+'.png'})
+  return jsonify({'beta': beta, 'rho': rho, 'results': ['plot1-'+plot_name+'.png', 'plot2-'+plot_name+'.png']})
 
 @app.route('/community', methods = ['GET', 'POST'])
 def community():
@@ -195,6 +195,10 @@ def community():
       ]
     })
 
+@app.route('/hatch', methods = ['GET', 'POST'])
+def hatch():
+    return jsonify({})
+
 @app.route('/abc', methods = ['GET', 'POST'])
 def abc():
     try:
@@ -204,7 +208,7 @@ def abc():
         theta = getFloat('theta')
     except Exception as err:
         return str(err), 422
-    initial_reserve, invariant, initial_price= initialize_bonding_curve(initial_supply, initial_price = sale_price, kappa = kappa, theta = theta)
+    initial_reserve, invariant, initial_price= initialize_bonding_curve(initial_supply, initial_price = initial_price, kappa = kappa, theta = theta)
     return jsonify({
         # outputs
         'initial_reserve': initial_reserve,
