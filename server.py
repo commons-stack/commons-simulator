@@ -9,8 +9,6 @@ import numpy as np
 import scipy.stats as sts
 import seaborn as sns
 
-import yaml
-
 #import conviction files
 from conviction_helpers import *
 from conviction_system_logic3 import *
