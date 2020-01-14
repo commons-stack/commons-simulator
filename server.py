@@ -37,8 +37,8 @@ def getFloat(name, default_value = None):
         raise Exception(name + ' not defined')
 
 @app.route('/')
-def index():
-    return '<h1>Conviction Voting demo</h1><form action="step1" method="post"><button>Start</button></form>'
+def root():
+    return app.send_static_file('index.html')
 
 @app.route('/conviction', methods = ['POST'])
 def conviction():
