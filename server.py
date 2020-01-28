@@ -13,6 +13,7 @@ import seaborn as sns
 from conviction_helpers import *
 from conviction_system_logic3 import *
 from bonding_curve_eq import *
+from networkx.readwrite import json_graph
 
 app = Flask(__name__, static_url_path='')
 CORS(app)
@@ -33,6 +34,14 @@ def getFloat(name, default_value = None):
         return default_value
     else:
         raise Exception(name + ' not defined')
+
+def jsonifyNetwork(network):
+    obj = json_graph.node_link_data(network)
+    for i in range(len(obj['nodes'])):
+        node = obj['nodes'][i]
+        if node['type'] is "proposal":
+            del node['trigger']
+    return obj
 
 @app.route('/')
 def root():
@@ -190,7 +199,8 @@ def community():
         'plot5-'+plot_name+'.png',
         'plot6-'+plot_name+'.png',
         'plot7-'+plot_name+'.png',
-      ]
+      ],
+      'network': jsonifyNetwork(network)
     })
 
 @app.route('/hatch', methods = ['GET', 'POST'])
