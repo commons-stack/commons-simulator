@@ -27,7 +27,12 @@ import ForceGraph from './graphs'
 import * as d3 from "d3";
 
 export var graph
-export var simulation
+
+var participants = []
+var proposals = []
+var influences = []
+var supports = []
+var conflicts = []
 
 export const HomePage = () => (
   <Content>
@@ -43,11 +48,11 @@ const marks = marks => marks.map(m => ({value: m, label: m}))
 export const CommunityPage = () => {
   const [results, setResults] = React.useState(false)
   return (
-    <Split
-      title={<Title>Define your Community</Title>}
-      primary={
-        <Content>
-          <Typography variant="h4">Set up your community</Typography>
+    <Content>
+      <Title>Define your Community</Title>
+      <Typography variant="h4">Set up your community</Typography>
+       <Split
+         primary={
           <Params onSubmit={communityAction(setResults)}>
             <SliderField
               label="Number of participants"
@@ -90,16 +95,50 @@ export const CommunityPage = () => {
             <input type="hidden" name="theta" value="0.35" />
             <input type="hidden" name="sale_price" value="0.1" />
           </Params>
+         }
+         secondary={
+          <Grid 
+           container 
+           direction="row"
+           alignItems="center"
+           style={{ position:"relative", top: "50%" }}
+           justify="center">
+             <div>
+               On this page, configure your community.<br/>
+               How many participants does it have?<br/>
+               How many proposals are there?<br/>
+               <br/>
+               <br/>
+               There are also some advanced parameters. 
+           </div>
+           </Grid>
+         }
+         />
+       <Split
+         primary={
           <div>
-            <svg id="network-visualisation" width="400" height="400"></svg>
+            <svg id="network-visualisation" width="600" height="400"></svg>
           </div>
+         }
+         secondary={
+          <Grid 
+           container 
+           direction="row"
+           alignItems="center"
+           style={{ position:"relative", top: "50%" }}
+           justify="center">
+             <div>
+                This graph shows the relationship between participants and proposals.
+             </div>
+           </Grid>
+         }
+         />
+       <Split
+         primary={
           <Results results={results} next={2} />
+         }
+         />
         </Content>
-      }
-      secondary={
-        <LoremIpsum />
-      }
-    />
   )
 }
 
@@ -349,8 +388,7 @@ const Results = ({ results, next }) => {
       return "" 
     }
     graph = new ForceGraph(d3.select("#network-visualisation")) ;
-    //graph.initialize();
-    graph.createVisualisation(results.results.participants, results.results.edges_ppants);
+    graph.createVisualisation(results.network);
     return (
       <div css={`margin-top: 20px`}>
         <Typography variant="h4" gutterBottom>Results</Typography>
