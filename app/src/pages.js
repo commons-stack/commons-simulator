@@ -22,6 +22,12 @@ import ExpandMore from '@material-ui/icons/ExpandMore'
 import { serverURI } from './config'
 
 import { communityAction, hatchAction, abcAction, convictionAction } from './actions'
+import ForceGraph from './graphs'
+
+import * as d3 from "d3";
+
+export var graph
+export var simulation
 
 export const HomePage = () => (
   <Content>
@@ -84,6 +90,9 @@ export const CommunityPage = () => {
             <input type="hidden" name="theta" value="0.35" />
             <input type="hidden" name="sale_price" value="0.1" />
           </Params>
+          <div>
+            <svg id="network-visualisation" width="400" height="400"></svg>
+          </div>
           <Results results={results} next={2} />
         </Content>
       }
@@ -335,13 +344,20 @@ const Params = ({ onSubmit, children }) => {
   )
 }
 
-const Results = ({ results, next }) =>
-   results &&
-    <div css={`margin-top: 20px`}>
-      <Typography variant="h4" gutterBottom>Results</Typography>
-      {results.results && results.results.map((uri, i) => <img key={i} src={`${serverURI}/${uri}`} alt="" width="100%" />)}
-      <Next to={next} />
-    </div>
+const Results = ({ results, next }) => {
+    if (!results) {
+      return "" 
+    }
+    graph = new ForceGraph(d3.select("#network-visualisation")) ;
+    //graph.initialize();
+    graph.createVisualisation(results.results.participants, results.results.edges_ppants);
+    return (
+      <div css={`margin-top: 20px`}>
+        <Typography variant="h4" gutterBottom>Results</Typography>
+          <Next to={next} />
+      </div>
+    )
+}
 
 const Next = ({ to }) => (
   <Button color="primary" variant="contained" href={`/#/step${to}`}>Next</Button>
