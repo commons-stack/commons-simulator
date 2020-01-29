@@ -1,4 +1,8 @@
-class ForceGraph {
+import * as d3 from "d3";
+
+export var simulation
+
+export default class ForceGraph {
   constructor(svg) {
     this.width = svg.attr("width");
     this.height = svg.attr("height");
@@ -6,16 +10,20 @@ class ForceGraph {
 
     this.graphNodes = [];
     this.graphLinks = [];
-    //for convenience; this may (or should) be "merged" with graphNodes
+
     this.nodesById = {};
-    this.connsById = {};
+    this.linksById = {};
 
-    this.nodeRadius = 16;
     this.color = d3.scaleOrdinal(d3.schemeAccent);
-  }
 
-  linkDistance(d) {
-    return Math.floor(Math.random() * 11) + 160;
+    this.getParticipantRadius = d3.scaleLinear()
+           .domain([0,500000])
+           .range([12,50]);
+
+    this.getProposalRadius = d3.scaleLinear()
+         .domain([0,50000])
+         .range([6,20]);
+
   }
 
   // event callbacks
@@ -40,27 +48,19 @@ class ForceGraph {
   initialize() {
     var self = this;
 
+    this.setupNodes();
+    this.setupLinks();
+
     simulation = this.simulation = d3.forceSimulation(self.graphNodes)
-        .force("link", d3.forceLink(self.graphLinks).id(function(d) { return d.id; }))
-        .force("charge_force", d3.forceManyBody())
+        .force("link", d3.forceLink(self.graphLinks).id(function(d) { return d.id; }).distance(function (d) {return self.linkDistance(d)}))
+        .force("charge_force", d3.forceManyBody(-20))
         .force("center_force", d3.forceCenter(self.width / 2, self.height / 2))
-        //.force("x", d3.forceX())
-        //.force("y", d3.forceY())
         .alphaDecay(0)
         .alphaMin(0)     
         .on("tick", function(){ self.tickActions(self.nodeCollection, self.linkCollection) });
 
-      this.setupNodes();
-      this.setupLinks();
-
-    //simulation.force("link")
-    //    .links(this.graphLinks);
-        //.distance(function(l,i){return 80;});
-        //.distance(self.linkDistance);
-
     this.initialized = true;
   }
-
 
   setupNodes() {
     let self = this;
@@ -70,23 +70,57 @@ class ForceGraph {
         .data(this.graphNodes)
         .enter()
         .append("circle")
-        .attr("r", this.nodeRadius)
-        .attr("fill","#ae81ff")
+        .attr("r", function(d) {return self.getRadius(self, d)})
+        .attr("fill", function(d) {return self.getColor(d)})
         .attr("stroke", "#fff").attr("stroke-width", 1.5)
-          .call(d3.drag()
+        .call(d3.drag()
               .on("start", function(d){ self.dragstarted(self.simulation, d); } )
               .on("drag", function(d){ self.dragged(d); } )
               .on("end", function(d){ self.dragended(self.simulation, d); } ))  
+        .on("click", function(d) {
+          self.nodeClick(d);
+          })
+          
+  }
+
+  getColor(d) {
+    if (d.type === 'participant') {
+      return "#4090d9"; 
+    }
+    else if (d.type === 'proposal') {
+      return "#53c388"; 
+    }
+    else {
+      console.log("getColor: unknown node type");
+    }
+  }
+
+  getRadius(simulation, d) {
+    if (d.type === 'participant') {
+      return Math.round(simulation.getParticipantRadius(d.holdings)); 
+       }
+    else if (d.type === 'proposal') {
+      return Math.round(simulation.getProposalRadius(d.funds_requested));
+    }
+    else {
+      console.log("getRadius: unknown node type");
+    }
+  }
+
+  linkDistance(d) {
+    return 200;
   }
 
   setupLinks(){
     this.linkCollection = this.svg.append("g")
         .attr("class", "links")
         .selectAll(".link")
+        .data(this.graphLinks)
         .enter()
         .append("line")
         .attr("stroke", "#808080")
-        .attr("stroke-width", 1.5)
+        .attr("stroke-width", 1.0)
+        .attr("opacity", 0.0)
   }
 
   tickActions(node, link) {
@@ -101,64 +135,43 @@ class ForceGraph {
         .attr("cy", function(d) { return d.y; });
   }
     
+  nodeClick(selectedNode) {
+    // reset all to unselected style
+    d3.selectAll("line")
+    .style("stroke","#808080")
+    .style("stroke-width", 1.0)
+    .style("opacity", 0.0)
+    // select
+    if (selectedNode.type === "participant") {
+      d3.selectAll("line").filter(function(d) {
+          return (d.type === "support" && d.source.id === selectedNode.id) ;
+      })
+      .style("stroke", "#fdd13a")
+      .style("stroke-width",2.0) 
+      .style("opacity", 1.0)
+    } else if (selectedNode.type === "proposal") {
+      d3.selectAll("line").filter(function(d) {
+          return (d.type === "support" && d.target.id === selectedNode.id) ;
+      })
+      .style("stroke", "#fdd13a")
+      .style("stroke-width",2.0) 
+      .style("opacity", 1.0)
+    }
+  }
 
-
-  createVisualisation(newNodes,newLinks) {
-    this.appendNodes(newNodes);
-    this.appendLinks(newLinks);
+  createVisualisation(network) {
+    this.appendNodes(network.nodes);
+    this.appendLinks(network.links);
     
     if (!this.initialized) {
       this.initialize();
     }
-
-   this.restartSimulation();
-  }
-
-  restartSimulation() {
-    // Update and restart the simulation.
-    var self = this;
-    // Apply the general update pattern to the nodes.
-      this.nodeCollection = this.nodeCollection.data(this.graphNodes);
-      // Apply class "existing-node" to all existing nodes
-      this.nodeCollection.attr("fill","#ae81ff");
-      // Remove all old nodes
-      // Apply to all new nodes (enter selection)
-      this.nodeCollection = this.nodeCollection
-          .enter()
-          .append("circle")
-          .attr("fill", "#46bc99")
-          .attr("r", this.nodeRadius)
-          .call(d3.drag()
-              .on("start", function(d){ self.dragstarted(self.simulation, d); } )
-              .on("drag", function(d){ self.dragged(d); } )
-              .on("end", function(d){ self.dragended(self.simulation, d); } ))  
-          .merge(this.nodeCollection);
-
-      // Apply the general update pattern to the links.
-      this.linkCollection = this.linkCollection.data(this.graphLinks);
-      this.linkCollection = this.linkCollection
-          .enter()
-          .append("line")
-          .attr("stroke", "#808080")
-          .attr("stroke-width", 1.5)
-          .on("click", function(d) {
-          })
-          .merge(this.linkCollection);
-
-    //this.linkCollection.attr("stroke-width", function(d) { return 1.5 + ((parseInt(self.connsById[d.id].msgCount / 3) -1) / 2)  }); //increase in steps of 0.5
-
-    this.simulation.nodes(self.graphNodes);            
-    this.simulation.force("link").links(self.graphLinks);
-    //this.simulation.force("center", d3.forceCenter(self.width/2, self.height/2));
-    this.simulation.alpha(1).restart();
-
   }
 
   appendNodes(nodes){
     if (!nodes.length) { return }
 
     for (var i=0; i<nodes.length; i++) {
-      nodes[i].id = i;
         this.nodesById[nodes[i].id] = [];
         this.graphNodes.push(nodes[i]);
     }
@@ -167,19 +180,7 @@ class ForceGraph {
   appendLinks(links){
     if (!links.length) { return }
 
-    for (var i=0;i<links.length;i++) {
-      links[i].id    = links[i].source + "-" + links[i].target;
-      let source = links[i].source;
-      let target = links[i].target;
-
-      /*
-      this.nodesById[target].push(id);
-      this.nodesById[source].push(id);
-
-      this.connsById[id] = {};
-      this.connsById[id].target   = links[i].target;
-      this.connsById[id].source   = links[i].source;
-      */
+    for (var i=0; i<links.length; i++) {
       this.graphLinks.push(links[i]);
     }
   }
