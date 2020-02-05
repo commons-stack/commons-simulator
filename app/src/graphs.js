@@ -1,12 +1,15 @@
 import * as d3 from "d3";
+import React, { Component } from 'react';
+import { filter } from './handlers';
+import { select } from 'd3-selection'
 
 export var simulation
 
-export default class ForceGraph {
-  constructor(svg) {
-    this.width = svg.attr("width");
-    this.height = svg.attr("height");
-    this.svg = svg;
+export default class ForceGraph extends Component {
+  constructor(props) {
+    super(props);
+    this.width = this.props.width;
+    this.height = this.props.width;
 
     this.graphNodes = [];
     this.graphLinks = [];
@@ -24,8 +27,17 @@ export default class ForceGraph {
          .domain([0,50000])
          .range([6,20]);
 
+    this.createVisualization = this.createVisualization.bind(this);
+    this.nodeClick = this.nodeClick.bind(this);
+
   }
 
+  componentDidMount() {
+    this.createVisualization(this.props.network);
+   }
+   componentDidUpdate() {
+    this.createVisualization(this.props.network);
+   }
   // event callbacks
   dragstarted(simulation,d) {
     if (!d3.event.active) simulation.alphaTarget(0.3).restart();
@@ -64,7 +76,7 @@ export default class ForceGraph {
 
   setupNodes() {
     let self = this;
-    this.nodeCollection = this.svg.append("g")
+    this.nodeCollection = select(this.node).append("g")
         .attr("class", "nodes")
         .selectAll("circle")
         .data(this.graphNodes)
@@ -112,7 +124,7 @@ export default class ForceGraph {
   }
 
   setupLinks(){
-    this.linkCollection = this.svg.append("g")
+    this.linkCollection = select(this.node).append("g")
         .attr("class", "links")
         .selectAll(".link")
         .data(this.graphLinks)
@@ -120,6 +132,7 @@ export default class ForceGraph {
         .append("line")
         .attr("stroke", "#808080")
         .attr("stroke-width", 1.0)
+        .attr("pointer-events", "none")
         .attr("opacity", 0.0)
   }
 
@@ -137,6 +150,7 @@ export default class ForceGraph {
     
   nodeClick(selectedNode) {
     // reset all to unselected style
+
     d3.selectAll("line")
     .style("stroke","#808080")
     .style("stroke-width", 1.0)
@@ -144,14 +158,14 @@ export default class ForceGraph {
     // select
     if (selectedNode.type === "participant") {
       d3.selectAll("line").filter(function(d) {
-          return (d.type === "support" && d.source.id === selectedNode.id) ;
+          return (d.type === filter && d.source.id === selectedNode.id) ;
       })
       .style("stroke", "#fdd13a")
       .style("stroke-width",2.0) 
       .style("opacity", 1.0)
     } else if (selectedNode.type === "proposal") {
       d3.selectAll("line").filter(function(d) {
-          return (d.type === "support" && d.target.id === selectedNode.id) ;
+          return (d.type === filter && d.target.id === selectedNode.id) ;
       })
       .style("stroke", "#fdd13a")
       .style("stroke-width",2.0) 
@@ -159,7 +173,7 @@ export default class ForceGraph {
     }
   }
 
-  createVisualisation(network) {
+  createVisualization(network) {
     this.appendNodes(network.nodes);
     this.appendLinks(network.links);
     
@@ -184,4 +198,10 @@ export default class ForceGraph {
       this.graphLinks.push(links[i]);
     }
   }
+
+  render() {
+      return <svg id="network" ref={node => this.node = node}
+          width={this.props.width} height={this.props.height}>
+      </svg>
+   }
 }
