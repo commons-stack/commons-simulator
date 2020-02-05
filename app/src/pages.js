@@ -19,20 +19,11 @@ import BallotIcon from '@material-ui/icons/Ballot'
 import ExpandLess from '@material-ui/icons/ExpandLess'
 import ExpandMore from '@material-ui/icons/ExpandMore'
 
-import { serverURI } from './config'
-
 import { communityAction, hatchAction, abcAction, convictionAction } from './actions'
 import ForceGraph from './graphs'
-
-import * as d3 from "d3";
+import {filterChanged} from './handlers'
 
 export var graph
-
-var participants = []
-var proposals = []
-var influences = []
-var supports = []
-var conflicts = []
 
 export const HomePage = () => (
   <Content>
@@ -117,7 +108,9 @@ export const CommunityPage = () => {
        <Split
          primary={
           <div>
-            <svg id="network-visualisation" width="600" height="400"></svg>
+            <input type="radio" name="filter" onChange={filterChanged} checked={true} value="support"/>Support<br/>
+            <input type="radio" name="filter" onChange={filterChanged} value="influence"/>Influence<br/>
+            <input type="radio" name="filter" onChange={filterChanged} value="conflict"/>Conflict
           </div>
          }
          secondary={
@@ -387,12 +380,12 @@ const Results = ({ results, next }) => {
     if (!results) {
       return "" 
     }
-    graph = new ForceGraph(d3.select("#network-visualisation")) ;
-    graph.createVisualisation(results.network);
+    console.log(results);
     return (
-      <div css={`margin-top: 20px`}>
-        <Typography variant="h4" gutterBottom>Results</Typography>
-          <Next to={next} />
+      <div>
+        <ForceGraph network={results.network} width={600} height={600} />
+            <Typography variant="h4" gutterBottom>Results</Typography>
+              <Next to={next} />
       </div>
     )
 }
