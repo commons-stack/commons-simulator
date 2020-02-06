@@ -5,11 +5,14 @@ import { select } from 'd3-selection'
 
 export var simulation
 
+const scrollToRef = (ref) => window.scrollTo(0, ref.current.offsetTop)
+
 export default class ForceGraph extends Component {
   constructor(props) {
     super(props);
     this.width = this.props.width;
     this.height = this.props.width;
+    this.graphRef = React.createRef();
 
     this.graphNodes = [];
     this.graphLinks = [];
@@ -32,8 +35,13 @@ export default class ForceGraph extends Component {
 
   }
 
+  scrollToGraph = () => {
+    scrollToRef(this.graphRef);
+  }
+
   componentDidMount() {
     this.createVisualization(this.props.network);
+    this.scrollToGraph();
    }
    componentDidUpdate() {
     this.createVisualization(this.props.network);
@@ -200,8 +208,12 @@ export default class ForceGraph extends Component {
   }
 
   render() {
-      return <svg id="network" ref={node => this.node = node}
-          width={this.props.width} height={this.props.height}>
-      </svg>
+      return (
+        <div ref={this.graphRef}>
+          <svg id="network" ref={node => this.node = node}
+            width={this.props.width} height={this.props.height}>
+          </svg>
+        </div>
+      )
    }
 }
