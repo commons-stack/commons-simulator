@@ -4,6 +4,9 @@ import Typography from '@material-ui/core/Typography'
 import Box from '@material-ui/core/Box'
 import Link from '@material-ui/core/Link'
 import Button from '@material-ui/core/Button'
+import Radio from '@material-ui/core/Radio'
+import RadioGroup from '@material-ui/core/RadioGroup'
+import FormControlLabel from '@material-ui/core/FormControlLabel';
 import Slider from '@material-ui/core/Slider'
 import Collapse from '@material-ui/core/Collapse'
 import List from '@material-ui/core/List'
@@ -22,15 +25,17 @@ import ExpandMore from '@material-ui/icons/ExpandMore'
 import { communityAction, hatchAction, abcAction, convictionAction } from './actions'
 import ForceGraph from './graphs'
 import {filterChanged} from './handlers'
+import { serverURI } from './config'
 
 export var graph
 
+
 export const HomePage = () => (
-  <Content>
+  <Header>
     <Title>Can you build a sustainable Commons?</Title>
     <Subtitle>Give it a try!</Subtitle>
     <Button color="primary" variant="contained" href="/#/step1">Next</Button>
-  </Content>
+  </Header>
 )
 
 const marks = marks => marks.map(m => ({value: m, label: m}))
@@ -39,9 +44,12 @@ const marks = marks => marks.map(m => ({value: m, label: m}))
 export const CommunityPage = () => {
   const [results, setResults] = React.useState(false)
   return (
-    <Content>
+    <div>
+    <Header>
       <Title>Define your Community</Title>
       <Typography variant="h4">Set up your community</Typography>
+    </Header>
+    <Content>
        <Split
          primary={
           <Params onSubmit={communityAction(setResults)}>
@@ -105,33 +113,9 @@ export const CommunityPage = () => {
            </Grid>
          }
          />
-       <Split
-         primary={
-          <div>
-            <input type="radio" name="filter" onChange={filterChanged} checked={true} value="support"/>Support<br/>
-            <input type="radio" name="filter" onChange={filterChanged} value="influence"/>Influence<br/>
-            <input type="radio" name="filter" onChange={filterChanged} value="conflict"/>Conflict
-          </div>
-         }
-         secondary={
-          <Grid 
-           container 
-           direction="row"
-           alignItems="center"
-           style={{ position:"relative", top: "50%" }}
-           justify="center">
-             <div>
-                This graph shows the relationship between participants and proposals.
-             </div>
-           </Grid>
-         }
-         />
-       <Split
-         primary={
-          <Results results={results} next={2} />
-         }
-         />
+          <NetworkGraph results={results} next={2} />
         </Content>
+        </div>
   )
 }
 
@@ -273,6 +257,17 @@ export const CadCADPage = () => (
   />
 )
 
+const Header = ({children}) => (
+  <div
+     style={{
+       textAlign: "center", marginTop: "50px"
+
+     }}
+  >
+  {children}
+  </div>
+)
+
 const Content = ({ children }) => (
   <Grid container spacing={2}>
     {React.Children.map(children, child => (
@@ -376,19 +371,54 @@ const Params = ({ onSubmit, children }) => {
   )
 }
 
-const Results = ({ results, next }) => {
+const NetworkGraph = ({ results, next }) => {
     if (!results) {
       return "" 
     }
     console.log(results);
     return (
-      <div>
-        <ForceGraph network={results.network} width={600} height={600} />
+      <Content>
+       <Split
+         primary={
+          <div>
             <Typography variant="h4" gutterBottom>Results</Typography>
+            <RadioGroup defaultValue="support" aria-label="filter" name="filter" onChange={filterChanged}>
+                <FormControlLabel value="support" control={<Radio />} label="Support" />
+                <FormControlLabel value="influence" control={<Radio />} label="Influence" />
+                <FormControlLabel value="conflict" control={<Radio />} label="Conflict" />
+            </RadioGroup>
+            <ForceGraph network={results.network} width={600} height={600} />
+          </div>
+         }
+         secondary={
+          <Grid 
+           container 
+           direction="row"
+           alignItems="center"
+           style={{ position:"relative", top: "50%" }}
+           justify="center">
+             <div>
+                This graph shows the relationship between participants and proposals.
+             </div>
+           </Grid>
+         }
+         />
+       <Split
+         primary={
               <Next to={next} />
-      </div>
+         }
+         />
+      </Content>
     )
 }
+
+const Results = ({ results, next }) => 
+   results &&
+    <div css={`margin-top: 20px`}>
+      <Typography variant="h4" gutterBottom>Results</Typography>
+      {results.results && results.results.map((uri, i) => <img key={i} src={`${serverURI}/${uri}`} alt="" width="100%" />)}
+      <Next to={next} />
+    </div>
 
 const Next = ({ to }) => (
   <Button color="primary" variant="contained" href={`/#/step${to}`}>Next</Button>
