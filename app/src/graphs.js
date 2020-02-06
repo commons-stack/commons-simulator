@@ -1,6 +1,10 @@
-import * as d3 from "d3";
 import React, { Component } from 'react';
-import { filter } from './handlers';
+import Radio from '@material-ui/core/Radio'
+import RadioGroup from '@material-ui/core/RadioGroup'
+import FormControlLabel from '@material-ui/core/FormControlLabel';
+
+import * as d3 from "d3";
+
 import { select } from 'd3-selection'
 
 export var simulation
@@ -13,6 +17,7 @@ export default class ForceGraph extends Component {
     this.width = this.props.width;
     this.height = this.props.width;
     this.graphRef = React.createRef();
+    this.filter = "support";
 
     this.graphNodes = [];
     this.graphLinks = [];
@@ -155,25 +160,29 @@ export default class ForceGraph extends Component {
         .attr("cx", function(d) { return d.x; })
         .attr("cy", function(d) { return d.y; });
   }
-    
-  nodeClick(selectedNode) {
-    // reset all to unselected style
 
+  resetLines() {
     d3.selectAll("line")
     .style("stroke","#808080")
     .style("stroke-width", 1.0)
     .style("opacity", 0.0)
+  }
+    
+  nodeClick(selectedNode) {
+    // reset all to unselected style
+    this.resetLines();
+    let self = this;
     // select
     if (selectedNode.type === "participant") {
       d3.selectAll("line").filter(function(d) {
-          return (d.type === filter && d.source.id === selectedNode.id) ;
+          return (d.type === self.filter && d.source.id === selectedNode.id) ;
       })
       .style("stroke", "#fdd13a")
       .style("stroke-width",2.0) 
-      .style("opacity", 1.0)
+      .style("opacity", 1.0);
     } else if (selectedNode.type === "proposal") {
       d3.selectAll("line").filter(function(d) {
-          return (d.type === filter && d.target.id === selectedNode.id) ;
+          return (d.type === self.filter && d.target.id === selectedNode.id) ;
       })
       .style("stroke", "#fdd13a")
       .style("stroke-width",2.0) 
@@ -207,9 +216,19 @@ export default class ForceGraph extends Component {
     }
   }
 
+  filterChanged = (e) => {
+    this.filter = e.currentTarget.value;
+    this.resetLines();
+  }
+
   render() {
       return (
         <div ref={this.graphRef}>
+          <RadioGroup defaultValue="support" aria-label="filter" name="filter" onChange={this.filterChanged}>
+            <FormControlLabel value="support" control={<Radio />} label="Support" />
+            <FormControlLabel value="influence" control={<Radio />} label="Influence" />
+            <FormControlLabel value="conflict" control={<Radio />} label="Conflict" />
+          </RadioGroup>
           <svg id="network" ref={node => this.node = node}
             width={this.props.width} height={this.props.height}>
           </svg>

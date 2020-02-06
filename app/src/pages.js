@@ -4,9 +4,6 @@ import Typography from '@material-ui/core/Typography'
 import Box from '@material-ui/core/Box'
 import Link from '@material-ui/core/Link'
 import Button from '@material-ui/core/Button'
-import Radio from '@material-ui/core/Radio'
-import RadioGroup from '@material-ui/core/RadioGroup'
-import FormControlLabel from '@material-ui/core/FormControlLabel';
 import Slider from '@material-ui/core/Slider'
 import Collapse from '@material-ui/core/Collapse'
 import List from '@material-ui/core/List'
@@ -24,11 +21,7 @@ import ExpandMore from '@material-ui/icons/ExpandMore'
 
 import { communityAction, hatchAction, abcAction, convictionAction } from './actions'
 import ForceGraph from './graphs'
-import {filterChanged} from './handlers'
 import { serverURI } from './config'
-
-export var graph
-
 
 export const HomePage = () => (
   <Header>
@@ -382,11 +375,6 @@ const NetworkGraph = ({ results, next }) => {
          primary={
           <div>
             <Typography variant="h4" gutterBottom>Results</Typography>
-            <RadioGroup defaultValue="support" aria-label="filter" name="filter" onChange={filterChanged}>
-                <FormControlLabel value="support" control={<Radio />} label="Support" />
-                <FormControlLabel value="influence" control={<Radio />} label="Influence" />
-                <FormControlLabel value="conflict" control={<Radio />} label="Conflict" />
-            </RadioGroup>
             <ForceGraph network={results.network} width={600} height={600} />
           </div>
          }
@@ -398,7 +386,16 @@ const NetworkGraph = ({ results, next }) => {
            style={{ position:"relative", top: "50%" }}
            justify="center">
              <div>
-                This graph shows the relationship between participants and proposals.
+                This graph shows the relationship between participants and proposals.<br/><br/>
+                
+                Blue nodes represent participants, green nodes proposals. Their size is proportional to their holdings resp. the funds requested.<br/><br/>
+
+                Clicking on a node will show its relationship with other nodes. The selection choices at the top determine what will be shown:
+                <ul>
+                  <li>Support: On click, all the proposals supported by the participant resp. all participants supporting a proposal will be highlighted</li>
+                  <li>Influence: On click, all other participants influeced by the selected one are shown</li>
+                  <li>Conflict: On click, all other proposals with which this proposal has a conflict are highlighted</li>
+                </ul>
              </div>
            </Grid>
          }
