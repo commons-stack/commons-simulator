@@ -16,6 +16,9 @@ import Avatar from '@material-ui/core/Avatar'
 import ImageIcon from '@material-ui/icons/Image'
 import BallotIcon from '@material-ui/icons/Ballot'
 
+import Tooltip from '@material-ui/core/Tooltip'
+import Fab from '@material-ui/core/Fab'
+
 import ExpandLess from '@material-ui/icons/ExpandLess'
 import ExpandMore from '@material-ui/icons/ExpandMore'
 
@@ -38,12 +41,13 @@ export const CommunityPage = () => {
   const [results, setResults] = React.useState(false)
   return (
     <div>
-    <Header>
-      <Title>Define your Community</Title>
-      <Typography variant="h4">Set up your community</Typography>
-    </Header>
-    <Content>
-       <Split
+      <Layout
+        title="You've chosen to build a commons in support of orphans in Barcelona"
+        description={
+          <>
+           The first step in building your Commons is to collect together a flock of 'Hatchers'. Hatchers will help you kickstart the Commons. Hatchers make programming and spending decisions for your commons, so choose carefully. Stakeholders already interested in the project, such as current donors to orphanages in Barcelona, child psychologists, employees and volunteers at those orphanages, etc. are appropriate. These people will help your commons raise its initial funding. You are not looking for investors! Look for altruistic people that truly care about making an impact on the lives of children in Barcelona that have lost their parents.
+          </>
+         }
          primary={
           <Params onSubmit={communityAction(setResults)}>
             <SliderField
@@ -89,25 +93,9 @@ export const CommunityPage = () => {
           </Params>
          }
          secondary={
-          <Grid 
-           container 
-           direction="row"
-           alignItems="center"
-           style={{ position:"relative", top: "50%" }}
-           justify="center">
-             <div>
-               On this page, configure your community.<br/>
-               How many participants does it have?<br/>
-               How many proposals are there?<br/>
-               <br/>
-               <br/>
-               There are also some advanced parameters. 
-           </div>
-           </Grid>
+          <NetworkGraph results={results} next={2} />
          }
          />
-          <NetworkGraph results={results} next={2} />
-        </Content>
         </div>
   )
 }
@@ -116,10 +104,15 @@ export const CommunityPage = () => {
 export const HatchPage = () => {
   const [results, setResults] = React.useState(false)
   return (
-    <Split
-      title={
-        <Title>Define your Hatch</Title>
-      }
+    <Layout
+      title="So let’s see how you will define the Hatch of your future Commons!"
+      description={
+        <>
+          The Hatchers of the Orphans of Barcelona Commons are well incentivized to raise funds, the more money they raise the more tokens they get. Because of how bonding curves work, the Hatchers will be getting tokens for a very good price! Much cheaper than anyone else will be able to get them.
+
+          However, to get these cheap tokens, the Hatchers have to donate a percentage of their donations to kick start the funding pool, and their tokens are vested for a certain amount of time.
+        </>
+       }
       primary={
         <Content>
           <Params onSubmit={hatchAction(setResults)}>
@@ -146,11 +139,10 @@ export const HatchPage = () => {
               advanced="true"
             />
           </Params>
-          <Results results={results} next={3} />
         </Content>
       }
       secondary={
-        <LoremIpsum />
+        <Results results={results} next={3} />
       }
     />
   )
@@ -160,9 +152,12 @@ export const HatchPage = () => {
 export const ABCPage = () => {
   const [results, setResults] = React.useState(false)
   return (
-    <Split
-      title={
-        <Title>Define your Augmented Bonding Curve</Title>
+    <Layout
+      title="Define your Augmented Bonding Curve"
+      description={
+        <>
+        "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
+        </>
       }
       primary={
         <Content>
@@ -185,11 +180,10 @@ export const ABCPage = () => {
             <input type="hidden" name="initial_price" value="0.3" />
             <input type="hidden" name="theta" value="0.35" />
           </Params>
-          <Results results={results} next={4} />
         </Content>
       }
       secondary={
-        <LoremIpsum />
+        <Results results={results} next={4} />
       }
     />
   )
@@ -199,9 +193,12 @@ export const ABCPage = () => {
 export const ConvictionPage = () => {
   const [results, setResults] = React.useState(false)
   return (
-    <Split
-      title={
-        <Title>Define your Conviction Voting</Title>
+    <Layout
+      title="Define your Conviction Voting"
+      description={
+        <>
+        "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
+        </>
       }
       primary={
         <Content>
@@ -232,11 +229,10 @@ export const ConvictionPage = () => {
               advanced="true"
             />
           </Params>
-          <Results results={results} next={5} />
         </Content>
       }
       secondary={
-        <LoremIpsum />
+        <Results results={results} next={5} />
       }
     />
   )
@@ -244,7 +240,7 @@ export const ConvictionPage = () => {
 
 // Step 5
 export const CadCADPage = () => (
-  <Split
+  <Layout
     title={<Title>Simulation</Title>}
     primary={<>This simulation uses <Link href="https://cadcad.org">CadCAD</Link>.</>}
   />
@@ -273,11 +269,12 @@ const Content = ({ children }) => (
   </Grid>
 )
 
-const Split = ({ title, primary, secondary }) =>
+const Layout = ({ title, description, primary, secondary }) =>
   <Container>
     <Grid container spacing={5}>
       <Grid item xs={12}>
-        {title}
+        <Header><Title>{title}</Title></Header>
+        <Typography>{description}</Typography>
       </Grid>
       <Grid item xs={12} md={6}>
       {primary}
@@ -366,50 +363,35 @@ const Params = ({ onSubmit, children }) => {
 
 const NetworkGraph = ({ results, next }) => {
     if (!results) {
-      return "" 
+      return ""
     }
-    console.log(results);
     return (
       <Content>
-       <Split
-         primary={
-          <div>
-            <Typography variant="h4" gutterBottom>Results</Typography>
-            <ForceGraph network={results.network} width={600} height={600} />
-          </div>
-         }
-         secondary={
-          <Grid 
-           container 
-           direction="row"
-           alignItems="center"
-           style={{ position:"relative", top: "50%" }}
-           justify="center">
-             <div>
-                This graph shows the relationship between participants and proposals.<br/><br/>
-                
-                Blue nodes represent participants, green nodes proposals. Their size is proportional to their holdings resp. the funds requested.<br/><br/>
+        <Typography variant="h4" gutterBottom>Results{' '}
+        <Tooltip title={
+          <>
+            This graph shows the relationship between participants and proposals.<br/><br/>
 
-                Clicking on a node will show its relationship with other nodes. The selection choices at the top determine what will be shown:
-                <ul>
-                  <li>Support: On click, all the proposals supported by the participant resp. all participants supporting a proposal will be highlighted</li>
-                  <li>Influence: On click, all other participants influeced by the selected one are shown</li>
-                  <li>Conflict: On click, all other proposals with which this proposal has a conflict are highlighted</li>
-                </ul>
-             </div>
-           </Grid>
-         }
-         />
-       <Split
-         primary={
-              <Next to={next} />
-         }
-         />
+            Blue nodes represent participants, green nodes proposals. Their size is proportional to their holdings resp. the funds requested.<br/><br/>
+
+            Clicking on a node will show its relationship with other nodes. The selection choices at the top determine what will be shown:
+            <ul>
+              <li>Support: On click, all the proposals supported by the participant resp. all participants supporting a proposal will be highlighted</li>
+              <li>Influence: On click, all other participants influeced by the selected one are shown</li>
+              <li>Conflict: On click, all other proposals with which this proposal has a conflict are highlighted</li>
+            </ul>
+          </>
+        }>
+          <Fab size="small" color="primary">?</Fab>
+        </Tooltip>
+        </Typography>
+        <ForceGraph network={results.network} width={600} height={600} />
+        <Next to={next} />
       </Content>
     )
 }
 
-const Results = ({ results, next }) => 
+const Results = ({ results, next }) =>
    results &&
     <div css={`margin-top: 20px`}>
       <Typography variant="h4" gutterBottom>Results</Typography>
@@ -424,37 +406,3 @@ const Next = ({ to }) => (
 const Run = () => (
   <Button type="submit" color="primary" variant="contained">Run</Button>
 )
-
-const LoremIpsum = () =>
-  <Content>
-    <Typography variant="h4" gutterBottom>
-      The standard Lorem Ipsum passage, used since the 1500s
-    </Typography>
-    <Typography gutterBottom>
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
-    </Typography>
-    <Typography variant="h4" gutterBottom>
-      Section 1.10.32 of "de Finibus Bonorum et Malorum", written by Cicero in 45 BC
-    </Typography>
-    <Typography gutterBottom>
-      "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
-    </Typography>
-    <Typography variant="h4" gutterBottom>
-      1914 translation by H. Rackham
-    </Typography>
-    <Typography gutterBottom>
-      "But I must explain to you how all this mistaken idea of denouncing pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of the great explorer of the truth, the master-builder of human happiness. No one rejects, dislikes, or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure rationally encounter consequences that are extremely painful. Nor again is there anyone who loves or pursues or desires to obtain pain of itself, because it is pain, but because occasionally circumstances occur in which toil and pain can procure him some great pleasure. To take a trivial example, which of us ever undertakes laborious physical exercise, except to obtain some advantage from it? But who has any right to find fault with a man who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure?"
-    </Typography>
-    <Typography variant="h4" gutterBottom>
-      Section 1.10.33 of "de Finibus Bonorum et Malorum", written by Cicero in 45 BC
-    </Typography>
-    <Typography>
-      "At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur aut perferendis doloribus asperiores repellat."
-    </Typography>
-    <Typography variant="h4" gutterBottom>
-      1914 translation by H. Rackham
-    </Typography>
-    <Typography gutterBottom>
-      "On the other hand, we denounce with righteous indignation and dislike men who are so beguiled and demoralized by the charms of pleasure of the moment, so blinded by desire, that they cannot foresee the pain and trouble that are bound to ensue; and equal blame belongs to those who fail in their duty through weakness of will, which is the same as saying through shrinking from toil and pain. These cases are perfectly simple and easy to distinguish. In a free hour, when our power of choice is untrammelled and when nothing prevents our being able to do what we like best, every pleasure is to be welcomed and every pain avoided. But in certain circumstances and owing to the claims of duty or the obligations of business it will frequently occur that pleasures have to be repudiated and annoyances accepted. The wise man therefore always holds in these matters to this principle of selection: he rejects pleasures to secure other greater pleasures, or else he endures pains to avoid worse pains."
-    </Typography>
-  </Content>

@@ -1,11 +1,13 @@
 import React from 'react'
 import { HashRouter as Router, Route, Switch, Redirect } from 'react-router-dom'
 import { HomePage, CommunityPage, HatchPage, ABCPage, ConvictionPage, CadCADPage } from './pages'
+import { NavBar } from './components'
 
 
 function App() {
   return (
     <Router>
+      <NavBar />
       <Switch>
         <Route path="/" exact component={HomePage} />
         <Route path="/step1" component={CommunityPage} />

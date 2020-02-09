@@ -67,7 +67,7 @@ export default class ForceGraph extends Component {
     if (!d3.event.active) simulation.alphaTarget(0);
     d.fx = null;
     d.fy = null;
-  } 
+  }
   // end event callbacks
 
   initialize() {
@@ -81,7 +81,7 @@ export default class ForceGraph extends Component {
         .force("charge_force", d3.forceManyBody(-20))
         .force("center_force", d3.forceCenter(self.width / 2, self.height / 2))
         .alphaDecay(0)
-        .alphaMin(0)     
+        .alphaMin(0)
         .on("tick", function(){ self.tickActions(self.nodeCollection, self.linkCollection) });
 
     this.initialized = true;
@@ -101,19 +101,19 @@ export default class ForceGraph extends Component {
         .call(d3.drag()
               .on("start", function(d){ self.dragstarted(self.simulation, d); } )
               .on("drag", function(d){ self.dragged(d); } )
-              .on("end", function(d){ self.dragended(self.simulation, d); } ))  
+              .on("end", function(d){ self.dragended(self.simulation, d); } ))
         .on("click", function(d) {
           self.nodeClick(d);
           })
-          
+
   }
 
   getColor(d) {
     if (d.type === 'participant') {
-      return "#4090d9"; 
+      return "#4090d9";
     }
     else if (d.type === 'proposal') {
-      return "#53c388"; 
+      return "#53c388";
     }
     else {
       console.log("getColor: unknown node type");
@@ -122,7 +122,7 @@ export default class ForceGraph extends Component {
 
   getRadius(simulation, d) {
     if (d.type === 'participant') {
-      return Math.round(simulation.getParticipantRadius(d.holdings)); 
+      return Math.round(simulation.getParticipantRadius(d.holdings));
        }
     else if (d.type === 'proposal') {
       return Math.round(simulation.getProposalRadius(d.funds_requested));
@@ -167,7 +167,7 @@ export default class ForceGraph extends Component {
     .style("stroke-width", 1.0)
     .style("opacity", 0.0)
   }
-    
+
   nodeClick(selectedNode) {
     // reset all to unselected style
     this.resetLines();
@@ -178,14 +178,14 @@ export default class ForceGraph extends Component {
           return (d.type === self.filter && d.source.id === selectedNode.id) ;
       })
       .style("stroke", "#fdd13a")
-      .style("stroke-width",2.0) 
+      .style("stroke-width",2.0)
       .style("opacity", 1.0);
     } else if (selectedNode.type === "proposal") {
       d3.selectAll("line").filter(function(d) {
           return (d.type === self.filter && d.target.id === selectedNode.id) ;
       })
       .style("stroke", "#fdd13a")
-      .style("stroke-width",2.0) 
+      .style("stroke-width",2.0)
       .style("opacity", 1.0)
     }
   }
@@ -193,7 +193,7 @@ export default class ForceGraph extends Component {
   createVisualization(network) {
     this.appendNodes(network.nodes);
     this.appendLinks(network.links);
-    
+
     if (!this.initialized) {
       this.initialize();
     }
@@ -224,7 +224,7 @@ export default class ForceGraph extends Component {
   render() {
       return (
         <div ref={this.graphRef}>
-          <RadioGroup defaultValue="support" aria-label="filter" name="filter" onChange={this.filterChanged}>
+          <RadioGroup defaultValue="support" aria-label="filter" name="filter" onChange={this.filterChanged} row>
             <FormControlLabel value="support" control={<Radio />} label="Support" />
             <FormControlLabel value="influence" control={<Radio />} label="Influence" />
             <FormControlLabel value="conflict" control={<Radio />} label="Conflict" />
