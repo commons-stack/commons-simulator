@@ -12,3 +12,5 @@ export const hatchAction = setter => generalAction(`${serverURI}/hatch`)(setter)
 export const abcAction = setter => generalAction(`${serverURI}/abc`)(setter)
 
 export const convictionAction = setter => generalAction(`${serverURI}/conviction`)(setter)
+
+export const cadCADAction = setter => generalAction(`${serverURI}/cadcad`)(setter)

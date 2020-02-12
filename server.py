@@ -37,98 +37,29 @@ def getFloat(name, default_value = None):
 
 def jsonifyNetwork(network):
     obj = json_graph.node_link_data(network)
-    for i in range(len(obj['nodes'])):
-        node = obj['nodes'][i]
-        if node['type'] is "proposal":
-            del node['trigger']
     return obj
 
 @app.route('/')
 def root():
     return app.send_static_file('index.html')
 
-@app.route('/conviction', methods = ['POST'])
-def conviction():
-  try:
-      beta = getFloat('beta')
-      rho = getFloat('rho')
-  except Exception as err:
-      print(err)
-      return str(err), 422
-  plot_name = str(beta)+str(rho)
-
-  def trigger_threshold(requested, funds, supply, beta=beta , rho=rho):
-
-      share = requested/funds
-      if share < beta:
-          return rho*supply/(beta-share)**2
-      else:
-          return np.inf
-
-  dict1 = trigger_sweep('token_supply', trigger_threshold, beta)
-
-  trigger_plotter(dict1['share_of_funds'],
-                  dict1['log10_trigger'],
-                  'Log10 Amount of Conviction Required to Pass',
-                  dict1['total_supply'],
-                  'Token Supply')
-  axis = plt.axis()
-  #plt.text(.2*axis[0]+.8*axis[1],axis[-1]*1.01, 'fixed alpha = '+str(alpha))
-
-
-  # files = glob.glob('static/*')
-  # for f in files:
-  #   os.remove(f)
-
-  plt.savefig('static/plot1-'+plot_name+'.png')
-  plt.clf()
-
-  dict2 = trigger_sweep('alpha',trigger_threshold, xmax=beta)
-
-
-  trigger_plotter(dict2['share_of_funds'],
-                dict2['log10_share_of_max_conv'],
-                'Log10 Share of Conviction Required to Pass',
-                dict2['alpha'],
-                'alpha')
-
-  plt.savefig('static/plot2-'+plot_name+'.png')
-  plt.clf()
-  return jsonify({'beta': beta, 'rho': rho, 'results': ['plot1-'+plot_name+'.png', 'plot2-'+plot_name+'.png']})
-
 @app.route('/community', methods = ['GET', 'POST'])
 def community():
     try:
-        beta = getFloat('beta')
-        rho = getFloat('rho')
 
         n = getInteger('participants') #initial participants
         m = getInteger('proposals') #initial proposals
 
         initial_sentiment = getFloat('initial_sentiment')
 
-        theta = getFloat('theta')
-        sale_price = getFloat('sale_price')
-
     except Exception as err:
         return str(err), 422
 
-    plot_name = str(beta)+str(rho)
+    plot_name = str(n)+str(m)
 
-    def trigger_threshold(requested, funds, supply, beta=beta , rho=rho):
-
-      share = requested/funds
-      if share < beta:
-          return rho*supply/(beta-share)**2
-      else:
-          return np.inf
-
-    def TFGTS(total_supply):
-        #wrap initializer params to pass the function correctly
-        return total_funds_given_total_supply(total_supply, theta = theta, initial_price = sale_price)
 
     #initializer
-    network, initial_funds, initial_supply, total_requested = initialize_network(n,m,TFGTS,trigger_threshold)
+    network, initial_supply, total_requested = initialize_network(n,m)
 
     proposals = get_nodes_by_type(network, 'proposal')
     participants = get_nodes_by_type(network, 'participant')
@@ -183,16 +114,11 @@ def community():
 
     return jsonify({
       # inputs
-      'beta': beta,
-      'rho': rho,
       'participants': m,
       'proposals': n,
       'initial_sentiment': initial_sentiment,
-      'theta': theta,
-      'sale_price': sale_price,
       # outputs
       'initial_supply': initial_supply,
-      'initial_funds': initial_funds,
       'results': [
         'plot3-'+plot_name+'.png',
         'plot4-'+plot_name+'.png',
@@ -205,31 +131,95 @@ def community():
 
 @app.route('/hatch', methods = ['GET', 'POST'])
 def hatch():
-    return jsonify({})
+    try:
+        theta = getFloat('theta')
+        vesting = getFloat('vesting')
+        hatch_price = getFloat('hatch_price')
+    except Exception as err:
+        return str(err), 422
+    return jsonify({
+        # inputs
+        'theta': theta,
+        'vesting': vesting,
+        'hatch_price': hatch_price,
+    })
 
 @app.route('/abc', methods = ['GET', 'POST'])
 def abc():
     try:
         initial_supply = getFloat('initial_supply')
-        initial_price = getFloat('initial_price')
+        hatch_price = getFloat('hatch_price')
         kappa = getInteger('kappa')
         theta = getFloat('theta')
     except Exception as err:
         return str(err), 422
-    initial_reserve, invariant, initial_price= initialize_bonding_curve(initial_supply, initial_price = initial_price, kappa = kappa, theta = theta)
+
+    initial_funds = total_funds_given_total_supply(initial_supply, theta, hatch_price)
+
+    initial_reserve, invariant, starting_price = initialize_bonding_curve(initial_supply, initial_price = hatch_price, kappa = kappa, theta = theta)
     return jsonify({
         # outputs
         'initial_reserve': initial_reserve,
         'invariant': invariant,
-        'initial_price': initial_price
+        'initial_funds': initial_funds,
+        'starting_price': starting_price
     })
+
+@app.route('/conviction', methods = ['POST'])
+def conviction():
+  try:
+      beta = getFloat('beta')
+      rho = getFloat('rho')
+  except Exception as err:
+      print(err)
+      return str(err), 422
+  plot_name = str(beta)+str(rho)
+
+  def trigger_threshold(requested, funds, supply, beta=beta , rho=rho):
+
+      share = requested/funds
+      if share < beta:
+          return rho*supply/(beta-share)**2
+      else:
+          return np.inf
+
+  dict1 = trigger_sweep('token_supply', trigger_threshold, beta)
+
+  trigger_plotter(dict1['share_of_funds'],
+                  dict1['log10_trigger'],
+                  'Log10 Amount of Conviction Required to Pass',
+                  dict1['total_supply'],
+                  'Token Supply')
+  axis = plt.axis()
+  #plt.text(.2*axis[0]+.8*axis[1],axis[-1]*1.01, 'fixed alpha = '+str(alpha))
+
+
+  # files = glob.glob('static/*')
+  # for f in files:
+  #   os.remove(f)
+
+  plt.savefig('static/plot1-'+plot_name+'.png')
+  plt.clf()
+
+  dict2 = trigger_sweep('alpha',trigger_threshold, xmax=beta)
+
+
+  trigger_plotter(dict2['share_of_funds'],
+                dict2['log10_share_of_max_conv'],
+                'Log10 Share of Conviction Required to Pass',
+                dict2['alpha'],
+                'alpha')
+
+  plt.savefig('static/plot2-'+plot_name+'.png')
+  plt.clf()
+  return jsonify({'beta': beta, 'rho': rho, 'results': ['plot1-'+plot_name+'.png', 'plot2-'+plot_name+'.png']})
 
 @app.route('/cadcad', methods = ['GET', 'POST'])
 def cadcad():
 
     try:
         alpha = getFloat('alpha')
-        exit_fee = getFloat('exit_fee')
+        exit_tribute = getFloat('exit_tribute')
 
         kappa = getFloat('kappa')
         invariant = getFloat('invariant')
@@ -240,7 +230,7 @@ def cadcad():
           'supply': getFloat('initial_supply'),
           'funds': getFloat('initial_funds'),
           'reserve': getFloat('initial_reserve'),
-          'spot_price': getFloat('initial_price'),
+          'spot_price': getFloat('starting_price'),
           'sentiment': getFloat('initial_sentiment'),
           'network': nx.read_gpickle('static/network.gpickle')
         }
@@ -267,7 +257,7 @@ def cadcad():
         'trigger_func': [trigger_threshold],
         'kappa': [kappa], #bonding curve curvature
         'invariant': [invariant], #set by bonding curve choices
-        'tax_rate': [exit_fee]
+        'tax_rate': [exit_tribute]
         }
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #

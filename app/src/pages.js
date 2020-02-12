@@ -22,7 +22,7 @@ import Fab from '@material-ui/core/Fab'
 import ExpandLess from '@material-ui/icons/ExpandLess'
 import ExpandMore from '@material-ui/icons/ExpandMore'
 
-import { communityAction, hatchAction, abcAction, convictionAction } from './actions'
+import { communityAction, hatchAction, abcAction, convictionAction, cadCADAction } from './actions'
 import ForceGraph from './graphs'
 import { serverURI } from './config'
 
@@ -86,10 +86,6 @@ export const CommunityPage = () => {
               max={1}
               advanced="true"
             />
-            <input type="hidden" name="beta" value="0.2" />
-            <input type="hidden" name="rho" value="0.02" />
-            <input type="hidden" name="theta" value="0.35" />
-            <input type="hidden" name="sale_price" value="0.1" />
           </Params>
          }
          secondary={
@@ -118,6 +114,7 @@ export const HatchPage = () => {
           <Params onSubmit={hatchAction(setResults)}>
             <SliderField
               label="Theta"
+              name="theta"
               defaultValue={0.4}
               step={0.01}
               min={0}
@@ -125,6 +122,7 @@ export const HatchPage = () => {
             />
             <SliderField
               label="Vesting (in weeks)"
+              name="vesting"
               defaultValue={52}
               step={1}
               min={0}
@@ -132,6 +130,7 @@ export const HatchPage = () => {
             />
             <SliderField
               label="Hatch price"
+              name="hatch_price"
               defaultValue={0.1}
               step={0.1}
               min={0.1}
@@ -164,6 +163,7 @@ export const ABCPage = () => {
           <Params onSubmit={abcAction(setResults)}>
             <SliderField
               label="Curvature"
+              name="kappa"
               defaultValue={6}
               step={1}
               min={1}
@@ -171,13 +171,14 @@ export const ABCPage = () => {
             />
             <SliderField
               label="Exit tribute"
+              name="exit_tribute"
               defaultValue={0.2}
               step={0.05}
               min={0}
               max={1}
             />
             <input type="hidden" name="initial_supply" value="10000" />
-            <input type="hidden" name="initial_price" value="0.3" />
+            <input type="hidden" name="hatch_price" value="0.1" />
             <input type="hidden" name="theta" value="0.35" />
           </Params>
         </Content>
@@ -239,12 +240,41 @@ export const ConvictionPage = () => {
 }
 
 // Step 5
-export const CadCADPage = () => (
-  <Layout
-    title={<Title>Simulation</Title>}
-    primary={<>This simulation uses <Link href="https://cadcad.org">CadCAD</Link>.</>}
-  />
-)
+export const CadCADPage = () => {
+  const [results, setResults] = React.useState(false)
+  const ref = React.useRef(null)
+  const handleSubmit = e => {
+    e.preventDefault()
+    const data = new FormData(ref.current)
+    console.log(new URLSearchParams(data).toString())
+    cadCADAction(setResults)(data)
+  }
+  return (
+    <Layout
+      title={<Title>Simulation</Title>}
+      primary={
+        <>
+          This simulation uses <Link href="https://cadcad.org">CadCAD</Link>.
+          <form ref={ref} onSubmit={handleSubmit}>
+            <input type="hidden" name="alpha" value="0.9" />
+            <input type="hidden" name="exit_tribute" value="0.2" />
+            <input type="hidden" name="kappa" value="6" />
+            <input type="hidden" name="invariant" value="15.384615384615385" />
+            <input type="hidden" name="beta" value="0.2" />
+            <input type="hidden" name="rho" value="0.02" />
+            <input type="hidden" name="initial_supply" value="619405.175420327" />
+            <input type="hidden" name="initial_funds" value="350" />
+            <input type="hidden" name="initial_reserve" value="650" />
+            <input type="hidden" name="starting_price" value="0.065" />
+            <input type="hidden" name="initial_sentiment" value="0.6" />
+            <Run />
+          </form>
+        </>
+      }
+      secondary={<Results results={results} />}
+    />
+  )
+}
 
 const Header = ({children}) => (
   <div
