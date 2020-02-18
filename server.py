@@ -376,6 +376,21 @@ def cadcad():
         r.plot(x='timestep', y='funds')
         plt.savefig('static/plot8-'+str(ind)+'.png')
         plt.clf()
+
+        fig, ax1 = plt.subplots()
+        ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+        df = r
+        rdf = df[df.substep==4].copy()
+
+        rdf.plot(x='timestep', y=['funds', 'reserve','supply'], ax=ax1)
+        rdf.plot(x='timestep', y='spot_price',style='--',color = 'red', ax=ax2, legend = False)
+        ax2.set_ylabel('Price in xDAI per Token', color='red')
+        ax1.set_ylabel('Quantity of Assets')
+        ax2.tick_params(axis='y', labelcolor='red')
+        plt.title('Summary of Local Economy')
+        plt.savefig('static/plot9-'+str(ind)+'.png')
+        plt.clf()
+
     return jsonify({
-        'results': ['plot8-0.png']
+        'results': ['plot8-0.png', 'plot9-0.png']
     })
