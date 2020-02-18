@@ -26,6 +26,8 @@ import { communityAction, hatchAction, abcAction, convictionAction, cadCADAction
 import ForceGraph from './graphs'
 import { serverURI } from './config'
 
+import { useSelector, useDispatch } from 'react-redux'
+
 export const HomePage = () => (
   <Header>
     <Title>Can you build a sustainable Commons?</Title>
@@ -49,7 +51,7 @@ export const CommunityPage = () => {
           </>
          }
          primary={
-          <Params onSubmit={communityAction(setResults)}>
+          <Params onSubmit={communityAction(setResults, useDispatch())}>
             <SliderField
               label="Number of participants"
               name="participants"
@@ -111,7 +113,7 @@ export const HatchPage = () => {
        }
       primary={
         <Content>
-          <Params onSubmit={hatchAction(setResults)}>
+          <Params onSubmit={hatchAction(setResults, useDispatch())}>
             <SliderField
               label="Theta"
               name="theta"
@@ -150,6 +152,7 @@ export const HatchPage = () => {
 // Step 3
 export const ABCPage = () => {
   const [results, setResults] = React.useState(false)
+  const {initialSupply, hatchPrice, theta } = useSelector(state => state.parameters)
   return (
     <Layout
       title="Define your Augmented Bonding Curve"
@@ -160,7 +163,7 @@ export const ABCPage = () => {
       }
       primary={
         <Content>
-          <Params onSubmit={abcAction(setResults)}>
+          <Params onSubmit={abcAction(setResults, useDispatch())}>
             <SliderField
               label="Curvature"
               name="kappa"
@@ -177,9 +180,9 @@ export const ABCPage = () => {
               min={0}
               max={1}
             />
-            <input type="hidden" name="initial_supply" value="10000" />
-            <input type="hidden" name="hatch_price" value="0.1" />
-            <input type="hidden" name="theta" value="0.35" />
+            <input type="hidden" name="initial_supply" value={initialSupply} />
+            <input type="hidden" name="hatch_price" value={hatchPrice} />
+            <input type="hidden" name="theta" value={theta} />
           </Params>
         </Content>
       }
@@ -203,7 +206,7 @@ export const ConvictionPage = () => {
       }
       primary={
         <Content>
-          <Params onSubmit={convictionAction(setResults)}>
+          <Params onSubmit={convictionAction(setResults, useDispatch())}>
             <SliderField
               label="Alpha (in the future: Time to reach 80% voting power)"
               name="alpha"
@@ -242,12 +245,14 @@ export const ConvictionPage = () => {
 // Step 5
 export const CadCADPage = () => {
   const [results, setResults] = React.useState(false)
+  const dispatch = useDispatch()
   const ref = React.useRef(null)
+  const { alpha, exitTribute, kappa, invariant, beta, rho, initialSupply, initialFunds, initialReserve, startingPrice, initialSentiment } = useSelector(state => state.parameters)
   const handleSubmit = e => {
     e.preventDefault()
     const data = new FormData(ref.current)
     console.log(new URLSearchParams(data).toString())
-    cadCADAction(setResults)(data)
+    cadCADAction(setResults, dispatch)(data)
   }
   return (
     <Layout
@@ -256,17 +261,17 @@ export const CadCADPage = () => {
         <>
           This simulation uses <Link href="https://cadcad.org">CadCAD</Link>.
           <form ref={ref} onSubmit={handleSubmit}>
-            <input type="hidden" name="alpha" value="0.9" />
-            <input type="hidden" name="exit_tribute" value="0.2" />
-            <input type="hidden" name="kappa" value="6" />
-            <input type="hidden" name="invariant" value="15.384615384615385" />
-            <input type="hidden" name="beta" value="0.2" />
-            <input type="hidden" name="rho" value="0.02" />
-            <input type="hidden" name="initial_supply" value="619405.175420327" />
-            <input type="hidden" name="initial_funds" value="350" />
-            <input type="hidden" name="initial_reserve" value="650" />
-            <input type="hidden" name="starting_price" value="0.065" />
-            <input type="hidden" name="initial_sentiment" value="0.6" />
+            <input type="hidden" name="alpha" value={alpha} />
+            <input type="hidden" name="exit_tribute" value={exitTribute} />
+            <input type="hidden" name="kappa" value={kappa} />
+            <input type="hidden" name="invariant" value={invariant} />
+            <input type="hidden" name="beta" value={beta} />
+            <input type="hidden" name="rho" value={rho} />
+            <input type="hidden" name="initial_supply" value={initialSupply} />
+            <input type="hidden" name="initial_funds" value={initialFunds} />
+            <input type="hidden" name="initial_reserve" value={initialReserve} />
+            <input type="hidden" name="starting_price" value={startingPrice} />
+            <input type="hidden" name="initial_sentiment" value={initialSentiment} />
             <Run />
           </form>
         </>

@@ -151,6 +151,7 @@ def abc():
         hatch_price = getFloat('hatch_price')
         kappa = getInteger('kappa')
         theta = getFloat('theta')
+        exit_tribute = getFloat('exit_tribute')
     except Exception as err:
         return str(err), 422
 
@@ -158,6 +159,10 @@ def abc():
 
     initial_reserve, invariant, starting_price = initialize_bonding_curve(initial_supply, initial_price = hatch_price, kappa = kappa, theta = theta)
     return jsonify({
+        # inputs
+        'initial_supply': initial_supply,
+        'kappa': kappa,
+        'exit_tribute': exit_tribute,
         # outputs
         'initial_reserve': initial_reserve,
         'invariant': invariant,
@@ -168,6 +173,7 @@ def abc():
 @app.route('/conviction', methods = ['POST'])
 def conviction():
   try:
+      alpha = getFloat('alpha')
       beta = getFloat('beta')
       rho = getFloat('rho')
   except Exception as err:
@@ -191,12 +197,6 @@ def conviction():
                   dict1['total_supply'],
                   'Token Supply')
   axis = plt.axis()
-  #plt.text(.2*axis[0]+.8*axis[1],axis[-1]*1.01, 'fixed alpha = '+str(alpha))
-
-
-  # files = glob.glob('static/*')
-  # for f in files:
-  #   os.remove(f)
 
   plt.savefig('static/plot1-'+plot_name+'.png')
   plt.clf()
@@ -212,7 +212,7 @@ def conviction():
 
   plt.savefig('static/plot2-'+plot_name+'.png')
   plt.clf()
-  return jsonify({'beta': beta, 'rho': rho, 'results': ['plot1-'+plot_name+'.png', 'plot2-'+plot_name+'.png']})
+  return jsonify({'alpha': alpha, 'beta': beta, 'rho': rho, 'results': ['plot1-'+plot_name+'.png', 'plot2-'+plot_name+'.png']})
 
 @app.route('/cadcad', methods = ['GET', 'POST'])
 def cadcad():
