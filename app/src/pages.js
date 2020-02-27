@@ -23,7 +23,11 @@ import ExpandLess from '@material-ui/icons/ExpandLess'
 import ExpandMore from '@material-ui/icons/ExpandMore'
 
 import { communityAction, hatchAction, abcAction, convictionAction, cadCADAction } from './actions'
-import ForceGraph from './graphs'
+import { updateVestingGraph} from './handlers'
+
+import ForceGraph from './graphs/network'
+import VestingGraph from './graphs/vesting';
+
 import { serverURI } from './config'
 
 import { useSelector, useDispatch } from 'react-redux'
@@ -129,6 +133,7 @@ export const HatchPage = () => {
               step={1}
               min={0}
               max={260}
+              onChange={updateVestingGraph(this)}
             />
             <SliderField
               label="Hatch price"
@@ -143,7 +148,7 @@ export const HatchPage = () => {
         </Content>
       }
       secondary={
-        <Results results={results} next={3} />
+        <VestingGraph weeks={12} width={800} height={400} />
       }
     />
   )
