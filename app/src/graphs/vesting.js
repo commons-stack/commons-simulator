@@ -36,8 +36,19 @@ export default class VestingGraph extends Component {
   initialize() {
     this.svg = select(this.node);
     let xaxis_ticks = this.props.weeks;
-
+    let cliff = this.props.cliff;
     this.datapoints = this.props.weeks + 1;
+    
+    let cliff_values_vested = [];
+    for (let i=0; i<cliff;i++) {
+      cliff_values_vested.push({"y": 0});
+    }
+
+    let cliff_values_locked = [];
+    for (let i=0; i<cliff;i++) {
+      cliff_values_locked.push({"y": 1});
+    }
+
     this.dataset_locked = d3.range(0, this.datapoints)
       .map(function(d) { 
         return {"y": Math.pow(1/2, d)} ;
@@ -48,6 +59,8 @@ export default class VestingGraph extends Component {
         return {"y": 1 - Math.pow(1/2, d)} ;
       });
 
+    this.dataset_locked = [...cliff_values_locked, ...this.dataset_locked];
+    this.dataset_vested = [...cliff_values_vested, ...this.dataset_vested];
     if (this.props.weeks < 29) {
       //this.xaxis_mode = "Weeks";
     } else if (this.props.weeks < 105) {
@@ -152,7 +165,7 @@ export default class VestingGraph extends Component {
 
     dot_locked.append("text")
         .style("font", "12px sans-serif")
-        .style("stroke", "whitesmoke")
+        .style("fill", "whitesmoke")
         .attr("text-anchor", "middle")
         .attr("y", -16);
 
@@ -161,7 +174,7 @@ export default class VestingGraph extends Component {
     function moved() {
       d3.event.preventDefault();
       const xm = vesting_graph.x.invert(d3.event.offsetX);
-      const ym = vesting_graph.y.invert(d3.event.offsetY);
+      //const ym = vesting_graph.y.invert(d3.event.offsetY);
       const i1 = d3.bisectLeft([...locked_dataset.keys()], xm, 1);
       const i0 = i1 - 1;
       let i = xm - i0 > i1 -  xm ? i1 : i0;
@@ -172,16 +185,28 @@ export default class VestingGraph extends Component {
       const val_vested = vested_dataset[i].y;
       locked_path.filter(d => d === val_locked).raise();
       vested_path.filter(d => d === val_vested).raise();
-      dot_locked.attr("transform", "translate(" + (30 + vesting_graph.x(i)) + "," + `${vesting_graph.y(val_locked)})`);
-      dot_vested.attr("transform", "translate(" + (30 + vesting_graph.x(i)) + "," + `${vesting_graph.y(val_vested)})`);
+      dot_locked.attr("transform", `translate(${vesting_graph.x(i) + 30},${vesting_graph.y(val_locked)})`);
+      dot_vested.attr("transform", `translate(${vesting_graph.x(i) + 30},${vesting_graph.y(val_vested)})`);
       let week_txt = " weeks";
-      let vesting_txt_offset = 0 ;
-      if (i ==1) {
-        week_txt = " week";
-        vesting_txt_offset = -20;
+      let vesting_txt_y_offset = 0 ;
+      let txt_x_offset = 0 ;
+      if (i === 0) {
+        txt_x_offset = 40;
       }
-      dot_locked.select("text").text((val_locked * 100) + "% of tokens locked after " + i + week_txt);
-      dot_vested.select("text").text((val_vested * 100) + "% of tokens vested after " + i + week_txt).attr("transform","translate(0, " + `${vesting_txt_offset})`);
+      if ((d3.event.offsetX + 200) > vesting_graph.width) {
+        txt_x_offset = vesting_graph.width - (d3.event.offsetX + 200);
+      }
+
+      if (i === 1) {
+        week_txt = " week";
+      }
+      if (val_locked === val_vested) {
+        vesting_txt_y_offset = -40;
+      }
+
+      dot_locked.select("text").text((val_locked * 100) + "% of tokens locked after " + i + week_txt).attr("transform",`translate(${txt_x_offset},0)` );
+      dot_vested.select("text").text((val_vested * 100) + "% of tokens vested after " + i + week_txt).attr("transform",`translate(${txt_x_offset},${vesting_txt_y_offset})`);
+
     }
 
     function entered() {
