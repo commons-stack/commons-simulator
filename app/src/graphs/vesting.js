@@ -16,23 +16,12 @@ export default class VestingGraph extends Component {
       bottom: 60,
       left: 30,
     }
+    this.xaxis_mode = "Weeks";
     this.graphRef = React.createRef();
-
-    this.datapoints = this.props.weeks + 1;
 
     this.initialize = this.initialize.bind(this);
 
     vesting_graph = this;
-
-    this.dataset_locked = d3.range(0, this.datapoints)
-      .map(function(d) { 
-        return {"y": Math.pow(1/2, d)} ;
-      });
-
-    this.dataset_vested = d3.range(0, this.datapoints)
-      .map(function(d) { 
-        return {"y": 1 - Math.pow(1/2, d)} ;
-      });
   }
 
   componentDidMount() {
@@ -46,6 +35,28 @@ export default class VestingGraph extends Component {
 
   initialize() {
     this.svg = select(this.node);
+    let xaxis_ticks = this.props.weeks;
+
+    this.datapoints = this.props.weeks + 1;
+    this.dataset_locked = d3.range(0, this.datapoints)
+      .map(function(d) { 
+        return {"y": Math.pow(1/2, d)} ;
+      });
+
+    this.dataset_vested = d3.range(0, this.datapoints)
+      .map(function(d) { 
+        return {"y": 1 - Math.pow(1/2, d)} ;
+      });
+
+    if (this.props.weeks < 29) {
+      //this.xaxis_mode = "Weeks";
+    } else if (this.props.weeks < 105) {
+      //this.xaxis_mode = "Months";
+      xaxis_ticks = this.props.weeks / 4;
+    } else {
+      //this.xaxis_mode = "Years";
+      xaxis_ticks = this.props.weeks / 52;
+    }
 
     this.x = d3.scaleLinear()
     .domain([0, vesting_graph.props.weeks])
@@ -57,7 +68,7 @@ export default class VestingGraph extends Component {
 
     this.xAxis = (g) => g
       .attr("transform", `translate(30,${this.height - this.margin.bottom})`)
-      .call(d3.axisBottom(this.x).ticks(vesting_graph.props.weeks).tickSizeOuter(0));
+      .call(d3.axisBottom(this.x).ticks(xaxis_ticks).tickSizeOuter(0));
 
     this.svg.append("text")
       .attr("transform",
@@ -65,7 +76,7 @@ export default class VestingGraph extends Component {
                            (this.height - 10 ) + ")")
       .style("text-anchor", "middle")
       .style("stroke", "whitesmoke")
-      .text("Weeks");
+      .text(this.xaxis_mode);
 
     this.yAxis = (g) => g
       .attr("transform", "translate(" + (30 + this.margin.left) + ",0)")
@@ -157,14 +168,20 @@ export default class VestingGraph extends Component {
       if (i === locked_dataset.length) {
         i = i -1;
       }
-      const val_locked = locked_dataset[i].y
-      const val_vested = vested_dataset[i].y
+      const val_locked = locked_dataset[i].y;
+      const val_vested = vested_dataset[i].y;
       locked_path.filter(d => d === val_locked).raise();
       vested_path.filter(d => d === val_vested).raise();
       dot_locked.attr("transform", "translate(" + (30 + vesting_graph.x(i)) + "," + `${vesting_graph.y(val_locked)})`);
       dot_vested.attr("transform", "translate(" + (30 + vesting_graph.x(i)) + "," + `${vesting_graph.y(val_vested)})`);
-      dot_locked.select("text").text(val_locked);
-      dot_vested.select("text").text(val_vested);
+      let week_txt = " weeks";
+      let vesting_txt_offset = 0 ;
+      if (i ==1) {
+        week_txt = " week";
+        vesting_txt_offset = -20;
+      }
+      dot_locked.select("text").text((val_locked * 100) + "% of tokens locked after " + i + week_txt);
+      dot_vested.select("text").text((val_vested * 100) + "% of tokens vested after " + i + week_txt).attr("transform","translate(0, " + `${vesting_txt_offset})`);
     }
 
     function entered() {

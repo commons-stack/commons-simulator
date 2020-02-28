@@ -92,6 +92,9 @@ export const CommunityPage = () => {
               max={1}
               advanced="true"
             />
+
+            <Run />
+
           </Params>
          }
          secondary={
@@ -104,7 +107,7 @@ export const CommunityPage = () => {
 
 // Step 2
 export const HatchPage = () => {
-  const [results, setResults] = React.useState({vesting_prop: 12})
+  const [results, setResults] = React.useState({vesting_prop: 12, next: 3})
   return (
     <Layout
       title="So let’s see how you will define the Hatch of your future Commons!"
@@ -144,6 +147,7 @@ export const HatchPage = () => {
               max={1}
               advanced="true"
             />
+          <Next to={results.next} />
           </Params>
         </Content>
       }
@@ -188,6 +192,9 @@ export const ABCPage = () => {
             <input type="hidden" name="initial_supply" value={initialSupply} />
             <input type="hidden" name="hatch_price" value={hatchPrice} />
             <input type="hidden" name="theta" value={theta} />
+
+            <Run />
+
           </Params>
         </Content>
       }
@@ -237,6 +244,7 @@ export const ConvictionPage = () => {
               max={0.1}
               advanced="true"
             />
+            <Run />
           </Params>
         </Content>
       }
@@ -396,7 +404,6 @@ const Params = ({ onSubmit, children }) => {
           </List>
         </Collapse>
       </List>
-      <Run />
     </form>
   )
 }
