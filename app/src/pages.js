@@ -104,7 +104,7 @@ export const CommunityPage = () => {
 
 // Step 2
 export const HatchPage = () => {
-  const [results, setResults] = React.useState(false)
+  const [results, setResults] = React.useState({vesting_prop: 12})
   return (
     <Layout
       title="So let’s see how you will define the Hatch of your future Commons!"
@@ -129,11 +129,11 @@ export const HatchPage = () => {
             <SliderField
               label="Vesting (in weeks)"
               name="vesting"
-              defaultValue={52}
+              defaultValue={results.vesting_prop}
               step={1}
               min={0}
               max={260}
-              onChange={updateVestingGraph(this)}
+              onChange={(e, val) => setResults({vesting_prop: val})}
             />
             <SliderField
               label="Hatch price"
@@ -148,7 +148,7 @@ export const HatchPage = () => {
         </Content>
       }
       secondary={
-        <VestingGraph weeks={12} width={800} height={400} />
+        <VestingGraph weeks={results.vesting_prop} width={800} height={400} />
       }
     />
   )

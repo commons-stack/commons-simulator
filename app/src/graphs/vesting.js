@@ -40,6 +40,7 @@ export default class VestingGraph extends Component {
   }
 
   componentDidUpdate() {
+    this.svg.selectAll("*").remove();
     this.initialize();
   }
 
