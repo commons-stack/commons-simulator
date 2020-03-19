@@ -1,4 +1,4 @@
-import { serverURI } from './config'
+import { serverURI } from '../config'
 
 const generalAction = action => (setter, dispatch) => body => fetch(action, {
   method: 'POST',

@@ -1,1 +1,1 @@
-export const serverURI = 'http://localhost:5000'
+export const serverURI = process.env.SERVER_URI || 'http://localhost:5000'

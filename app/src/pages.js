@@ -13,28 +13,19 @@ import ListItem from '@material-ui/core/ListItem'
 import ListItemText from '@material-ui/core/ListItemText'
 import ListItemAvatar from '@material-ui/core/ListItemAvatar'
 import Avatar from '@material-ui/core/Avatar'
-import ImageIcon from '@material-ui/icons/Image'
-import BallotIcon from '@material-ui/icons/Ballot'
-
 import Tooltip from '@material-ui/core/Tooltip'
 import Fab from '@material-ui/core/Fab'
 
 import ExpandLess from '@material-ui/icons/ExpandLess'
 import ExpandMore from '@material-ui/icons/ExpandMore'
+import ImageIcon from '@material-ui/icons/Image'
+import BallotIcon from '@material-ui/icons/Ballot'
 
-import { communityAction, hatchAction, abcAction, convictionAction, cadCADAction } from './actions'
+import { communityAction, hatchAction, abcAction, convictionAction, cadCADAction } from './redux/actions'
 import ForceGraph from './graphs'
 import { serverURI } from './config'
 
 import { useSelector, useDispatch } from 'react-redux'
-
-export const HomePage = () => (
-  <Header>
-    <Title>Can you build a sustainable Commons?</Title>
-    <Subtitle>Give it a try!</Subtitle>
-    <Button color="primary" variant="contained" href="/#/step1">Next</Button>
-  </Header>
-)
 
 const marks = marks => marks.map(m => ({value: m, label: m}))
 
