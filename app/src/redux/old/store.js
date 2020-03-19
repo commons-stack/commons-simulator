@@ -21,22 +21,24 @@ function parameters(state = {}, { type, values }) {
         starting_price: startingPrice,
         initial_sentiment: initialSentiment,
       } = values
-      const parameters = JSON.parse(JSON.stringify({
-        alpha,
-        exitTribute,
-        hatchPrice,
-        theta,
-        vesting,
-        kappa,
-        invariant,
-        beta,
-        rho,
-        initialSupply,
-        initialFunds,
-        initialReserve,
-        startingPrice,
-        initialSentiment,
-      }))
+      const parameters = JSON.parse(
+        JSON.stringify({
+          alpha,
+          exitTribute,
+          hatchPrice,
+          theta,
+          vesting,
+          kappa,
+          invariant,
+          beta,
+          rho,
+          initialSupply,
+          initialFunds,
+          initialReserve,
+          startingPrice,
+          initialSentiment,
+        })
+      )
       console.log(values)
       return {
         ...state,

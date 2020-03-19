@@ -37,10 +37,16 @@ function NavBar({ children }) {
               </Link>
             </div>
             <div className={classes.flex}>
-              <Button href="https://commonsstack.org">About Commons Stack</Button>
+              <Button href="https://commonsstack.org">
+                About Commons Stack
+              </Button>
               <Button>High scores</Button>
-              <Button href="https://github.com/commons-stack/commons-simulator">Github</Button>
-              <Button href="https://gitcoin.co/grants/277/commons-simulator-modeling-sustainable-funding-for">Support project</Button>
+              <Button href="https://github.com/commons-stack/commons-simulator">
+                Github
+              </Button>
+              <Button href="https://gitcoin.co/grants/277/commons-simulator-modeling-sustainable-funding-for">
+                Support project
+              </Button>
             </div>
           </Container>
         </Toolbar>

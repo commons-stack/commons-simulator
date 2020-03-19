@@ -21,13 +21,19 @@ import ExpandMore from '@material-ui/icons/ExpandMore'
 import ImageIcon from '@material-ui/icons/Image'
 import BallotIcon from '@material-ui/icons/Ballot'
 
-import { communityAction, hatchAction, abcAction, convictionAction, cadCADAction } from './redux/actions'
+import {
+  communityAction,
+  hatchAction,
+  abcAction,
+  convictionAction,
+  cadCADAction,
+} from './redux/actions'
 import ForceGraph from './graphs'
 import { serverURI } from './config'
 
 import { useSelector, useDispatch } from 'react-redux'
 
-const marks = marks => marks.map(m => ({value: m, label: m}))
+const marks = marks => marks.map(m => ({ value: m, label: m }))
 
 // Step 1
 export const CommunityPage = () => {
@@ -38,10 +44,19 @@ export const CommunityPage = () => {
         title="You've chosen to build a commons in support of orphans in Barcelona"
         description={
           <>
-           The first step in building your Commons is to collect together a flock of 'Hatchers'. Hatchers will help you kickstart the Commons. Hatchers make programming and spending decisions for your commons, so choose carefully. Stakeholders already interested in the project, such as current donors to orphanages in Barcelona, child psychologists, employees and volunteers at those orphanages, etc. are appropriate. These people will help your commons raise its initial funding. You are not looking for investors! Look for altruistic people that truly care about making an impact on the lives of children in Barcelona that have lost their parents.
+            The first step in building your Commons is to collect together a
+            flock of 'Hatchers'. Hatchers will help you kickstart the Commons.
+            Hatchers make programming and spending decisions for your commons,
+            so choose carefully. Stakeholders already interested in the project,
+            such as current donors to orphanages in Barcelona, child
+            psychologists, employees and volunteers at those orphanages, etc.
+            are appropriate. These people will help your commons raise its
+            initial funding. You are not looking for investors! Look for
+            altruistic people that truly care about making an impact on the
+            lives of children in Barcelona that have lost their parents.
           </>
-         }
-         primary={
+        }
+        primary={
           <Params onSubmit={communityAction(setResults, useDispatch())}>
             <SliderField
               label="Number of participants"
@@ -80,12 +95,10 @@ export const CommunityPage = () => {
               advanced="true"
             />
           </Params>
-         }
-         secondary={
-          <NetworkGraph results={results} next={2} />
-         }
-         />
-        </div>
+        }
+        secondary={<NetworkGraph results={results} next={2} />}
+      />
+    </div>
   )
 }
 
@@ -97,11 +110,16 @@ export const HatchPage = () => {
       title="So let’s see how you will define the Hatch of your future Commons!"
       description={
         <>
-          The Hatchers of the Orphans of Barcelona Commons are well incentivized to raise funds, the more money they raise the more tokens they get. Because of how bonding curves work, the Hatchers will be getting tokens for a very good price! Much cheaper than anyone else will be able to get them.
-
-          However, to get these cheap tokens, the Hatchers have to donate a percentage of their donations to kick start the funding pool, and their tokens are vested for a certain amount of time.
+          The Hatchers of the Orphans of Barcelona Commons are well incentivized
+          to raise funds, the more money they raise the more tokens they get.
+          Because of how bonding curves work, the Hatchers will be getting
+          tokens for a very good price! Much cheaper than anyone else will be
+          able to get them. However, to get these cheap tokens, the Hatchers
+          have to donate a percentage of their donations to kick start the
+          funding pool, and their tokens are vested for a certain amount of
+          time.
         </>
-       }
+      }
       primary={
         <Content>
           <Params onSubmit={hatchAction(setResults, useDispatch())}>
@@ -133,9 +151,7 @@ export const HatchPage = () => {
           </Params>
         </Content>
       }
-      secondary={
-        <Results results={results} next={3} />
-      }
+      secondary={<Results results={results} next={3} />}
     />
   )
 }
@@ -143,13 +159,27 @@ export const HatchPage = () => {
 // Step 3
 export const ABCPage = () => {
   const [results, setResults] = React.useState(false)
-  const {initialSupply, hatchPrice, theta } = useSelector(state => state.parameters)
+  const { initialSupply, hatchPrice, theta } = useSelector(
+    state => state.parameters
+  )
   return (
     <Layout
       title="Define your Augmented Bonding Curve"
       description={
         <>
-        "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
+          "Sed ut perspiciatis unde omnis iste natus error sit voluptatem
+          accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae
+          ab illo inventore veritatis et quasi architecto beatae vitae dicta
+          sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit
+          aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos
+          qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui
+          dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed
+          quia non numquam eius modi tempora incidunt ut labore et dolore magnam
+          aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum
+          exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex
+          ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in
+          ea voluptate velit esse quam nihil molestiae consequatur, vel illum
+          qui dolorem eum fugiat quo voluptas nulla pariatur?"
         </>
       }
       primary={
@@ -177,9 +207,7 @@ export const ABCPage = () => {
           </Params>
         </Content>
       }
-      secondary={
-        <Results results={results} next={4} />
-      }
+      secondary={<Results results={results} next={4} />}
     />
   )
 }
@@ -192,7 +220,19 @@ export const ConvictionPage = () => {
       title="Define your Conviction Voting"
       description={
         <>
-        "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
+          "Sed ut perspiciatis unde omnis iste natus error sit voluptatem
+          accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae
+          ab illo inventore veritatis et quasi architecto beatae vitae dicta
+          sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit
+          aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos
+          qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui
+          dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed
+          quia non numquam eius modi tempora incidunt ut labore et dolore magnam
+          aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum
+          exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex
+          ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in
+          ea voluptate velit esse quam nihil molestiae consequatur, vel illum
+          qui dolorem eum fugiat quo voluptas nulla pariatur?"
         </>
       }
       primary={
@@ -226,9 +266,7 @@ export const ConvictionPage = () => {
           </Params>
         </Content>
       }
-      secondary={
-        <Results results={results} next={5} />
-      }
+      secondary={<Results results={results} next={5} />}
     />
   )
 }
@@ -238,7 +276,19 @@ export const CadCADPage = () => {
   const [results, setResults] = React.useState(false)
   const dispatch = useDispatch()
   const ref = React.useRef(null)
-  const { alpha, exitTribute, kappa, invariant, beta, rho, initialSupply, initialFunds, initialReserve, startingPrice, initialSentiment } = useSelector(state => state.parameters)
+  const {
+    alpha,
+    exitTribute,
+    kappa,
+    invariant,
+    beta,
+    rho,
+    initialSupply,
+    initialFunds,
+    initialReserve,
+    startingPrice,
+    initialSentiment,
+  } = useSelector(state => state.parameters)
   const handleSubmit = e => {
     e.preventDefault()
     const data = new FormData(ref.current)
@@ -260,9 +310,17 @@ export const CadCADPage = () => {
             <input type="hidden" name="rho" value={rho} />
             <input type="hidden" name="initial_supply" value={initialSupply} />
             <input type="hidden" name="initial_funds" value={initialFunds} />
-            <input type="hidden" name="initial_reserve" value={initialReserve} />
+            <input
+              type="hidden"
+              name="initial_reserve"
+              value={initialReserve}
+            />
             <input type="hidden" name="starting_price" value={startingPrice} />
-            <input type="hidden" name="initial_sentiment" value={initialSentiment} />
+            <input
+              type="hidden"
+              name="initial_sentiment"
+              value={initialSentiment}
+            />
             <Run />
           </form>
         </>
@@ -272,14 +330,14 @@ export const CadCADPage = () => {
   )
 }
 
-const Header = ({children}) => (
+const Header = ({ children }) => (
   <div
-     style={{
-       textAlign: "center", marginTop: "50px"
-
-     }}
+    style={{
+      textAlign: 'center',
+      marginTop: '50px',
+    }}
   >
-  {children}
+    {children}
   </div>
 )
 
@@ -287,40 +345,49 @@ const Content = ({ children }) => (
   <Grid container spacing={2}>
     {React.Children.map(children, child => (
       <Grid item sm={12}>
-        <Box>
-          {child}
-        </Box>
+        <Box>{child}</Box>
       </Grid>
     ))}
   </Grid>
 )
 
-const Layout = ({ title, description, primary, secondary }) =>
+const Layout = ({ title, description, primary, secondary }) => (
   <Container>
     <Grid container spacing={5}>
       <Grid item xs={12}>
-        <Header><Title>{title}</Title></Header>
+        <Header>
+          <Title>{title}</Title>
+        </Header>
         <Typography>{description}</Typography>
       </Grid>
       <Grid item xs={12} md={6}>
-      {primary}
+        {primary}
       </Grid>
       <Grid item xs={12} md={6}>
-      {secondary}
+        {secondary}
       </Grid>
     </Grid>
   </Container>
+)
 
 const Title = ({ children }) => (
-    <Typography variant="h2" component="h2" gutterBottom>{children}</Typography>
+  <Typography variant="h2" component="h2" gutterBottom>
+    {children}
+  </Typography>
 )
 
 const Subtitle = ({ children }) => (
-    <Typography variant="h3" component="h3" gutterBottom>{children}</Typography>
+  <Typography variant="h3" component="h3" gutterBottom>
+    {children}
+  </Typography>
 )
 
-const SliderField = ({...props}) => (
-  <Slider {...props} valueLabelDisplay="auto" marks={marks([props.min, props.defaultValue, props.max])} />
+const SliderField = ({ ...props }) => (
+  <Slider
+    {...props}
+    valueLabelDisplay="auto"
+    marks={marks([props.min, props.defaultValue, props.max])}
+  />
 )
 
 const Params = ({ onSubmit, children }) => {
@@ -339,46 +406,52 @@ const Params = ({ onSubmit, children }) => {
   }
   return (
     <form ref={ref} onSubmit={handleSubmit}>
-      <List
-        subheader={
-          <ListSubheader>
-            Parameters
-          </ListSubheader>
-        }
-      >
-        {children.filter(({props}) => !props.advanced && props.type !== 'hidden').map(item =>
-          <ListItem key={item.props.name}>
-            <ListItemAvatar>
-              <Avatar>
-                <ImageIcon />
-              </Avatar>
-            </ListItemAvatar>
-            <ListItemText
-              primary={<Typography gutterBottom>{item.props.label}</Typography>}
-              secondary={item}
-            />
-          </ListItem>
+      <List subheader={<ListSubheader>Parameters</ListSubheader>}>
+        {children
+          .filter(({ props }) => !props.advanced && props.type !== 'hidden')
+          .map(item => (
+            <ListItem key={item.props.name}>
+              <ListItemAvatar>
+                <Avatar>
+                  <ImageIcon />
+                </Avatar>
+              </ListItemAvatar>
+              <ListItemText
+                primary={
+                  <Typography gutterBottom>{item.props.label}</Typography>
+                }
+                secondary={item}
+              />
+            </ListItem>
+          ))}
+        {children.filter(
+          ({ props }) => !props.advanced && props.type === 'hidden'
         )}
-        {children.filter(({props}) => !props.advanced && props.type === 'hidden')}
         <ListItem button onClick={handleClick} key="advanced">
-          <ListItemText primary={<ListSubheader disableGutters>Advanced</ListSubheader>} />
+          <ListItemText
+            primary={<ListSubheader disableGutters>Advanced</ListSubheader>}
+          />
           {open ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
         <Collapse in={open} timeout="auto">
           <List component="div" disablePadding>
-            {children.filter(({props}) => props.advanced).map(item =>
-              <ListItem key={item.props.name}>
-                <ListItemAvatar>
-                  <Avatar>
-                    <ImageIcon />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={<Typography gutterBottom>{item.props.label}</Typography>}
-                  secondary={item}
-                />
-              </ListItem>
-            )}
+            {children
+              .filter(({ props }) => props.advanced)
+              .map(item => (
+                <ListItem key={item.props.name}>
+                  <ListItemAvatar>
+                    <Avatar>
+                      <ImageIcon />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={
+                      <Typography gutterBottom>{item.props.label}</Typography>
+                    }
+                    secondary={item}
+                  />
+                </ListItem>
+              ))}
           </List>
         </Collapse>
       </List>
@@ -388,47 +461,81 @@ const Params = ({ onSubmit, children }) => {
 }
 
 const NetworkGraph = ({ results, next }) => {
-    if (!results) {
-      return ""
-    }
-    return (
-      <Content>
-        <Typography variant="h4" gutterBottom>Results{' '}
-        <Tooltip title={
-          <>
-            This graph shows the relationship between participants and proposals.<br/><br/>
-
-            Blue nodes represent participants, green nodes proposals. Their size is proportional to their holdings resp. the funds requested.<br/><br/>
-
-            Clicking on a node will show its relationship with other nodes. The selection choices at the top determine what will be shown:
-            <ul>
-              <li>Support: On click, all the proposals supported by the participant resp. all participants supporting a proposal will be highlighted</li>
-              <li>Influence: On click, all other participants influeced by the selected one are shown</li>
-              <li>Conflict: On click, all other proposals with which this proposal has a conflict are highlighted</li>
-            </ul>
-          </>
-        }>
-          <Fab size="small" color="primary">?</Fab>
+  if (!results) {
+    return ''
+  }
+  return (
+    <Content>
+      <Typography variant="h4" gutterBottom>
+        Results{' '}
+        <Tooltip
+          title={
+            <>
+              This graph shows the relationship between participants and
+              proposals.
+              <br />
+              <br />
+              Blue nodes represent participants, green nodes proposals. Their
+              size is proportional to their holdings resp. the funds requested.
+              <br />
+              <br />
+              Clicking on a node will show its relationship with other nodes.
+              The selection choices at the top determine what will be shown:
+              <ul>
+                <li>
+                  Support: On click, all the proposals supported by the
+                  participant resp. all participants supporting a proposal will
+                  be highlighted
+                </li>
+                <li>
+                  Influence: On click, all other participants influeced by the
+                  selected one are shown
+                </li>
+                <li>
+                  Conflict: On click, all other proposals with which this
+                  proposal has a conflict are highlighted
+                </li>
+              </ul>
+            </>
+          }
+        >
+          <Fab size="small" color="primary">
+            ?
+          </Fab>
         </Tooltip>
-        </Typography>
-        <ForceGraph network={results.network} width={600} height={600} />
-        <Next to={next} />
-      </Content>
-    )
+      </Typography>
+      <ForceGraph network={results.network} width={600} height={600} />
+      <Next to={next} />
+    </Content>
+  )
 }
 
 const Results = ({ results, next }) =>
-   results &&
-    <div css={`margin-top: 20px`}>
-      <Typography variant="h4" gutterBottom>Results</Typography>
-      {results.results && results.results.map((uri, i) => <img key={i} src={`${serverURI}/${uri}`} alt="" width="100%" />)}
+  results && (
+    <div
+      css={`
+        margin-top: 20px;
+      `}
+    >
+      <Typography variant="h4" gutterBottom>
+        Results
+      </Typography>
+      {results.results &&
+        results.results.map((uri, i) => (
+          <img key={i} src={`${serverURI}/${uri}`} alt="" width="100%" />
+        ))}
       <Next to={next} />
     </div>
+  )
 
 const Next = ({ to }) => (
-  <Button color="primary" variant="contained" href={`/#/step${to}`}>Next</Button>
+  <Button color="primary" variant="contained" href={`/#/step${to}`}>
+    Next
+  </Button>
 )
 
 const Run = () => (
-  <Button type="submit" color="primary" variant="contained">Run</Button>
+  <Button type="submit" color="primary" variant="contained">
+    Run
+  </Button>
 )
