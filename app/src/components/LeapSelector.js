@@ -12,7 +12,13 @@ export default function LeapSelector() {
   return (
     <Box textAlign="center">
       <Typography variant="h2">Choose your leap</Typography>
-      <Box display="flex" flexDirection="column" width={200} margin="auto" alignItems="center">
+      <Box
+        display="flex"
+        flexDirection="column"
+        width={200}
+        margin="auto"
+        alignItems="center"
+      >
         {leaps.map(leap => (
           <Button
             key={leap.id}

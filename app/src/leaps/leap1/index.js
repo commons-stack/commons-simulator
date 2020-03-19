@@ -1,9 +1,12 @@
-import { Community } from './Community'
+import { Participants } from './Participants'
 
 export const leap = {
   id: 'leap1',
   title: 'Leap 1',
   sections: ['Define your community', 'Define your hatch'],
+  defaultParameters: {
+    participants: 10,
+  },
   panels: [
     {
       illustration: 'arseny-togulev-BtLanXbBfO0-unsplash.jpg',
@@ -18,7 +21,7 @@ export const leap = {
       section: 0,
     },
     {
-      component: Community,
+      component: Participants,
       bubbleText:
         'In your first 30 minutes of conversation with the RadicalxChange (RxC) community, you brainstorm the needs of this community in order for them to thrive and save the future of humanity with their novel economic tools.',
       section: 1,

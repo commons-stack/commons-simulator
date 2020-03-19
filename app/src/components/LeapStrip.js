@@ -36,14 +36,39 @@ export default function LeapStrip({ leap }) {
         {currentSectionNumber}/{totalSections} {currentSection}
       </Typography>
 
-      <Box width="100%" display="flex" justifyContent="center" alignItems="center">
+      <Box
+        width="100%"
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+      >
         <Panel leap={leap} panelData={currentPanel} />
       </Box>
 
       <Box mt={2}>
         <Grid container spacing={1} justify="center">
-          {navigationBounds[0] && <Grid item><Button variant="contained" color="secondary" onClick={onPrevious}>Previous</Button></Grid>}
-          {navigationBounds[1] && <Grid item><Button variant="contained" color="primary" onClick={onNext}>Next</Button></Grid>}
+          {navigationBounds[0] && (
+            <Grid item>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={onPrevious}
+              >
+                Previous
+              </Button>
+            </Grid>
+          )}
+          {navigationBounds[1] && (
+            <Grid item>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={onNext}
+              >
+                Next
+              </Button>
+            </Grid>
+          )}
         </Grid>
       </Box>
     </Box>

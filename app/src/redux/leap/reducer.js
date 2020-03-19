@@ -3,6 +3,7 @@ import * as actions from './actions'
 const initialState = {
   currentLeapId: null,
   currentPanelId: null,
+  leapParameters: null,
 }
 
 export default function(state = initialState, action) {
@@ -20,6 +21,23 @@ export default function(state = initialState, action) {
       return {
         ...state,
         currentPanelId: panelId,
+      }
+    }
+    case actions.SET_LEAP_PARAMETERS: {
+      const { parameters } = action.payload
+      return {
+        ...state,
+        leapParameters: parameters,
+      }
+    }
+    case actions.SET_LEAP_PARAMETER: {
+      const { parameterName, parameterValue } = action.payload
+      return {
+        ...state,
+        leapParameters: {
+          ...state.leapParameters,
+          [parameterName]: parameterValue,
+        },
       }
     }
     default:

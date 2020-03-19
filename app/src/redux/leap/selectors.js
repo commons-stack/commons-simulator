@@ -15,3 +15,6 @@ export const getPanelNavigationBounds = createSelector(
     currentPanelId !== currentLeap.panels.length - 1,
   ]
 )
+
+export const getLeapParameterSelector = parameterName =>
+  selectProperty(['leap', 'leapParameters', parameterName])
