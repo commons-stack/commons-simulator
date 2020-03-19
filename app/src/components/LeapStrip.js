@@ -1,7 +1,7 @@
 import React from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 
-import { Box, Button, Typography } from '@material-ui/core'
+import { Box, Grid, Button, Typography } from '@material-ui/core'
 
 import Panel from './Panel'
 import {
@@ -35,9 +35,17 @@ export default function LeapStrip({ leap }) {
       <Typography variant="h4" gutterBottom>
         {currentSectionNumber}/{totalSections} {currentSection}
       </Typography>
-      <Panel leap={leap} panelData={currentPanel} />
-      {navigationBounds[0] && <Button variant="contained" color="secondary" onClick={onPrevious}>Previous</Button>}
-      {navigationBounds[1] && <Button variant="contained" color="primary" onClick={onNext}>Next</Button>}
+
+      <Box width="100%" display="flex" justifyContent="center" alignItems="center">
+        <Panel leap={leap} panelData={currentPanel} />
+      </Box>
+
+      <Box mt={2}>
+        <Grid container spacing={1} justify="center">
+          {navigationBounds[0] && <Grid item><Button variant="contained" color="secondary" onClick={onPrevious}>Previous</Button></Grid>}
+          {navigationBounds[1] && <Grid item><Button variant="contained" color="primary" onClick={onNext}>Next</Button></Grid>}
+        </Grid>
+      </Box>
     </Box>
   )
 }

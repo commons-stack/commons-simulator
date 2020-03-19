@@ -1,3 +1,5 @@
+import { Community } from './Community'
+
 export const leap = {
   id: 'leap1',
   title: 'Leap 1',
@@ -16,7 +18,7 @@ export const leap = {
       section: 0,
     },
     {
-      illustration: 'arseny-togulev-BtLanXbBfO0-unsplash.jpg',
+      component: Community,
       bubbleText:
         'In your first 30 minutes of conversation with the RadicalxChange (RxC) community, you brainstorm the needs of this community in order for them to thrive and save the future of humanity with their novel economic tools.',
       section: 1,
