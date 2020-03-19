@@ -12,7 +12,7 @@ export default function HomePage() {
         Give it a try!
       </Typography>
       <Button color="primary" variant="contained" href="/#/leap">
-        Next
+        Start
       </Button>
     </Box>
   )
