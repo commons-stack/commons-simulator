@@ -40,6 +40,10 @@ export const initiateStory = storyId => dispatch => {
   const story = stories.find(story => story.id === storyId)
   dispatch(setStoryParameters(story.defaultParameters))
 }
+export const restartStory = storyId => (dispatch, getState) => {
+  const currentStory = getCurrentStory(getState())
+  dispatch(initiateStory(currentStory.id))
+}
 
 export const changePanel = offset => (dispatch, getState) => {
   const state = getState()

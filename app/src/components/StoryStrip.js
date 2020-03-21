@@ -8,7 +8,7 @@ import {
   getCurrentPanelId,
   getPanelNavigationBounds,
 } from '../redux/story/selectors'
-import { changePanel } from '../redux/story/actions'
+import { changePanel, restartStory } from '../redux/story/actions'
 
 export default function StoryStrip({ story }) {
   const dispatch = useDispatch()
@@ -25,6 +25,9 @@ export default function StoryStrip({ story }) {
   }
   function onNext() {
     dispatch(changePanel(1))
+  }
+  function onRestart() {
+    dispatch(restartStory())
   }
 
   return (
@@ -70,6 +73,14 @@ export default function StoryStrip({ story }) {
             </Grid>
           )}
         </Grid>
+
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={onRestart}
+        >
+          Restart
+        </Button>
       </Box>
     </Box>
   )
