@@ -1,6 +1,6 @@
 import { combineReducers } from 'redux'
-import leapReducer from './leap/reducer'
+import storyReducer from './story/reducer'
 
 export default combineReducers({
-  leap: leapReducer,
+  story: storyReducer,
 })

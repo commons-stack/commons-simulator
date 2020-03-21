@@ -1,12 +1,12 @@
-import React, { useMemo } from 'react'
+import React from 'react'
 import { Box, Slider } from '@material-ui/core'
 import { useSelector, useDispatch } from 'react-redux'
 
-import { getLeapParameterSelector } from '../../redux/leap/selectors'
-import { setLeapParameter } from '../../redux/leap/actions'
+import { getStoryParameterSelector } from '../../redux/story/selectors'
+import { setStoryParameter } from '../../redux/story/actions'
 
 export const Participants = () => {
-  const participants = useSelector(getLeapParameterSelector('participants'))
+  const participants = useSelector(getStoryParameterSelector('participants'))
   const dispatch = useDispatch()
 
   return (
@@ -16,7 +16,7 @@ export const Participants = () => {
         name="participants"
         value={participants}
         onChange={(_, value) =>
-          dispatch(setLeapParameter('participants', value))
+          dispatch(setStoryParameter('participants', value))
         }
         step={5}
         min={5}

@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link as RouterLink } from 'react-router-dom'
 import { makeStyles } from '@material-ui/core/styles'
 import AppBar from '@material-ui/core/AppBar'
 import Toolbar from '@material-ui/core/Toolbar'
@@ -28,7 +29,7 @@ function NavBar({ children }) {
         <Toolbar>
           <Container className={classes.flex}>
             <div className={classes.grow}>
-              <Link to="/">
+              <Link component={RouterLink} to="/">
                 <img
                   style={{ position: 'absolute', zIndex: 1 }}
                   src="/logo.svg"

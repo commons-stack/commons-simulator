@@ -1,19 +1,19 @@
 import * as actions from './actions'
 
 const initialState = {
-  currentLeapId: null,
+  currentStoryId: null,
   currentPanelId: null,
-  leapParameters: null,
+  storyParameters: null,
 }
 
 export default function(state = initialState, action) {
   switch (action.type) {
-    case actions.SET_CURRENT_LEAP_ID: {
-      const { leapId } = action.payload
+    case actions.SET_CURRENT_STORY_ID: {
+      const { storyId } = action.payload
 
       return {
         ...state,
-        currentLeapId: leapId,
+        currentStoryId: storyId,
       }
     }
     case actions.SET_CURRENT_PANEL_ID: {
@@ -23,19 +23,19 @@ export default function(state = initialState, action) {
         currentPanelId: panelId,
       }
     }
-    case actions.SET_LEAP_PARAMETERS: {
+    case actions.SET_STORY_PARAMETERS: {
       const { parameters } = action.payload
       return {
         ...state,
-        leapParameters: parameters,
+        storyParameters: parameters,
       }
     }
-    case actions.SET_LEAP_PARAMETER: {
+    case actions.SET_STORY_PARAMETER: {
       const { parameterName, parameterValue } = action.payload
       return {
         ...state,
-        leapParameters: {
-          ...state.leapParameters,
+        storyParameters: {
+          ...state.storyParameters,
           [parameterName]: parameterValue,
         },
       }

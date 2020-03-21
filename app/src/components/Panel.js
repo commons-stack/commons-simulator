@@ -20,7 +20,7 @@ const useStyles = makeStyles(theme => ({
   },
 }))
 
-export default function Panel({ leap, panelData }) {
+export default function Panel({ story, panelData }) {
   const classes = useStyles()
 
   return (
@@ -28,7 +28,7 @@ export default function Panel({ leap, panelData }) {
       {panelData.illustration && (
         <CardMedia
           className={classes.media}
-          image={`assets/leaps/${leap.id}/${panelData.illustration}`}
+          image={`assets/stories/${story.id}/${panelData.illustration}`}
         />
       )}
 

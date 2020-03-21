@@ -7,18 +7,18 @@ import Panel from './Panel'
 import {
   getCurrentPanelId,
   getPanelNavigationBounds,
-} from '../redux/leap/selectors'
-import { changePanel } from '../redux/leap/actions'
+} from '../redux/story/selectors'
+import { changePanel } from '../redux/story/actions'
 
-export default function LeapStrip({ leap }) {
+export default function StoryStrip({ story }) {
   const dispatch = useDispatch()
   const currentPanelId = useSelector(getCurrentPanelId)
   const navigationBounds = useSelector(getPanelNavigationBounds)
 
-  const currentPanel = leap.panels[currentPanelId]
+  const currentPanel = story.panels[currentPanelId]
   const currentSectionNumber = currentPanel.section + 1
-  const totalSections = leap.sections.length
-  const currentSection = leap.sections[currentPanel.section]
+  const totalSections = story.sections.length
+  const currentSection = story.sections[currentPanel.section]
 
   function onPrevious() {
     dispatch(changePanel(-1))
@@ -30,7 +30,7 @@ export default function LeapStrip({ leap }) {
   return (
     <Box mt={5} textAlign="center">
       <Typography variant="h5" gutterBottom>
-        {leap.title}
+        {story.title}
       </Typography>
       <Typography variant="h4" gutterBottom>
         {currentSectionNumber}/{totalSections} {currentSection}
@@ -42,7 +42,7 @@ export default function LeapStrip({ leap }) {
         justifyContent="center"
         alignItems="center"
       >
-        <Panel leap={leap} panelData={currentPanel} />
+        <Panel story={story} panelData={currentPanel} />
       </Box>
 
       <Box mt={2}>

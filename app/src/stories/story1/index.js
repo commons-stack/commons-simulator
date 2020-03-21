@@ -1,8 +1,8 @@
 import { Participants } from './Participants'
 
-export const leap = {
-  id: 'leap1',
-  title: 'Leap 1',
+export const story = {
+  id: 'story1',
+  title: 'Story 1',
   sections: ['Define your community', 'Define your hatch'],
   defaultParameters: {
     participants: 10,

@@ -11,7 +11,7 @@ export default function HomePage() {
       <Typography variant="h3" gutterBottom>
         Give it a try!
       </Typography>
-      <Button color="primary" variant="contained" href="/#/leap">
+      <Button color="primary" variant="contained" href="/#/story">
         Start
       </Button>
     </Box>
