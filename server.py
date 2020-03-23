@@ -30,8 +30,6 @@ CORS(app)
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=14)
 
-print(plt.get_backend())
-
 def getInteger(name, default_value = 1):
     value = request.form.get(name)
     if value:
