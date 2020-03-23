@@ -9,3 +9,4 @@ seaborn
 networkx
 flask
 flask-cors
+flask-session

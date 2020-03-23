@@ -1,7 +1,15 @@
-from flask import Flask, request, render_template, jsonify
+from flask import Flask, request, render_template, jsonify, session
 from flask_cors import CORS
+# from flask.ext.session import Session
+
+from markupsafe import escape
+
 import os
 import glob
+import threading
+import datetime
+import secrets
+from pathlib import Path
 
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -16,8 +24,13 @@ from bonding_curve_eq import *
 from networkx.readwrite import json_graph
 
 app = Flask(__name__, static_url_path='')
+app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
+SESSION_TYPE = 'filesystem'
 CORS(app)
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=14)
+
+print(plt.get_backend())
 
 def getInteger(name, default_value = 1):
     value = request.form.get(name)
@@ -39,9 +52,36 @@ def jsonifyNetwork(network):
     obj = json_graph.node_link_data(network)
     return obj
 
+def create_session(message=False):
+    if not 'id' in session:
+        session['id'] = secrets.token_urlsafe(16)
+        path = 'session/' + session['id']
+        Path(path).mkdir(parents=True, exist_ok=True)
+        return 'New session ' + escape(session.get('id', 'invalid session')) if message else True
+    else:
+        return 'Existing session ' + escape(session.get('id', 'invalid session')) if message else False
+
+def get_session():
+    return session.get('id', None)
+
+def get_session_dir():
+    return 'session/' + get_session() + '/'
+
+@app.before_request
+def before_request_func():
+    print(create_session(True))
+
 @app.route('/')
 def root():
     return app.send_static_file('index.html')
+
+@app.route('/login/')
+def login():
+    return create_session(True)
+
+@app.route('/id/', methods = ['GET'])
+def id():
+    return escape(get_session())
 
 @app.route('/community', methods = ['GET', 'POST'])
 def community():
@@ -69,22 +109,22 @@ def community():
 
     nx.draw_kamada_kawai(network, nodelist = participants, edgelist=influencers)
     plt.title('Participants Social Network')
-    plt.savefig('static/plot3-'+plot_name+'.png')
+    plt.savefig(get_session_dir() + 'plot3-'+plot_name+'.png')
     plt.clf()
-
+    
     nx.draw_kamada_kawai(network, nodelist = proposals, edgelist=competitors, node_color='b')
     plt.title('Proposals Conflict Network')
-    plt.savefig('static/plot4-'+plot_name+'.png')
+    plt.savefig(get_session_dir() + 'plot4-'+plot_name+'.png')
     plt.clf()
 
     plt.hist([ network.nodes[i]['holdings'] for i in participants])
     plt.title('Histogram of Participants Token Holdings')
-    plt.savefig('static/plot5-'+plot_name+'.png')
+    plt.savefig(get_session_dir() + 'plot5-'+plot_name+'.png')
     plt.clf()
 
     plt.hist([ network.nodes[i]['funds_requested'] for i in proposals])
     plt.title('Histogram of Proposals Funds Requested')
-    plt.savefig('static/plot6-'+plot_name+'.png')
+    plt.savefig(get_session_dir() + 'plot6-'+plot_name+'.png')
     plt.clf()
 
     affinities = np.empty((n,m))
@@ -107,7 +147,7 @@ def community():
     plt.title('affinities between participants and proposals')
     plt.ylabel('proposal_id')
     plt.xlabel('participant_id')
-    plt.savefig('static/plot7-'+plot_name+'.png')
+    plt.savefig(get_session_dir() + 'plot7-'+plot_name+'.png')
     plt.clf()
 
     nx.write_gpickle(network, 'static/network.gpickle')
@@ -120,11 +160,11 @@ def community():
       # outputs
       'initial_supply': initial_supply,
       'results': [
-        'plot3-'+plot_name+'.png',
-        'plot4-'+plot_name+'.png',
-        'plot5-'+plot_name+'.png',
-        'plot6-'+plot_name+'.png',
-        'plot7-'+plot_name+'.png',
+        get_session() + '/' + 'plot3-'+plot_name+'.png',
+        get_session() + '/' + 'plot4-'+plot_name+'.png',
+        get_session() + '/' + 'plot5-'+plot_name+'.png',
+        get_session() + '/' + 'plot6-'+plot_name+'.png',
+        get_session() + '/' + 'plot7-'+plot_name+'.png',
       ],
       'network': jsonifyNetwork(network)
     })
@@ -198,7 +238,7 @@ def conviction():
                   'Token Supply')
   axis = plt.axis()
 
-  plt.savefig('static/plot1-'+plot_name+'.png')
+  plt.savefig(get_session_dir() + 'plot1-'+plot_name+'.png')
   plt.clf()
 
   dict2 = trigger_sweep('alpha',trigger_threshold, xmax=beta)
@@ -210,9 +250,15 @@ def conviction():
                 dict2['alpha'],
                 'alpha')
 
-  plt.savefig('static/plot2-'+plot_name+'.png')
+  plt.savefig(get_session_dir() + 'plot2-'+plot_name+'.png')
   plt.clf()
-  return jsonify({'alpha': alpha, 'beta': beta, 'rho': rho, 'results': ['plot1-'+plot_name+'.png', 'plot2-'+plot_name+'.png']})
+  return jsonify({
+      'alpha': alpha, 
+      'beta': beta, 
+      'rho': rho, 
+      'results': [
+          get_session() + '/' + 'plot1-'+plot_name+'.png',
+          get_session() + '/' + 'plot2-'+plot_name+'.png']})
 
 @app.route('/cadcad', methods = ['GET', 'POST'])
 def cadcad():
@@ -374,7 +420,7 @@ def cadcad():
         r=results[ind]['result']
         #print(results[ind]['simulation_parameters'])
         r.plot(x='timestep', y='funds')
-        plt.savefig('static/plot8-'+str(ind)+'.png')
+        plt.savefig(get_session_dir() + 'plot8-'+str(ind)+'.png')
         plt.clf()
 
         fig, ax1 = plt.subplots()
@@ -388,9 +434,9 @@ def cadcad():
         ax1.set_ylabel('Quantity of Assets')
         ax2.tick_params(axis='y', labelcolor='red')
         plt.title('Summary of Local Economy')
-        plt.savefig('static/plot9-'+str(ind)+'.png')
+        plt.savefig(get_session_dir() + 'plot9-'+str(ind)+'.png')
         plt.clf()
 
     return jsonify({
-        'results': ['plot8-0.png', 'plot9-0.png']
+        'results': [get_session() + '/' + 'plot8-0.png', get_session() + '/' + 'plot9-0.png']
     })
