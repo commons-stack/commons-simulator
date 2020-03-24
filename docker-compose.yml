@@ -8,16 +8,20 @@ services:
       dockerfile: Dockerfile
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.commons.rule=Host(`commons.bitsofether.com`)"
-      - "traefik.http.routers.commons.entrypoints=https"
-      - "traefik.http.routers.commons.tls.certresolver=myhttpchallenge"
       - "traefik.port=5000"
-      - "traefik.http.routers.commons.tls=true"
+      # HTTP
+      - "traefik.http.routers.commons.entrypoints=http"
+      - "traefik.http.routers.commons.rule=Host(`commons.bitsofether.com`)"
       - "traefik.http.routers.commons.middlewares=https-redirect@file"
+      # HTTPS
+      - "traefik.http.routers.commons-ssl.entrypoints=https"
+      - "traefik.http.routers.commons-ssl.rule=Host(`commons.bitsofether.com`)"
+      - "traefik.http.routers.commons-ssl.tls=true"
+      - "traefik.http.routers.commons-ssl.tls.certresolver=myhttpchallenge"
     networks:
       - "web"
     ports:
-      - "5000:5000"
+      - "5001:5000"
     restart: always
 networks:
   web:
