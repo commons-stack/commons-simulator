@@ -23,7 +23,10 @@ import ExpandLess from '@material-ui/icons/ExpandLess'
 import ExpandMore from '@material-ui/icons/ExpandMore'
 
 import { communityAction, hatchAction, abcAction, convictionAction, cadCADAction } from './actions'
-import ForceGraph from './graphs'
+
+import ForceGraph from './graphs/network'
+import VestingGraph from './graphs/vesting';
+
 import { serverURI } from './config'
 
 import { useSelector, useDispatch } from 'react-redux'
@@ -88,6 +91,9 @@ export const CommunityPage = () => {
               max={1}
               advanced="true"
             />
+
+            <Run />
+
           </Params>
          }
          secondary={
@@ -100,7 +106,10 @@ export const CommunityPage = () => {
 
 // Step 2
 export const HatchPage = () => {
-  const [results, setResults] = React.useState(false)
+  const [results, setResults] = React.useState(
+    {vesting_prop: 12, 
+     next: 3,
+     cliff: 0})
   return (
     <Layout
       title="So let’s see how you will define the Hatch of your future Commons!"
@@ -115,20 +124,22 @@ export const HatchPage = () => {
         <Content>
           <Params onSubmit={hatchAction(setResults, useDispatch())}>
             <SliderField
-              label="Theta"
-              name="theta"
-              defaultValue={0.4}
-              step={0.01}
+              label="Cliff"
+              name="cliff"
+              defaultValue={0.0}
+              step={1}
               min={0}
-              max={1}
+              max={12}
+              onChange={(e, val) => setResults({cliff: val, vesting_prop: results.vesting_prop})}
             />
             <SliderField
               label="Vesting (in weeks)"
               name="vesting"
-              defaultValue={52}
+              defaultValue={results.vesting_prop}
               step={1}
               min={0}
               max={260}
+              onChange={(e, val) => setResults({cliff: results.cliff, vesting_prop: val})}
             />
             <SliderField
               label="Hatch price"
@@ -139,11 +150,12 @@ export const HatchPage = () => {
               max={1}
               advanced="true"
             />
+          <Next to={results.next} />
           </Params>
         </Content>
       }
       secondary={
-        <Results results={results} next={3} />
+        <VestingGraph weeks={results.vesting_prop} cliff={results.cliff} width={800} height={400} />
       }
     />
   )
@@ -183,6 +195,9 @@ export const ABCPage = () => {
             <input type="hidden" name="initial_supply" value={initialSupply} />
             <input type="hidden" name="hatch_price" value={hatchPrice} />
             <input type="hidden" name="theta" value={theta} />
+
+            <Run />
+
           </Params>
         </Content>
       }
@@ -232,6 +247,7 @@ export const ConvictionPage = () => {
               max={0.1}
               advanced="true"
             />
+            <Run />
           </Params>
         </Content>
       }
@@ -391,7 +407,6 @@ const Params = ({ onSubmit, children }) => {
           </List>
         </Collapse>
       </List>
-      <Run />
     </form>
   )
 }
