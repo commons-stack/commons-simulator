@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile
     labels:
       - "traefik.enable=true"
-      - "traefik.port=5000"
+      - "traefik.port=5001"
       # HTTP
       - "traefik.http.routers.commons.entrypoints=http"
       - "traefik.http.routers.commons.rule=Host(`commons.bitsofether.com`)"
@@ -21,10 +21,7 @@ services:
     networks:
       - "web"
     ports:
-      - "5001:5000"
+      - "5001:5001"
     restart: always
 networks:
-  web:
-  bridge:
-    driver: bridge
-  
+  web:  
