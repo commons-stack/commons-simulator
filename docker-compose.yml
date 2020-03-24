@@ -1,0 +1,22 @@
+# Version of docker-compose
+version: '3'
+
+services:
+  commons-simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.commons.rule=Host(`commons.bitsofether.com`)"
+      - "traefik.http.routers.commons.entrypoints=https"
+      - "traefik.http.routers.commons.tls.certresolver=myhttpchallenge"
+      - "traefik.port=5000"
+      - "traefik.http.routers.commons.tls=true"
+      - "traefik.http.routers.commons.middlewares=https-redirect@file"
+    networks:
+      - "web"
+    ports:
+      - "5000:5000"
+    restart: always
+  
