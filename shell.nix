@@ -8,8 +8,24 @@ let channels = rec {
 };
 in with channels;
 
+let start-server = pkgs.writeShellScriptBin "start-server" ''
+    ./start.sh
+  '';
+in
+let start-app = pkgs.writeShellScriptBin "start-app" ''
+    cd app && yarn start
+  '';
+in
+let start = pkgs.writeShellScriptBin "start" ''
+  start-server & start-app && fg
+'';
+in
 let
   pkgs = [
+    start
+    start-server
+    start-app
+
     python36
     python36Packages.pip
     python36Packages.setuptools

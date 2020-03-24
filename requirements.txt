@@ -10,3 +10,7 @@ networkx
 flask
 flask-cors
 flask-session
+tinydb
+tinyrecord
+peewee
+flask-peewee

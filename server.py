@@ -1,6 +1,12 @@
-from flask import Flask, request, render_template, jsonify, session
+from flask import Flask, request, render_template, jsonify, session, redirect, url_for
 from flask_cors import CORS
-# from flask.ext.session import Session
+
+# from tinydb import TinyDB, Query
+# from tinyrecord import transaction
+# import sqlite3
+# from peewee import *
+# from playhouse.sqliteq import SqliteQueueDatabase
+# import atexit
 
 from markupsafe import escape
 
@@ -23,12 +29,39 @@ from conviction_system_logic3 import *
 from bonding_curve_eq import *
 from networkx.readwrite import json_graph
 
+# lock = threading.RLock()
+
+# sessions = TinyDB('db.json').table('sessions')
+# sessions.insert({'key': 'value'})
+
+# db = SqliteQueueDatabase('sessions.db', autostart=False, queue_max_size=64) # , check_same_thread=True, thread_safe=False, threadlocals=True
+
+# db.connect()
+# db.create_tables([SessionStore])
+
+# with transaction(sessions) as tr:
+#     tr.insert({
+#         'session': 'value'
+#     })
+
+# SessionStore.create(token='abc')
+# for entry in SessionStore.select():
+#     print('Token: ' + entry.token)
+
 app = Flask(__name__, static_url_path='')
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
+app.permanent_session_lifetime = datetime.timedelta(days=7)
 SESSION_TYPE = 'filesystem'
-CORS(app)
+CORS(app, supports_credentials=True)
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
-app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=14)
+# app.config['DATABASE'] = DATABASE
+
+# db = Database(app)
+
+# class SessionStore(db.Model):
+#     token = CharField(unique=True)
+
+# SessionStore.create_table(fail_silently=True)
 
 def getInteger(name, default_value = 1):
     value = request.form.get(name)
@@ -50,32 +83,63 @@ def jsonifyNetwork(network):
     obj = json_graph.node_link_data(network)
     return obj
 
-def create_session(message=False):
+def create_session(session):
     if not 'id' in session:
-        session['id'] = secrets.token_urlsafe(16)
-        path = 'session/' + session['id']
+        token = secrets.token_urlsafe(16)
+        session['id'] = token
+        session.modified = True
+        # def insert_session(token):
+        #     sessions.insert({
+        #         'session': token
+        #     })
+        #     print(sessions.all())
+        # thr = threading.Thread(target=insert_session, args=(token,))
+        # thr.daemon = True
+        # thr.join()
+        # new_session = SessionStore(token=token)
+        # new_session.save()
+        # lock.acquire()
+        # with transaction(sessions) as tr:
+        #     tr.insert({
+        #         'session': token
+        #     })
+        # lock.release()
+        # for entry in SessionStore.select():
+        #     print('Token: ' + entry.token)
+        path = 'static/session/' + session['id']
         Path(path).mkdir(parents=True, exist_ok=True)
-        return 'New session ' + escape(session.get('id', 'invalid session')) if message else True
+        print('New session ' + escape(session.get('id', 'invalid session')))
+        return True
     else:
-        return 'Existing session ' + escape(session.get('id', 'invalid session')) if message else False
+        path = 'static/session/' + session['id']
+        Path(path).mkdir(parents=True, exist_ok=True)
+        print('Existing session ' + escape(session.get('id', 'invalid session')))
+        return False
 
 def get_session():
     return session.get('id', None)
 
-def get_session_dir():
+def get_relative_session_dir():
     return 'session/' + get_session() + '/'
+
+def get_session_dir():
+    return 'static/session/' + get_session() + '/'
+
+# @app.before_first_request
+# def _start_worker_threads():
+#     db.start()
+
+# @atexit.register
+# def _stop_worker_threads():
+#     db.stop()
 
 @app.before_request
 def before_request_func():
-    print(create_session(True))
+    create_session(session)
 
 @app.route('/')
 def root():
     return app.send_static_file('index.html')
-
-@app.route('/login/')
-def login():
-    return create_session(True)
 
 @app.route('/id/', methods = ['GET'])
 def id():
@@ -148,7 +212,7 @@ def community():
     plt.savefig(get_session_dir() + 'plot7-'+plot_name+'.png')
     plt.clf()
 
-    nx.write_gpickle(network, 'static/network.gpickle')
+    nx.write_gpickle(network, get_session_dir() + 'network.gpickle')
 
     return jsonify({
       # inputs
@@ -158,11 +222,11 @@ def community():
       # outputs
       'initial_supply': initial_supply,
       'results': [
-        get_session() + '/' + 'plot3-'+plot_name+'.png',
-        get_session() + '/' + 'plot4-'+plot_name+'.png',
-        get_session() + '/' + 'plot5-'+plot_name+'.png',
-        get_session() + '/' + 'plot6-'+plot_name+'.png',
-        get_session() + '/' + 'plot7-'+plot_name+'.png',
+        get_relative_session_dir() + '/' + 'plot3-'+plot_name+'.png',
+        get_relative_session_dir() + '/' + 'plot4-'+plot_name+'.png',
+        get_relative_session_dir() + '/' + 'plot5-'+plot_name+'.png',
+        get_relative_session_dir() + '/' + 'plot6-'+plot_name+'.png',
+        get_relative_session_dir() + '/' + 'plot7-'+plot_name+'.png',
       ],
       'network': jsonifyNetwork(network)
     })
@@ -255,8 +319,8 @@ def conviction():
       'beta': beta, 
       'rho': rho, 
       'results': [
-          get_session() + '/' + 'plot1-'+plot_name+'.png',
-          get_session() + '/' + 'plot2-'+plot_name+'.png']})
+          get_relative_session_dir() + '/' + 'plot1-'+plot_name+'.png',
+          get_relative_session_dir() + '/' + 'plot2-'+plot_name+'.png']})
 
 @app.route('/cadcad', methods = ['GET', 'POST'])
 def cadcad():
@@ -276,7 +340,7 @@ def cadcad():
           'reserve': getFloat('initial_reserve'),
           'spot_price': getFloat('starting_price'),
           'sentiment': getFloat('initial_sentiment'),
-          'network': nx.read_gpickle('static/network.gpickle')
+          'network': nx.read_gpickle(get_session_dir() + 'network.gpickle')
         }
 
     except Exception as err:
@@ -436,5 +500,8 @@ def cadcad():
         plt.clf()
 
     return jsonify({
-        'results': [get_session() + '/' + 'plot8-0.png', get_session() + '/' + 'plot9-0.png']
+        'results': [
+            get_relative_session_dir() + '/' + 'plot8-0.png',
+            get_relative_session_dir() + '/' + 'plot9-0.png'
+        ]
     })
