@@ -25,6 +25,7 @@ import ExpandMore from '@material-ui/icons/ExpandMore'
 import { communityAction, hatchAction, abcAction, convictionAction, cadCADAction } from './actions'
 
 import ForceGraph from './graphs/network'
+import Heatmap from './graphs/heatmap' 
 import VestingGraph from './graphs/vesting';
 
 import { serverURI } from './config'
@@ -436,6 +437,7 @@ const NetworkGraph = ({ results, next }) => {
         </Tooltip>
         </Typography>
         <ForceGraph network={results.network} width={600} height={600} />
+        <Heatmap network={results.network} width={600} height={600} />
         <Next to={next} />
       </Content>
     )

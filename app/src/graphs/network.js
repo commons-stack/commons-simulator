@@ -22,9 +22,6 @@ export default class ForceGraph extends Component {
     this.graphNodes = [];
     this.graphLinks = [];
 
-    this.nodesById = {};
-    this.linksById = {};
-
     this.color = d3.scaleOrdinal(d3.schemeAccent);
 
     this.getParticipantRadius = d3.scaleLinear()
@@ -44,11 +41,19 @@ export default class ForceGraph extends Component {
     scrollToRef(this.graphRef);
   }
 
+  resetGraph() {
+    select(this.node).selectAll("*").remove();
+    this.graphNodes = [];
+    this.graphLinks = [];
+  }
+
   componentDidMount() {
+    this.resetGraph();
     this.createVisualization(this.props.network);
     this.scrollToGraph();
    }
    componentDidUpdate() {
+    this.resetGraph();
     this.createVisualization(this.props.network);
    }
   // event callbacks
@@ -84,7 +89,6 @@ export default class ForceGraph extends Component {
         .alphaMin(0)
         .on("tick", function(){ self.tickActions(self.nodeCollection, self.linkCollection) });
 
-    this.initialized = true;
   }
 
   setupNodes() {
@@ -194,16 +198,13 @@ export default class ForceGraph extends Component {
     this.appendNodes(network.nodes);
     this.appendLinks(network.links);
 
-    if (!this.initialized) {
-      this.initialize();
-    }
+    this.initialize();
   }
 
   appendNodes(nodes){
     if (!nodes.length) { return }
 
     for (var i=0; i<nodes.length; i++) {
-        this.nodesById[nodes[i].id] = [];
         this.graphNodes.push(nodes[i]);
     }
   }
