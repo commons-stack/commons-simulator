@@ -3,8 +3,7 @@
 with import <nixpkgs> { };
 
 let channels = rec {
-  #requirements = import ./nix/requirements.nix { }; 
-  requirements_cadCAD = import ./nix/cadCAD/requirements.nix { }; 
+  #requirements_cadCAD = import ./nix/cadCAD/requirements.nix { }; 
 };
 in with channels;
 
