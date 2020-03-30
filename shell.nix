@@ -12,7 +12,7 @@ let start-server = pkgs.writeShellScriptBin "start-server" ''
   '';
 in
 let start-app = pkgs.writeShellScriptBin "start-app" ''
-    cd app && yarn start
+    cd app && npx react-scripts start
   '';
 in
 let start = pkgs.writeShellScriptBin "start" ''
@@ -41,6 +41,13 @@ in nixpkgs.stdenv.mkDerivation {
   buildInputs = [ pkgs ];
   shellHook = ''
     export SOURCE_DATE_EPOCH=315532800
-    source venv/bin/activate
+    if [ ! -d "venv" ]; then
+      virtualenv venv
+      source venv/bin/activate
+      python -m pip install -r requirements.txt
+    else
+      source venv/bin/activate
+      python -m pip install -r requirements.txt
+    fi
   '';
 }

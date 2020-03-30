@@ -13,6 +13,7 @@ ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
 ENV FLASK_APP server.py
 ENV FLASK_RUN_PORT 5001
+ENV SECRET_KEY
 
 WORKDIR /app
 RUN ls -l /app
@@ -22,4 +23,4 @@ CMD ["npm", "run", "build"]
 WORKDIR /
 RUN ls -l /
 COPY /app/build/* /static/
-CMD ["flask", "run", "--host", "0.0.0.0", "--port", "5001"]
+CMD ["flask", "run", "--host", "0.0.0.0", "--port", $FLASK_RUN_PORT]

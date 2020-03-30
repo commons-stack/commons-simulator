@@ -1,11 +1,28 @@
 # Commons Simulator
 
-## Usage
+## Dependencies
 
 ```sh
 sudo apt install nodejs npm
 sudo npm install -g yarn
 sudo pip3 install -r requirements.txt
+```
+
+## Using Nix
+
+Using Nix package manager:
+
+1. Install Nix: `curl -L --proto '=https' --tlsv1.2 https://nixos.org/nix/install | sh`
+2. Run `nix-shell` in root directory
+3. Run `start`
+
+## Environment
+
+Set up the necessary environment variables by making a copy of `.envrc.example` to `.envrc` and filling in the necessary variables. Do not commit this file!
+
+## Usage
+
+```sh
 ./start.sh
 ```
 

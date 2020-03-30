@@ -6,9 +6,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    environment:
+      - SECRET_KEY=$SECRET_KEY
     labels:
       - "traefik.enable=true"
-      - "traefik.port=5001"
+      - "traefik.port=5000"
       # HTTP
       - "traefik.http.routers.commons.entrypoints=http"
       - "traefik.http.routers.commons.rule=Host(`commons.bitsofether.com`)"
@@ -21,7 +23,7 @@ services:
     networks:
       - "web"
     ports:
-      - "5001:5001"
+      - "5000:5000"
     restart: always
 networks:
   web:  

@@ -49,7 +49,7 @@ from networkx.readwrite import json_graph
 #     print('Token: ' + entry.token)
 
 app = Flask(__name__, static_url_path='')
-app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
+app.secret_key = os.environ['SECRET_KEY']
 app.permanent_session_lifetime = datetime.timedelta(days=7)
 SESSION_TYPE = 'filesystem'
 CORS(app, supports_credentials=True)
