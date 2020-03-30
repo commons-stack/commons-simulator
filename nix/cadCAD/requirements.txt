@@ -1,0 +1,7 @@
+#pandas
+cadCAD
+wheel
+pathos
+fn
+tabulate
+funcy
