@@ -1,18 +1,21 @@
 FROM python:3.8-slim-buster as base
 FROM base as builder
 
-RUN mkdir -p /base
-RUN mkdir -p /python
+RUN mkdir /base
 WORKDIR /base/
 
-COPY *.py .
+COPY *.py /base/
 COPY app app/
 COPY static static/
 COPY requirements.txt requirements.txt
 COPY server.py server.py
 
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
 RUN apt-get update && apt-get install -y nodejs yarn gcc gfortran python-dev libblas-dev liblapack-dev libatlas-base-dev cython
-RUN pip install --target=/python -r /requirements.txt
+RUN pip install -r requirements.txt
 
 ARG PORT
 
@@ -26,7 +29,7 @@ WORKDIR /base/app/
 CMD ["yarn"]
 CMD ["yarn", "build"]
 
-COPY /base/app/build/* /base/static/
+CMD cp build/* /base/static/
 
 #######################################################################
 
@@ -34,10 +37,11 @@ FROM base
 
 ARG SECRET_KEY
 
+ENV PATH="/opt/venv/bin:$PATH"
 ENV FLASK_APP server.py
 ENV SECRET_KEY $SECRET_KEY
 
-COPY --from=builder /install /usr/local
+COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /base /app
 
 WORKDIR /app

@@ -50,6 +50,19 @@ docker run -p 5000:5000 commonssim
 
 Go to http://localhost:5000/
 
+## Deployment
+
+**Current deployment (on @BenSchZA's account):** https://fierce-waters-03035.herokuapp.com/
+
+The app Docker container has been set up to be easily deployed to Heroku. After you've installed Heroku, run the following commands:
+
+See https://devcenter.heroku.com/articles/container-registry-and-runtime
+
+1. `heroku login` - you'll need an account for this to work
+2. `heroku create` - only be run once, and creates a new Heroku app
+3. `deploy.sh` - runs Heroku container push and release, you'll need to have environment variables set up, as this script will source your `.envrc` file
+4. `heroku open` - opens new Heroku app in browser
+
 ## Notes / issues
 
 1. If you don't serve the app via Flask, cookie sessions will not work. I don't think this is an issue, as we can still use a CDN for all Javascript and image content, even if served via Flask.

@@ -8,6 +8,7 @@ services:
       dockerfile: Dockerfile
     environment:
       - SECRET_KEY=$SECRET_KEY
+      - PORT=5002
     labels:
       - "traefik.enable=true"
       - "traefik.port=5000"
@@ -23,7 +24,7 @@ services:
     networks:
       - "web"
     ports:
-      - "5000:5000"
+      - "$PORT:$PORT"
     restart: always
 networks:
   web:  
