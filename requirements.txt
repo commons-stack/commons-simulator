@@ -9,3 +9,9 @@ seaborn
 networkx
 flask
 flask-cors
+flask-session
+gunicorn
+# tinydb
+# tinyrecord
+# peewee
+# flask-peewee

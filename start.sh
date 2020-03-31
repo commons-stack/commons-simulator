@@ -1,7 +1,8 @@
 #!/bin/sh
-cd app
-yarn
-yarn build
-cd ..
+set -o nounset
+
+yarn --cwd app
+yarn --cwd app build
 cp -r app/build/* static
-env FLASK_APP=server.py flask run
+source ./.envrc
+gunicorn --bind 0.0.0.0:$PORT -w $WORKERS server:app
