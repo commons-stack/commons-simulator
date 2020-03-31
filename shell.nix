@@ -31,6 +31,7 @@ let
     python36Packages.virtualenvwrapper
     python36Packages.matplotlib
     python36Packages.scipy
+    # python36Packages.gunicorn
     nodejs-12_x
     yarn
     pkg-config
