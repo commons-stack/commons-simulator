@@ -12,15 +12,6 @@ sudo pip3 install -r requirements.txt
 
 Set up the necessary environment variables by making a copy of `.envrc.example` to `.envrc` and filling in the necessary variables. Do not commit this file!
 
-## Using Nix
-
-Using Nix package manager:
-
-1. Install Nix: `curl -L --proto '=https' --tlsv1.2 https://nixos.org/nix/install | sh`
-2. Run `nix-shell` in root directory
-3. Run `start`
-4. Open `localhost:5000` in browser
-
 ## Usage
 
 ```sh
@@ -62,6 +53,15 @@ See https://devcenter.heroku.com/articles/container-registry-and-runtime
 2. `heroku create` - only be run once, and creates a new Heroku app
 3. `deploy.sh` - runs Heroku container push and release, you'll need to have environment variables set up, as this script will source your `.envrc` file
 4. `heroku open` - opens new Heroku app in browser
+
+## Using Nix
+
+If you'd like to use the Nix package manager for dependencies and development, there is a Nix shell file `shell.nix`. It should work on any Linux or macOS system.
+
+1. Install Nix: `curl -L --proto '=https' --tlsv1.2 https://nixos.org/nix/install | sh`
+2. Run `nix-shell` in root directory
+3. Run `start`
+4. Open `localhost:5000` in browser
 
 ## Notes / issues
 
