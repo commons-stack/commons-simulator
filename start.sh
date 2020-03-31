@@ -4,5 +4,5 @@ yarn
 yarn build
 cd ..
 cp -r app/build/* static
-source .envrc
+source ./.envrc
 env FLASK_APP=server.py flask run
