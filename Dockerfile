@@ -48,4 +48,4 @@ WORKDIR /app
 
 # Run the app.  CMD is required to run on Heroku
 # $PORT is set by Heroku
-CMD gunicorn --bind 0.0.0.0:$PORT server:app 
+CMD gunicorn --bind 0.0.0.0:$PORT -w $WORKERS server:app 
