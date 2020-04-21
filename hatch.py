@@ -58,39 +58,45 @@ class TokenBatch:
             return 1.0
 
 class Organization:
-    def __init__(self, total_hatch_raise, funding_pool_fraction, token_supply_millions, exit_tribute=0):
+    def __init__(self, total_hatch_raise, token_supply, funding_pool_fraction=0.2, exit_tribute=0):
         # a fledgling organization starts out in the hatching phase. After the hatch phase ends, money from new investors will only go into the collateral pool.
         # Essentials
         self.funding_pool_fraction = funding_pool_fraction
         self._collateral_pool = (1-funding_pool_fraction) * total_hatch_raise  # (1-0.35) -> 0.65 * total_hatch_raise = 65% collateral, 35% funding
         self._funding_pool = funding_pool_fraction * total_hatch_raise  # 0.35 * total_hatch_raise = 35%
-        self._token_supply = token_supply_millions
-        self._hatch_tokens = token_supply_millions  # hatch_tokens keeps track of the number of tokens that were created when hatching, so we can calculate the unlocking of those
-        self.bonding_curve = AugmentedBondingCurve(self._collateral_pool, token_supply_millions)
+        self._token_supply = token_supply
+        self._hatch_tokens = token_supply  # hatch_tokens keeps track of the number of tokens that were created when hatching, so we can calculate the unlocking of those
+        self.bonding_curve = AugmentedBondingCurve(self._collateral_pool, token_supply)
 
         # Options
         self.exit_tribute = exit_tribute
     
-    def deposit(self, dai_millions):
+    def deposit(self, dai):
         """
         Deposit DAI after the hatch phase. This means all the incoming deposit goes to the collateral pool.
         """
-        tokens, realized_price = self.bonding_curve.deposit(dai_millions, self._collateral_pool, self._token_supply)
+        tokens, realized_price = self.bonding_curve.deposit(dai, self._collateral_pool, self._token_supply)
         self._token_supply += tokens
-        self._collateral_pool += dai_millions
+        self._collateral_pool += dai
         return tokens, realized_price
 
-    def burn(self, tokens_millions):
+    def burn(self, tokens):
         """
         Burn tokens, with/without an exit tribute.
         """
-        dai_millions, realized_price = self.bonding_curve.burn(tokens_millions, self._collateral_pool, self._token_supply)
-        self._token_supply -= tokens_millions
-        self._collateral_pool -= dai_millions
-        money_returned = dai_millions
+        dai, realized_price = self.bonding_curve.burn(tokens, self._collateral_pool, self._token_supply)
+        self._token_supply -= tokens
+        self._collateral_pool -= dai
+        money_returned = dai
 
         if self.exit_tribute:
-            self._funding_pool += organization.exit_tribute * dai_millions
-            money_returned = (1-organization.exit_tribute) * dai_millions 
+            self._funding_pool += organization.exit_tribute * dai
+            money_returned = (1-organization.exit_tribute) * dai 
 
         return money_returned, realized_price
+    
+    def token_price(self):
+        """
+        Query the bonding curve for the current token price, given the size of the organization's collateral pool.
+        """
+        return self.bonding_curve.get_token_price(self._collateral_pool)

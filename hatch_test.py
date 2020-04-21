@@ -14,12 +14,16 @@ class TestHatch(unittest.TestCase):
 class TestSystem(unittest.TestCase):
     def test_system(self):
         # 3 contributors contribute equally to the foundation of an organization for 6 million tokens.
-        token_supply_initial = 6e6  # TODO: millions
+        token_supply_initial = 6e6
         hatcher_contributions = [3e3, 3e3, 3e3]
         token_batches = contributions_to_token_batches(hatcher_contributions, token_supply_initial, 90)
 
-        o = Organization(sum(hatcher_contributions), 0.3, token_supply_initial)
+        o = Organization(sum(hatcher_contributions), token_supply_initial, funding_pool_fraction=0.3)
+        self.assertEqual(o._collateral_pool, 6300)
+        self.assertEqual(o._funding_pool, 2700)
+        self.assertEqual(o._token_supply, token_supply_initial)
 
-        print(o._funding_pool)
-        print(o.deposit(5e5))
-        print(o._funding_pool)
+        print(o.token_price())
+        print(o.deposit(100))
+        print(o.token_price())
+        print(o._collateral_pool)
