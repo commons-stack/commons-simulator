@@ -2,7 +2,11 @@ from typing import List, Tuple
 from abcurve import AugmentedBondingCurve
 from datetime import datetime
 
-def unlocked_fraction(day: int, cliff_days: int, halflife_days: float) -> float:
+def vesting_curve(day: int, cliff_days: int, halflife_days: float) -> float:
+    """
+    The vesting curve includes the flat cliff, and the halflife curve where tokens are gradually unlocked.
+    It looks like _/--
+    """
     return 1 - 0.5**((day - cliff_days)/halflife_days)
 
 def convert_80p_to_cliff_and_halflife(days: int, v_ratio: int = 2) -> Tuple[float, float]:
@@ -16,10 +20,10 @@ def convert_80p_to_cliff_and_halflife(days: int, v_ratio: int = 2) -> Tuple[floa
     cliff = v_ratio * halflife
     return cliff, halflife
 
-def hatch_raise_split_pools(total_hatch_raise, funding_pool_fraction):
+def hatch_raise_split_pools(total_hatch_raise, hatch_tribute) -> Tuple[float, float]:
     """Splits the hatch raise between the funding / collateral pool based on the fraction."""
-    funding_pool = funding_pool_fraction * total_hatch_raise
-    collateral_pool = total_hatch_raise * (1-funding_pool_fraction)
+    funding_pool = hatch_tribute * total_hatch_raise
+    collateral_pool = total_hatch_raise * (1-hatch_tribute)
     return funding_pool, collateral_pool
 
 def contributions_to_token_batches(hatcher_contributions: List[int], initial_token_supply: int, vesting_80p_unlocked: int) -> List[float]:
@@ -52,18 +56,18 @@ class TokenBatch:
     def unlocked(self, day: datetime = datetime.today()) -> float:
         if self.hatch_tokens:
             days_delta = day - self.creation_date
-            u = unlocked_fraction(days_delta.days, self.cliff_days, self.halflife_days)
+            u = vesting_curve(days_delta.days, self.cliff_days, self.halflife_days)
             return u if u > 0 else 0
         else:
             return 1.0
 
-class Organization:
-    def __init__(self, total_hatch_raise, token_supply, funding_pool_fraction=0.2, exit_tribute=0):
-        # a fledgling organization starts out in the hatching phase. After the hatch phase ends, money from new investors will only go into the collateral pool.
+class Commons:
+    def __init__(self, total_hatch_raise, token_supply, hatch_tribute=0.2, exit_tribute=0):
+        # a fledgling commons starts out in the hatching phase. After the hatch phase ends, money from new investors will only go into the collateral pool.
         # Essentials
-        self.funding_pool_fraction = funding_pool_fraction
-        self._collateral_pool = (1-funding_pool_fraction) * total_hatch_raise  # (1-0.35) -> 0.65 * total_hatch_raise = 65% collateral, 35% funding
-        self._funding_pool = funding_pool_fraction * total_hatch_raise  # 0.35 * total_hatch_raise = 35%
+        self.hatch_tribute = hatch_tribute
+        self._collateral_pool = (1-hatch_tribute) * total_hatch_raise  # (1-0.35) -> 0.65 * total_hatch_raise = 65% collateral, 35% funding
+        self._funding_pool = hatch_tribute * total_hatch_raise  # 0.35 * total_hatch_raise = 35%
         self._token_supply = token_supply
         self._hatch_tokens = token_supply  # hatch_tokens keeps track of the number of tokens that were created when hatching, so we can calculate the unlocking of those
         self.bonding_curve = AugmentedBondingCurve(self._collateral_pool, token_supply)
@@ -90,13 +94,13 @@ class Organization:
         money_returned = dai
 
         if self.exit_tribute:
-            self._funding_pool += organization.exit_tribute * dai
-            money_returned = (1-organization.exit_tribute) * dai 
+            self._funding_pool += commons.exit_tribute * dai
+            money_returned = (1-commons.exit_tribute) * dai 
 
         return money_returned, realized_price
     
     def token_price(self):
         """
-        Query the bonding curve for the current token price, given the size of the organization's collateral pool.
+        Query the bonding curve for the current token price, given the size of the commons's collateral pool.
         """
         return self.bonding_curve.get_token_price(self._collateral_pool)
