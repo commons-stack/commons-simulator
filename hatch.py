@@ -49,17 +49,41 @@ class TokenBatch:
         self.creation_date = datetime.today()
         self.cliff_days = cliff_days
         self.halflife_days = halflife_days
+        self.spent = 0
+
     def __repr__(self):
-        o = "TokenBatch {} {}, Unlocked: {}".format("Hatch" if self.hatch_tokens else "", self.value, self.unlocked(datetime.today()))
+        o = "TokenBatch {} {}, Unlocked: {}".format("Hatch" if self.hatch_tokens else "", self.value, self.unlocked_fraction(datetime.today()))
         return o
 
-    def unlocked(self, day: datetime = datetime.today()) -> float:
+    def unlocked_fraction(self, day: datetime = datetime.today()) -> float:
+        """
+        returns what fraction of the TokenBatch is unlocked to date
+        """
         if self.hatch_tokens:
             days_delta = day - self.creation_date
             u = vesting_curve(days_delta.days, self.cliff_days, self.halflife_days)
             return u if u > 0 else 0
         else:
             return 1.0
+    
+    def spend(self, x: float):
+        """
+        checks if you can spend so many tokens, then decreases this TokenBatch instance's value accordingly
+        returns the argument if successful for your convenience
+        """
+        if x > self.spendable():
+            raise Exception("Not so many tokens are available for you to spend yet!")
+
+        self.value -= x
+        self.spent += x
+        return x
+
+    def spendable(self) -> float:
+        """
+        spendable() = self.unlocked_fraction * self.value - self.spent
+        Needed in case some Tokens were burnt before.
+        """
+        return (self.unlocked_fraction() * self.value) - self.spent
 
 class Commons:
     def __init__(self, total_hatch_raise, token_supply, hatch_tribute=0.2, exit_tribute=0):

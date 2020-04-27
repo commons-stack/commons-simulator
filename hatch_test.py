@@ -1,6 +1,6 @@
 from hatch import *
 import unittest
-from datetime import datetime, timedelta
+import datetime
 
 class TestHatch(unittest.TestCase):
     def test_vesting_curve(self):
@@ -10,6 +10,34 @@ class TestHatch(unittest.TestCase):
         self.assertLess(vesting_curve(89, 90, 90), 0)  # At Day 270, 2 half lives of the vesting curve have passed - 0.75 of tokens should be unlocked.
     def test_convert_80p_to_halflife(self):
         self.assertEqual(convert_80p_to_cliff_and_halflife(90), (41.64807836875666, 20.82403918437833))
+
+class TokenBatchTest(unittest.TestCase):
+    def test_unlocked_fraction(self):
+        tbh = TokenBatch(10000, 3, 3, True)
+        tb = TokenBatch(10000, 5, 10, False)
+
+        self.assertEqual(tbh.unlocked_fraction(), 0)
+        self.assertEqual(tbh.unlocked_fraction(datetime.datetime.today() + datetime.timedelta(days=3)), 0)
+        self.assertEqual(tbh.unlocked_fraction(datetime.datetime.today() + datetime.timedelta(days=6)), 0.5)
+
+        self.assertEqual(tb.unlocked_fraction(), 1.0)
+    
+    def test_spend(self):
+        tbh = TokenBatch(10000, 3, 3, True)
+
+        with self.assertRaises(Exception):
+            tbh.spend(100)
+
+        tb = TokenBatch(10000, 3, 3, False)
+        tb.spend(100)
+        self.assertEqual(tb.value, 9900)
+        self.assertEqual(tb.spent, 100)
+        tb.spend(1000)
+        self.assertEqual(tb.value, 8900)
+        self.assertEqual(tb.spent, 1100)
+
+        with self.assertRaises(Exception):
+            tb.spend(10000)
 
 class TestSystem(unittest.TestCase):
     def test_system(self):
@@ -26,6 +54,7 @@ class TestSystem(unittest.TestCase):
         self.assertEqual(o._token_supply, token_supply_initial)
 
         self.assertEqual(o.token_price(), 0.14)
-        print(o.deposit(100))
-        print(o.token_price())
-        print(o._collateral_pool)
+        print(token_batches)
+        # print(o.deposit(100))
+        # print(o.token_price())
+        # print(o._collateral_pool)
