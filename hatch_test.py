@@ -2,7 +2,7 @@ from hatch import *
 import unittest
 import datetime
 
-class TestHatch(unittest.TestCase):
+class HatchTest(unittest.TestCase):
     def test_vesting_curve(self):
         self.assertEqual(vesting_curve(90, 90, 90), 0)  # At Day 90, the cliff has just ended and the vesting curve has begun at 0
         self.assertEqual(vesting_curve(180, 90, 90), 0.5)  # At Day 180, the cliff has ended and we are in the vesting curve, whose half-life is 90 as well, so at 180 we should get 0.5.
@@ -16,9 +16,11 @@ class TokenBatchTest(unittest.TestCase):
         tbh = TokenBatch(10000, 3, 3, True)
         tb = TokenBatch(10000, 5, 10, False)
 
+        self. assertEqual(tbh.unlocked_fraction(), 0)
+        tbh.current_date = datetime.datetime.today() + datetime.timedelta(days=3)
         self.assertEqual(tbh.unlocked_fraction(), 0)
-        self.assertEqual(tbh.unlocked_fraction(datetime.datetime.today() + datetime.timedelta(days=3)), 0)
-        self.assertEqual(tbh.unlocked_fraction(datetime.datetime.today() + datetime.timedelta(days=6)), 0.5)
+        tbh.current_date = datetime.datetime.today() + datetime.timedelta(days=6)
+        self.assertEqual(tbh.unlocked_fraction(), 0.5)
 
         self.assertEqual(tb.unlocked_fraction(), 1.0)
     
@@ -39,22 +41,30 @@ class TokenBatchTest(unittest.TestCase):
         with self.assertRaises(Exception):
             tb.spend(10000)
 
-class TestSystem(unittest.TestCase):
-    def test_system(self):
+class CommonsTest(unittest.TestCase):
+    def setUp(self):
         # 100,000 DAI invested for 1,000,000 tokens.
-        desired_token_price = 0.1
-        hatcher_contributions = [25000, 25000, 50000]
-        token_supply_initial = sum(hatcher_contributions) / desired_token_price
-        token_batches = contributions_to_token_batches(hatcher_contributions, token_supply_initial, 90)
+        self.desired_token_price = 0.1
+        self.hatcher_contributions = [25000, 25000, 50000]
+        self.token_batches, self.token_supply_initial = contributions_to_token_batches(self.hatcher_contributions, self.desired_token_price, 90)
 
         # Because of hatch_tribute, the collateral_pool is 0.7e6. This causes the token's post-hatch price to be 0.14.
-        o = Commons(sum(hatcher_contributions), token_supply_initial, hatch_tribute=0.3)
-        self.assertEqual(o._collateral_pool, 70000)
-        self.assertEqual(o._funding_pool, 30000)
-        self.assertEqual(o._token_supply, token_supply_initial)
+        self.commons = Commons(sum(self.hatcher_contributions), self.token_supply_initial, hatch_tribute=0.3)
 
-        self.assertEqual(o.token_price(), 0.14)
-        print(token_batches)
-        # print(o.deposit(100))
-        # print(o.token_price())
-        # print(o._collateral_pool)
+    def test_initialization(self):
+        self.assertEqual(self.commons._collateral_pool, 70000)
+        self.assertEqual(self.commons._funding_pool, 30000)
+        self.assertEqual(self.commons._token_supply, self.token_supply_initial)
+
+        self.assertEqual(self.commons.token_price(), 0.14)
+
+    def test_burn_without_exit_tribute(self):
+        old_token_supply = self.commons._token_supply
+        old_collateral_pool = self.commons._collateral_pool
+
+        money_returned, realized_price = self.commons.burn(50000)
+
+        self.assertEqual(money_returned, 6825.0)
+        self.assertEqual(realized_price, 0.1365)
+        self.assertEqual(self.commons._token_supply, old_token_supply-50000)
+        self.assertEqual(self.commons._collateral_pool, old_collateral_pool-money_returned)

@@ -26,13 +26,14 @@ def hatch_raise_split_pools(total_hatch_raise, hatch_tribute) -> Tuple[float, fl
     collateral_pool = total_hatch_raise * (1-hatch_tribute)
     return funding_pool, collateral_pool
 
-def contributions_to_token_batches(hatcher_contributions: List[int], initial_token_supply: int, vesting_80p_unlocked: int) -> List[float]:
+def contributions_to_token_batches(hatcher_contributions: List[int], desired_token_price: float, vesting_80p_unlocked: int) -> Tuple[List[float], float]:
     """
-    hatcher_contributions: a list of hatcher contributions
-    initial_token_supply: NOT denominated in millions
+    hatcher_contributions: a list of hatcher contributions in DAI/ETH/whatever
+    desired_token_price: used to determine the initial token supply
     vesting_80p_unlocked: vesting parameter - the number of days after which 80% of tokens will be unlocked, including the cliff period
     """
     total_hatch_raise = sum(hatcher_contributions)
+    initial_token_supply = total_hatch_raise / desired_token_price
 
     # In the hatch, everyone buys in at the same time, with the same price. So just split the token supply amongst the hatchers proportionally to their contributions
     tokens_per_hatcher = [(x / total_hatch_raise) * initial_token_supply for x in hatcher_contributions]
@@ -40,7 +41,7 @@ def contributions_to_token_batches(hatcher_contributions: List[int], initial_tok
     cliff_days, halflife_days = convert_80p_to_cliff_and_halflife(vesting_80p_unlocked)
 
     token_batches = [TokenBatch(x, cliff_days, halflife_days, hatch=True) for x in tokens_per_hatcher]
-    return token_batches
+    return token_batches, initial_token_supply
 
 class TokenBatch:
     def __init__(self, value: float, cliff_days: int, halflife_days: int, hatch = False):
@@ -51,16 +52,18 @@ class TokenBatch:
         self.halflife_days = halflife_days
         self.spent = 0
 
+        self.current_date = datetime.today()  # to be set externally before each spend check
+
     def __repr__(self):
-        o = "TokenBatch {} {}, Unlocked: {}".format("Hatch" if self.hatch_tokens else "", self.value, self.unlocked_fraction(datetime.today()))
+        o = "TokenBatch {} {}, Unlocked: {}".format("Hatch" if self.hatch_tokens else "", self.value, self.unlocked_fraction())
         return o
 
-    def unlocked_fraction(self, day: datetime = datetime.today()) -> float:
+    def unlocked_fraction(self) -> float:
         """
         returns what fraction of the TokenBatch is unlocked to date
         """
         if self.hatch_tokens:
-            days_delta = day - self.creation_date
+            days_delta = self.current_date - self.creation_date
             u = vesting_curve(days_delta.days, self.cliff_days, self.halflife_days)
             return u if u > 0 else 0
         else:
@@ -72,7 +75,7 @@ class TokenBatch:
         returns the argument if successful for your convenience
         """
         if x > self.spendable():
-            raise Exception("Not so many tokens are available for you to spend yet!")
+            raise Exception("Not so many tokens are available for you to spend yet ({})".format(self.current_date))
 
         self.value -= x
         self.spent += x
@@ -98,7 +101,7 @@ class Commons:
 
         # Options
         self.exit_tribute = exit_tribute
-    
+
     def deposit(self, dai):
         """
         Deposit DAI after the hatch phase. This means all the incoming deposit goes to the collateral pool.
@@ -118,8 +121,8 @@ class Commons:
         money_returned = dai
 
         if self.exit_tribute:
-            self._funding_pool += commons.exit_tribute * dai
-            money_returned = (1-commons.exit_tribute) * dai 
+            self._funding_pool += self.exit_tribute * dai
+            money_returned = (1-self.exit_tribute) * dai
 
         return money_returned, realized_price
     
