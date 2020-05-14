@@ -189,14 +189,14 @@ def abc():
         initial_supply = getFloat('initial_supply')
         hatch_price = getFloat('hatch_price')
         kappa = getInteger('kappa')
-        theta = getFloat('theta')
+        hatch_tribute = getFloat('hatch_tribute')
         exit_tribute = getFloat('exit_tribute')
     except Exception as err:
         return str(err), 422
 
-    initial_funds = total_funds_given_total_supply(initial_supply, theta, hatch_price)
+    initial_funds = total_funds_given_total_supply(initial_supply, hatch_tribute, hatch_price)
 
-    initial_reserve, invariant, starting_price = initialize_bonding_curve(initial_supply, initial_price = hatch_price, kappa = kappa, theta = theta)
+    initial_reserve, invariant, starting_price = initialize_bonding_curve(initial_supply, initial_price = hatch_price, kappa = kappa, theta = hatch_tribute)
     return jsonify({
         # inputs
         'initial_supply': initial_supply,
