@@ -126,8 +126,9 @@ class Commons:
 
         return money_returned, realized_price
     
-    def token_price(self):
+    def dai_to_tokens(self, dai):
         """
-        Query the bonding curve for the current token price, given the size of the commons's collateral pool.
+        Given the size of the common's collateral pool, return how many tokens would x DAI buy you.
         """
-        return self.bonding_curve.get_token_price(self._collateral_pool)
+        price = self.bonding_curve.get_token_price(self._collateral_pool)
+        return dai / price
