@@ -19,7 +19,7 @@ def get_participants(network):
 
 def initial_social_network(network: nx.DiGraph, scale = 1, sigmas=3) -> nx.DiGraph:
     participants = get_participants(network)
-    
+
     for i in participants:
         for j in participants:
             if not(j==i):
@@ -32,7 +32,7 @@ def initial_social_network(network: nx.DiGraph, scale = 1, sigmas=3) -> nx.DiGra
 
 def initial_conflict_network(network: nx.DiGraph, rate = .25) -> nx.DiGraph:
     proposals = get_proposals(network)
-    
+
     for i in proposals:
         for j in proposals:
             if not(j==i):
@@ -61,53 +61,68 @@ def add_proposals_and_relationships_to_network(n: nx.DiGraph, proposals: int, fu
             n.edges[(i, j)]['tokens'] = 0
             n.edges[(i, j)]['conviction'] = 0
             n.edges[(i, j)]['type'] = 'support'
-        
+
         n = initial_conflict_network(n, rate = .25)
         n = initial_social_network(n, scale = 1)
     return n
+
+def update_collateral_pool(params, step, sL, s, _input):
+    commons = s["commons"]
+    s["collateral_pool"] = commons._collateral_pool
+    return "collateral_pool", commons._collateral_pool
+
+def update_token_supply(params, step, sL, s, _input):
+    commons = s["commons"]
+    s["token_supply"] = commons._token_supply
+    return "token_supply", commons._token_supply
+
+def update_funding_pool(params, step, sL, s, _input):
+    commons = s["commons"]
+    s["funding_pool"] = commons._funding_pool
+    return "funding_pool", commons._funding_pool
 # =========================================================================================================
 def gen_new_participant(network, new_participant_tokens):
     i = len([node for node in network.nodes])
-    
+
     network.add_node(i)
     network.nodes[i]['type']="participant"
-    
-    s_rv = np.random.rand() 
+
+    s_rv = np.random.rand()
     network.nodes[i]['sentiment'] = s_rv
     network.nodes[i]['holdings_vesting']=None
     network.nodes[i]['holdings_nonvesting']=TokenBatch(new_participant_tokens, 5, 5)
-    
+
     # Connect this new participant to existing proposals.
     for j in get_nodes_by_type(network, 'proposal'):
         network.add_edge(i, j)
-        
+
         rv = np.random.rand()
         a_rv = 1-4*(1-rv)*rv #polarized distribution
         network.edges[(i, j)]['affinity'] = a_rv
         network.edges[(i,j)]['tokens'] = a_rv*network.nodes[i]['holdings_nonvesting'].value
         network.edges[(i, j)]['conviction'] = 0
         network.edges[(i,j)]['type'] = 'support'
-    
+
     return network
 
 def gen_new_proposal(network, funds, supply, trigger_func, scale_factor = 1.0/100):
     j = len([node for node in network.nodes])
     network.add_node(j)
     network.nodes[j]['type']="proposal"
-    
+
     network.nodes[j]['conviction']=0
     network.nodes[j]['status']='candidate'
     network.nodes[j]['age']=0
-    
+
     rescale = funds*scale_factor
     r_rv = gamma.rvs(3,loc=0.001, scale=rescale)
     network.nodes[j]['funds_requested'] = r_rv
-    
+
     network.nodes[j]['trigger']= trigger_func(r_rv, funds, supply)
-    
+
     participants = get_nodes_by_type(network, 'participant')
     proposing_participant = np.random.choice(participants)
-    
+
     for i in participants:
         network.add_edge(i, j)
         if i==proposing_participant:
@@ -116,11 +131,11 @@ def gen_new_proposal(network, funds, supply, trigger_func, scale_factor = 1.0/10
             rv = np.random.rand()
             a_rv = 1-4*(1-rv)*rv #polarized distribution
             network.edges[(i, j)]['affinity'] = a_rv
-            
+
         network.edges[(i, j)]['conviction'] = 0
         network.edges[(i,j)]['tokens'] = 0
         network.edges[(i,j)]['type'] = 'support'
-        
+
     return network
 
 def calc_total_funds_requested(network):
@@ -135,7 +150,7 @@ def calc_median_affinity(network):
     median_affinity = np.median(affinities)
     return median_affinity
 
-def driving_process(params, step, sL, s):
+def gen_new_participants_proposals_funding_random(params, step, sL, s):
     network = s['network']
     commons = s['commons']
     funds = s['funding_pool']
@@ -145,7 +160,7 @@ def driving_process(params, step, sL, s):
         arrival_rate = 10/(1+sentiment)
         rv1 = np.random.rand()
         new_participant = bool(rv1<1/arrival_rate)
-    
+
         if new_participant:
             # Below line is quite different from Zargham's original, which gave
             # tokens instead. Here we randomly generate each participant's
@@ -174,22 +189,22 @@ def driving_process(params, step, sL, s):
             scale_factor = 1
 
         #this shouldn't happen but expon is throwing domain errors
-        if sentiment>.4: 
+        if sentiment>.4:
             funds_arrival = expon.rvs(loc = 0, scale = scale_factor )
         else:
             funds_arrival = 0
         return funds_arrival
-    
+
     new_participant, new_participant_investment, new_participant_tokens = randomly_gen_new_participant(len(get_participants(network)), sentiment, s['token_supply'], commons)
-    
+
     new_proposal = randomly_gen_new_proposal(calc_total_funds_requested(network), calc_median_affinity(network), funds)
-    
+
     funds_arrival = randomly_gen_new_funding(funds, sentiment)
-    
+
     return({'new_participant':new_participant,
             'new_participant_investment':new_participant_investment,
             'new_participant_tokens': new_participant_tokens,
-            'new_proposal':new_proposal, 
+            'new_proposal':new_proposal,
             'funds_arrival':funds_arrival})
 
 def add_participants_proposals_to_network(params, step, sL, s, _input):
@@ -204,13 +219,13 @@ def add_participants_proposals_to_network(params, step, sL, s, _input):
 
     if new_participant:
         network = gen_new_participant(network, _input['new_participant_tokens'])
-    
+
     if new_proposal:
         network= gen_new_proposal(network,funds,supply,trigger_func )
-    
+
     #update age of the existing proposals
     proposals = get_nodes_by_type(network, 'proposal')
-    
+
     for j in proposals:
         network.nodes[j]['age'] =  network.nodes[j]['age']+1
         if network.nodes[j]['status'] == 'candidate':
@@ -218,8 +233,104 @@ def add_participants_proposals_to_network(params, step, sL, s, _input):
             network.nodes[j]['trigger'] = trigger_func(requested, funds, supply)
         else:
             network.nodes[j]['trigger'] = np.nan
-            
+
     key = 'network'
     value = network
-    
+
+    return (key, value)
+
+def new_participants_and_new_funds_commons(params, step, sL, s, _input):
+    commons = s["commons"]
+    if _input['new_participant']:
+        tokens, realized_price = commons.deposit(_input['new_participant_investment'])
+        # print(tokens, realized_price, _input['new_participant_tokens'])
+    if _input['funds_arrival']:
+        commons._funding_pool += _input['funds_arrival']
+    return "commons", commons
+# =========================================================================================================
+def make_proposals_pass_or_fail_random(params, step, sL, s):
+    network = s['network']
+    proposals = get_proposals(network)
+
+    completed = []
+    failed = []
+    for j in proposals:
+        if network.nodes[j]['status'] == 'active':
+            grant_size = network.nodes[j]['funds_requested']
+            base_completion_rate=params[0]['base_completion_rate']
+            likelihood = 1.0/(base_completion_rate+np.log(grant_size))
+
+            base_failure_rate = params[0]['base_failure_rate']
+            failure_rate = 1.0/(base_failure_rate+np.log(grant_size))
+            if np.random.rand() < likelihood:
+                completed.append(j)
+            elif np.random.rand() < failure_rate:
+                failed.append(j)
+    return({'completed':completed, 'failed':failed})
+
+def get_sentimental(sentiment, force, decay=0):
+    mu = decay
+    sentiment = sentiment*(1-mu) + force
+    if sentiment > 1:
+        sentiment = 1
+    return sentiment
+
+def sentiment_decays_wo_completed_proposals(params, step, sL, s, _input):
+    network = s['network']
+    proposals = get_proposals(network)
+    completed = _input['completed']
+    failed = _input['failed']
+
+    grants_outstanding = np.sum([network.nodes[j]['funds_requested'] for j in proposals if network.nodes[j]['status']=='active'])
+    grants_completed = np.sum([network.nodes[j]['funds_requested'] for j in completed])
+    grants_failed = np.sum([network.nodes[j]['funds_requested'] for j in failed])
+
+    sentiment = s['sentiment']
+
+    if grants_outstanding>0:
+        force = (grants_completed-grants_failed)/grants_outstanding
+    else:
+        force=1
+
+    mu = params[0]['sentiment_decay']
+    if (force >=0) and (force <=1):
+        sentiment = get_sentimental(sentiment, force, mu)
+    else:
+        sentiment = get_sentimental(sentiment, 0, mu)
+
+    key = 'sentiment'
+    value = sentiment
+
+    return (key, value)
+
+def complete_proposal(params, step, sL, s, _input):
+    network = s['network']
+    participants = get_participants(network)
+    proposals = get_proposals(network)
+    competitors = get_edges_by_type(network, 'conflict')
+    completed = _input['completed']
+    for j in completed:
+        network.nodes[j]['status']='completed'
+
+        for c in proposals:
+             if (j,c) in competitors:
+                 conflict = network.edges[(j,c)]['conflict']
+                 for i in participants:
+                     network.edges[(i,c)]['affinity'] = network.edges[(i,c)]['affinity'] *(1-conflict)
+
+        for i in participants:
+            force = network.edges[(i,j)]['affinity']
+            sentiment = network.nodes[i]['sentiment']
+            network.nodes[i]['sentiment'] = get_sentimental(sentiment, force, decay=0)
+
+    failed = _input['failed']
+    for j in failed:
+        network.nodes[j]['status']='failed'
+        for i in participants:
+            force = -network.edges[(i,j)]['affinity']
+            sentiment = network.nodes[i]['sentiment']
+            network.nodes[i]['sentiment'] = get_sentimental(sentiment, force, decay=0)
+
+    key = 'network'
+    value = network
     return (key, value)
