@@ -4,6 +4,15 @@ import networkx as nx
 from hatch import TokenBatch
 from convictionvoting import trigger_threshold
 from IPython.core.debugger import set_trace
+from functools import wraps
+
+def dump_output(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        result = f(*args, **kwargs)
+        print(result)
+        return result
+    return wrapper
 
 def get_nodes_by_type(g, node_type_selection):
     return [node for node in g.nodes if g.nodes[node]['type']== node_type_selection ]
@@ -150,7 +159,8 @@ def calc_median_affinity(network):
     median_affinity = np.median(affinities)
     return median_affinity
 
-def gen_new_participants_proposals_funding_random(params, step, sL, s):
+@dump_output
+def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
     network = s['network']
     commons = s['commons']
     funds = s['funding_pool']
@@ -212,7 +222,7 @@ def add_participants_proposals_to_network(params, step, sL, s, _input):
     funds = s['funding_pool']
     supply = s['token_supply']
 
-    trigger_func = params[0]["trigger_threshold"][0]
+    trigger_func = params[0]["trigger_threshold"]
 
     new_participant = _input['new_participant'] #T/F
     new_proposal = _input['new_proposal'] #T/F
@@ -248,7 +258,8 @@ def new_participants_and_new_funds_commons(params, step, sL, s, _input):
         commons._funding_pool += _input['funds_arrival']
     return "commons", commons
 # =========================================================================================================
-def make_proposals_pass_or_fail_random(params, step, sL, s):
+@dump_output
+def make_active_proposals_complete_or_fail_randomly(params, step, sL, s):
     network = s['network']
     proposals = get_proposals(network)
 
@@ -303,7 +314,7 @@ def sentiment_decays_wo_completed_proposals(params, step, sL, s, _input):
 
     return (key, value)
 
-def complete_proposal(params, step, sL, s, _input):
+def update_network_w_proposal_status(params, step, sL, s, _input):
     network = s['network']
     participants = get_participants(network)
     proposals = get_proposals(network)
@@ -330,6 +341,122 @@ def complete_proposal(params, step, sL, s, _input):
             force = -network.edges[(i,j)]['affinity']
             sentiment = network.nodes[i]['sentiment']
             network.nodes[i]['sentiment'] = get_sentimental(sentiment, force, decay=0)
+
+    key = 'network'
+    value = network
+    return (key, value)
+
+# =========================================================================================================
+@dump_output
+def conviction_gathering(params, step, sL, s):
+    def sort_proposals_by_conviction(network, proposals):
+        ordered = sorted(proposals, key=lambda j:network.nodes[j]['conviction'] , reverse=True)
+        return ordered
+    network = s['network']
+    funding_pool = s['funding_pool']
+    token_supply = s['token_supply']
+    proposals = get_proposals(network)
+    min_proposal_age = params[0]['min_proposal_age_days']
+    trigger_func = params[0]['trigger_threshold']
+
+    accepted = []
+    triggers = {}
+    funds_to_be_released = 0
+    for j in proposals:
+        if network.nodes[j]['status'] == 'candidate':
+            requested = network.nodes[j]['funds_requested']
+            age = network.nodes[j]['age']
+
+            threshold = trigger_func(requested, funding_pool, token_supply)
+            if age > min_proposal_age:
+                conviction = network.nodes[j]['conviction']
+                if conviction >threshold:
+                    accepted.append(j)
+                    funds_to_be_released = funds_to_be_released + requested
+        else:
+            threshold = np.nan
+
+        triggers[j] = threshold
+
+        #catch over release and keep the highest conviction results
+        if funds_to_be_released > funding_pool:
+            #print('funds ='+str(funds))
+            #print(accepted)
+            ordered = sort_proposals_by_conviction(network, accepted)
+            #print(ordered)
+            accepted = []
+            release = 0
+            ind = 0
+            while release + network.nodes[ordered[ind]]['funds_requested'] < funding_pool:
+                accepted.append(ordered[ind])
+                release= network.nodes[ordered[ind]]['funds_requested']
+                ind=ind+1
+
+    return({'accepted':accepted, 'triggers':triggers})
+
+def decrement_commons_funding_pool(params, step, sL, s, _input):
+    commons = s['commons']
+    network = s['network']
+    accepted = _input['accepted']
+
+    for j in accepted:
+        commons.spend(network.nodes[j]['funds_requested'])
+
+    key = 'commons'
+    value = commons
+    return (key, value)
+
+def update_sentiment_on_release(params, step, sL, s, _input):
+    network = s['network']
+    proposals = get_proposals(network)
+    accepted = _input['accepted']
+
+    proposals_outstanding = np.sum([network.nodes[j]['funds_requested'] for j in proposals if network.nodes[j]['status']=='candidate'])
+    proposals_accepted = np.sum([network.nodes[j]['funds_requested'] for j in accepted])
+
+    sentiment = s['sentiment']
+    force = proposals_accepted/proposals_outstanding
+    if (force >=0) and (force <=1):
+        sentiment = get_sentimental(sentiment, force, False)
+    else:
+        sentiment = get_sentimental(sentiment, 0, False)
+
+    key = 'sentiment'
+    value = sentiment
+    return (key, value)
+
+def update_proposals(params, step, sL, s, _input):
+    network = s['network']
+    accepted = _input['accepted']
+    triggers = _input['triggers']
+    participants = get_participants(network)
+    proposals = get_proposals(network)
+    sensitivity = params[0]['sensitivity']
+
+    for j in proposals:
+        network.nodes[j]['trigger'] = triggers[j]
+
+    #bookkeeping conviction and participant sentiment
+    for j in accepted:
+        network.nodes[j]['status']='active'
+        network.nodes[j]['conviction']=np.nan
+        #change status to active
+        for i in participants:
+            #operating on edge = (i,j)
+            #reset tokens assigned to other candidates
+            network.edges[(i,j)]['tokens']=0
+            network.edges[(i,j)]['conviction'] = np.nan
+
+            #update participants sentiments (positive or negative)
+            affinities = [network.edges[(i,p)]['affinity'] for p in proposals if not(p in accepted)]
+            if len(affinities)>1:
+                max_affinity = np.max(affinities)
+                force = network.edges[(i,j)]['affinity']-sensitivity*max_affinity
+            else:
+                force = 0
+
+            #based on what their affinities to the accepted proposals
+            network.nodes[i]['sentiment'] = get_sentimental(network.nodes[i]['sentiment'], force, False)
 
     key = 'network'
     value = network

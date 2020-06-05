@@ -68,7 +68,7 @@ class TokenBatch:
             return u if u > 0 else 0
         else:
             return 1.0
-    
+
     def spend(self, x: float):
         """
         checks if you can spend so many tokens, then decreases this TokenBatch instance's value accordingly
@@ -125,10 +125,20 @@ class Commons:
             money_returned = (1-self.exit_tribute) * dai
 
         return money_returned, realized_price
-    
+
     def dai_to_tokens(self, dai):
         """
         Given the size of the common's collateral pool, return how many tokens would x DAI buy you.
         """
         price = self.bonding_curve.get_token_price(self._collateral_pool)
         return dai / price
+
+    def spend(self, amount):
+        """
+        Decreases the Common's funding_pool by amount.
+        Raises an exception if this would make the funding pool negative.
+        """
+        if self._funding_pool - amount < 0:
+            raise Exception("{} funds requested but funding pool only has {}".format(amount, self._funding_pool))
+        self._funding_pool -= amount
+        return
