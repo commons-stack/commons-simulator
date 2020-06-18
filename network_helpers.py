@@ -11,7 +11,20 @@ def dump_output(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         result = f(*args, **kwargs)
+        print("========== OUTPUT {} ==========".format(f.__name__))
         print(result)
+        print("========== /OUTPUT ==========")
+        return result
+    return wrapper
+
+
+def dump_input(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        print("========== INPUT {} ==========".format(f.__name__))
+        print(*args, **kwargs)
+        print("========== /INPUT ==========")
+        result = f(*args, **kwargs)
         return result
     return wrapper
 
@@ -64,7 +77,8 @@ def add_proposals_and_relationships_to_network(n: nx.DiGraph, proposals: int, fu
     participant_count = len(n)
     for i in range(proposals):
         j = participant_count + i
-        n.add_node(j, type="proposal", conviction=0, status="candidate", age=0)
+        n.add_node(j, type="proposal", conviction=0,
+                   status="candidate", age=0)
 
         r_rv = gamma.rvs(3, loc=0.001, scale=10000)
         n.nodes[j]['funds_requested'] = r_rv
@@ -180,7 +194,7 @@ def calc_median_affinity(network):
     return median_affinity
 
 
-@dump_output
+@ dump_output
 def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
     network = s['network']
     commons = s['commons']
@@ -424,7 +438,7 @@ def conviction_gathering(params, step, sL, s):
 
         # catch over release and keep the highest conviction results
         if funds_to_be_released > funding_pool:
-            #print('funds ='+str(funds))
+            # print('funds ='+str(funds))
             # print(accepted)
             ordered = sort_proposals_by_conviction(network, accepted)
             # print(ordered)
@@ -517,6 +531,7 @@ def update_proposals(params, step, sL, s, _input):
 # =========================================================================================================
 
 
+@dump_input
 @dump_output
 def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step, sL, s):
     network = s['network']
