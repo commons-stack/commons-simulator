@@ -5,6 +5,7 @@ from hatch import TokenBatch
 from convictionvoting import trigger_threshold
 from IPython.core.debugger import set_trace
 from functools import wraps
+import pprint as pp
 
 
 def dump_output(f):
@@ -194,7 +195,6 @@ def calc_median_affinity(network):
     return median_affinity
 
 
-@ dump_output
 def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
     network = s['network']
     commons = s['commons']
@@ -304,7 +304,6 @@ def new_participants_and_new_funds_commons(params, step, sL, s, _input):
 # =========================================================================================================
 
 
-@dump_output
 def make_active_proposals_complete_or_fail_randomly(params, step, sL, s):
     network = s['network']
     proposals = get_proposals(network)
@@ -404,7 +403,6 @@ def update_network_w_proposal_status(params, step, sL, s, _input):
 # =========================================================================================================
 
 
-@dump_output
 def conviction_gathering(params, step, sL, s):
     def sort_proposals_by_conviction(network, proposals):
         ordered = sorted(
@@ -531,8 +529,6 @@ def update_proposals(params, step, sL, s, _input):
 # =========================================================================================================
 
 
-@dump_input
-@dump_output
 def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step, sL, s):
     network = s['network']
     participants = get_participants(network)
@@ -573,7 +569,39 @@ def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step,
 
 def update_holdings_nonvesting_of_participants(params, step, sL, s, _input):
     network = s['network']
-    participants = get_participants(network)
     proposals = get_proposals(network)
+    proposals_supported = _input['proposals_supported']
+    alpha = params[0]['alpha']
+    candidates = [j for j in proposals if network.nodes[j]
+                  ['status'] == 'candidate']
+    min_support = params[0]['min_supp']
+
+    # Update the participants holdings
+    participants = get_participants(network)
     for i in participants:
         network.nodes[i]["holdings_nonvesting"].value += _input["delta_holdings"][i]
+        supported = proposals_supported[i]
+        total_affinity = np.sum(
+            [network.edges[(i, j)]['affinity'] for j in supported])
+        for j in candidates:
+            if j in supported:
+                normalized_affinity = network.edges[(
+                    i, j)]['affinity']/total_affinity
+                network.edges[(i, j)]['tokens'] = normalized_affinity * \
+                    network.nodes[i]['holdings_nonvesting'].value
+            else:
+                network.edges[(i, j)]['tokens'] = 0
+
+            prior_conviction = network.edges[(i, j)]['conviction']
+            current_tokens = network.edges[(i, j)]['tokens']
+            network.edges[(i, j)]['conviction'] = current_tokens + \
+                alpha*prior_conviction
+
+    for j in candidates:
+        network.nodes[j]['conviction'] = np.sum(
+            [network.edges[(i, j)]['conviction'] for i in participants])
+        total_tokens = np.sum([network.edges[(i, j)]['tokens']
+                               for i in participants])
+        if total_tokens < min_support:
+            network.nodes[j]['status'] = 'killed'
+    return ("network", network)
