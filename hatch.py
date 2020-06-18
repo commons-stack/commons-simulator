@@ -152,6 +152,12 @@ class Commons:
         price = self.bonding_curve.get_token_price(self._collateral_pool)
         return dai / price
 
+    def token_price(self):
+        """
+        Query the bonding curve for the current token price, given the size of the commons's collateral pool.
+        """
+        return self.bonding_curve.get_token_price(self._collateral_pool)
+
     def spend(self, amount):
         """
         Decreases the Common's funding_pool by amount.
