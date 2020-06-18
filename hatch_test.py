@@ -2,14 +2,22 @@ from hatch import *
 import unittest
 import datetime
 
+
 class HatchTest(unittest.TestCase):
     def test_vesting_curve(self):
-        self.assertEqual(vesting_curve(90, 90, 90), 0)  # At Day 90, the cliff has just ended and the vesting curve has begun at 0
-        self.assertEqual(vesting_curve(180, 90, 90), 0.5)  # At Day 180, the cliff has ended and we are in the vesting curve, whose half-life is 90 as well, so at 180 we should get 0.5.
-        self.assertEqual(vesting_curve(270, 90, 90), 0.75)  # At Day 270, 2 half lives of the vesting curve have passed - 0.75 of tokens should be unlocked.
-        self.assertLess(vesting_curve(89, 90, 90), 0)  # At Day 270, 2 half lives of the vesting curve have passed - 0.75 of tokens should be unlocked.
+        # At Day 90, the cliff has just ended and the vesting curve has begun at 0
+        self.assertEqual(vesting_curve(90, 90, 90), 0)
+        # At Day 180, the cliff has ended and we are in the vesting curve, whose half-life is 90 as well, so at 180 we should get 0.5.
+        self.assertEqual(vesting_curve(180, 90, 90), 0.5)
+        # At Day 270, 2 half lives of the vesting curve have passed - 0.75 of tokens should be unlocked.
+        self.assertEqual(vesting_curve(270, 90, 90), 0.75)
+        # At Day 270, 2 half lives of the vesting curve have passed - 0.75 of tokens should be unlocked.
+        self.assertLess(vesting_curve(89, 90, 90), 0)
+
     def test_convert_80p_to_halflife(self):
-        self.assertEqual(convert_80p_to_cliff_and_halflife(90), (41.64807836875666, 20.82403918437833))
+        self.assertEqual(convert_80p_to_cliff_and_halflife(
+            90), (41.64807836875666, 20.82403918437833))
+
 
 class TokenBatchTest(unittest.TestCase):
     def test_unlocked_fraction(self):
@@ -23,7 +31,7 @@ class TokenBatchTest(unittest.TestCase):
         self.assertEqual(tbh.unlocked_fraction(), 0.5)
 
         self.assertEqual(tb.unlocked_fraction(), 1.0)
-    
+
     def test_spend(self):
         tbh = TokenBatch(10000, 3, 3, True)
 
@@ -41,15 +49,18 @@ class TokenBatchTest(unittest.TestCase):
         with self.assertRaises(Exception):
             tb.spend(10000)
 
+
 class CommonsTest(unittest.TestCase):
     def setUp(self):
         # 100,000 DAI invested for 1,000,000 tokens.
         self.desired_token_price = 0.1
         self.hatcher_contributions = [25000, 25000, 50000]
-        self.token_batches, self.token_supply_initial = contributions_to_token_batches(self.hatcher_contributions, self.desired_token_price, 90)
+        self.token_batches, self.token_supply_initial = contributions_to_token_batches(
+            self.hatcher_contributions, self.desired_token_price, 90)
 
         # Because of hatch_tribute, the collateral_pool is 0.7e6. This causes the token's post-hatch price to be 0.14.
-        self.commons = Commons(sum(self.hatcher_contributions), self.token_supply_initial, hatch_tribute=0.3)
+        self.commons = Commons(
+            sum(self.hatcher_contributions), self.token_supply_initial, hatch_tribute=0.3)
 
     def test_initialization(self):
         self.assertEqual(self.commons._collateral_pool, 70000)
@@ -67,4 +78,5 @@ class CommonsTest(unittest.TestCase):
         self.assertEqual(money_returned, 6825.0)
         self.assertEqual(realized_price, 0.1365)
         self.assertEqual(self.commons._token_supply, old_token_supply-50000)
-        self.assertEqual(self.commons._collateral_pool, old_collateral_pool-money_returned)
+        self.assertEqual(self.commons._collateral_pool,
+                         old_collateral_pool-money_returned)
