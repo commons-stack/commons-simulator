@@ -431,8 +431,9 @@ def update_proposals(params, step, sL, s, _input):
     triggers = _input['triggers']
     participants = get_participants(network)
     proposals = get_proposals(network)
-    sensitivity = params[0]['sensitivity']
+    sentiment_sensitivity = params[0]['sentiment_sensitivity']
 
+    # Update candidate proposals with their new conviction thresholds (if any)
     for j in proposals:
         network.nodes[j]['trigger'] = triggers[j]
 
@@ -451,7 +452,7 @@ def update_proposals(params, step, sL, s, _input):
             affinities = [network.edges[(i,p)]['affinity'] for p in proposals if not(p in accepted)]
             if len(affinities)>1:
                 max_affinity = np.max(affinities)
-                force = network.edges[(i,j)]['affinity']-sensitivity*max_affinity
+                force = network.edges[(i,j)]['affinity']-sentiment_sensitivity*max_affinity
             else:
                 force = 0
 
@@ -461,3 +462,43 @@ def update_proposals(params, step, sL, s, _input):
     key = 'network'
     value = network
     return (key, value)
+# =========================================================================================================
+@dump_output
+def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step, sL, s):
+    network = s['network']
+    participants = get_participants(network)
+    proposals = get_proposals(network)
+    candidate_proposals = [j for j in proposals if network.nodes[j]['status']=='candidate']
+    sentiment_sensitivity = params[0]['sentiment_sensitivity']
+
+    delta_holdings={}
+    proposals_supported ={}
+    for i in participants:
+        engagement_rate = .3*network.nodes[i]['sentiment']
+        if np.random.rand()<engagement_rate:
+            force = network.nodes[i]['sentiment']-sentiment_sensitivity
+            delta_holdings[i] = np.random.rand()*force  # because implementing "vesting+nonvesting holdings" calculation is best done outside the scope of this function
+
+            support = []
+            for j in candidate_proposals:
+                affinity = network.edges[(i, j)]['affinity']
+                cutoff = sentiment_sensitivity*np.max([network.edges[(i,p)]['affinity'] for p in candidate_proposals])
+                if cutoff <.5:
+                    cutoff = .5
+
+                if affinity > cutoff:
+                    support.append(j)
+
+            proposals_supported[i] = support
+        else:
+            delta_holdings[i] = 0
+            proposals_supported[i] = [j for j in candidate_proposals if network.edges[(i,j)]['tokens']>0 ]
+
+    return({'delta_holdings':delta_holdings, 'proposals_supported':proposals_supported})
+
+def update_holdings_nonvesting_of_participants(params, step, sL, s, _input):
+    network = s['network']
+    participants = get_participants(network)
+    proposals = get_proposals(network)
+    for i in participants:
+        network.nodes[i]["holdings_nonvesting"].value += _input["delta_holdings"][i]
