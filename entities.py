@@ -1,5 +1,7 @@
 import numpy as np
 from hatch import TokenBatch
+from english_words import english_words_set
+import random
 
 
 class Participant:
@@ -10,11 +12,14 @@ class Participant:
         self.holdings_nonvesting = holdings_nonvesting
 
     def __repr__(self):
-        return "{}, holdings_vesting: {}, holdings_nonvesting: {}".format(self.sentiment, self.holdings_vesting, self.holdings_vesting)
+        return "<{} {}, holdings_vesting: {}, holdings_nonvesting: {}>".format(self.__class__.__name__, self.sentiment, self.holdings_vesting, self.holdings_vesting)
 
 
 class Proposal:
     def __init__(self, funds_requested: int, trigger_func):
+        self.name = "{} {}".format(
+            random.choice(list(english_words_set)),
+            random.choice(list(english_words_set)))
         self.conviction = 0
         self.status = "candidate"
         self.age = 0
@@ -22,4 +27,4 @@ class Proposal:
         self.trigger = trigger_func
 
     def __repr__(self):
-        return "status: {}, age: {}, funds_requested: {}".format(self.status, self.age, self.funds_requested)
+        return "<{} \"{}\" status: {}, age: {}, funds_requested: {}>".format(self.__class__.__name__, self.name, self.status, self.age, self.funds_requested)
