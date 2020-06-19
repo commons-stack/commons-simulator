@@ -1,5 +1,6 @@
 import numpy as np
 from hatch import TokenBatch
+from enum import Enum
 from english_words import english_words_set
 import random
 
@@ -15,13 +16,20 @@ class Participant:
         return "<{} {}, holdings_vesting: {}, holdings_nonvesting: {}>".format(self.__class__.__name__, self.sentiment, self.holdings_vesting, self.holdings_vesting)
 
 
+ProposalStatus = Enum("ProposalStatus", "CANDIDATE ACTIVE COMPLETED FAILED")
+# candidate: proposal is being evaluated by the commons
+# active: has been approved and is funded
+# completed: the proposal was effective/successful
+# failed: did not get to active status or failed after funding
+
+
 class Proposal:
     def __init__(self, funds_requested: int, trigger_func):
         self.name = "{} {}".format(
             random.choice(list(english_words_set)),
             random.choice(list(english_words_set)))
         self.conviction = 0
-        self.status = "candidate"
+        self.status = ProposalStatus.CANDIDATE
         self.age = 0
         self.funds_requested = funds_requested
         self.trigger = trigger_func
