@@ -6,6 +6,7 @@ from convictionvoting import trigger_threshold
 from IPython.core.debugger import set_trace
 from functools import wraps
 import pprint as pp
+from entities import Participant, Proposal
 
 
 def dump_output(f):
@@ -39,11 +40,11 @@ def get_edges_by_type(g, edge_type_selection):
 
 
 def get_proposals(network):
-    return get_nodes_by_type(network, "proposal")
+    return [i for i in network.nodes if isinstance(network.nodes[i]["item"], Proposal)]
 
 
 def get_participants(network):
-    return get_nodes_by_type(network, "participant")
+    return [i for i in network.nodes if isinstance(network.nodes[i]["item"], Participant)]
 
 
 def initial_social_network(network: nx.DiGraph, scale=1, sigmas=3) -> nx.DiGraph:
