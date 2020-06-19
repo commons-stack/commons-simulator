@@ -403,7 +403,7 @@ def update_network_w_proposal_status(params, step, sL, s, _input):
 # =========================================================================================================
 
 
-def conviction_gathering(params, step, sL, s):
+def calculate_conviction(params, step, sL, s):
     def sort_proposals_by_conviction(network, proposals):
         ordered = sorted(
             proposals, key=lambda j: network.nodes[j]['conviction'], reverse=True)
