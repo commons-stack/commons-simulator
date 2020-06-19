@@ -24,7 +24,7 @@ ProposalStatus = Enum("ProposalStatus", "CANDIDATE ACTIVE COMPLETED FAILED")
 
 
 class Proposal:
-    def __init__(self, funds_requested: int, trigger_func):
+    def __init__(self, funds_requested: int, trigger):
         self.name = "{} {}".format(
             random.choice(list(english_words_set)),
             random.choice(list(english_words_set)))
@@ -32,7 +32,7 @@ class Proposal:
         self.status = ProposalStatus.CANDIDATE
         self.age = 0
         self.funds_requested = funds_requested
-        self.trigger = trigger_func
+        self.trigger = trigger
 
     def __repr__(self):
         return "<{} \"{}\" status: {}, age: {}, funds_requested: {}>".format(self.__class__.__name__, self.name, self.status, self.age, self.funds_requested)
