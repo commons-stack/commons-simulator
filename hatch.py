@@ -1,6 +1,7 @@
 from typing import List, Tuple
 from abcurve import AugmentedBondingCurve
 from datetime import datetime
+from collections import namedtuple
 
 
 def vesting_curve(day: int, cliff_days: int, halflife_days: float) -> float:
@@ -45,23 +46,26 @@ def contributions_to_token_batches(hatcher_contributions: List[int], desired_tok
 
     cliff_days, halflife_days = convert_80p_to_cliff_and_halflife(
         vesting_80p_unlocked)
-
     token_batches = [TokenBatch(
-        x, cliff_days, halflife_days, hatch=True) for x in tokens_per_hatcher]
+        x, VestingOptions(cliff_days, halflife_days)) for x in tokens_per_hatcher]
     return token_batches, initial_token_supply
 
 
+VestingOptions = namedtuple("VestingOptions", "cliff_days halflife_days")
+
+
 class TokenBatch:
-    def __init__(self, value: float, cliff_days: int, halflife_days: int, hatch=False):
-        self.hatch_tokens = hatch
+    def __init__(self, value: float, vesting_options=None):
         self.value = value
         self.creation_date = datetime.today()
-        self.cliff_days = cliff_days
-        self.halflife_days = halflife_days
-        self.spent = 0
-
         # to be set externally before each spend check
         self.current_date = datetime.today()
+
+        self.hatch_tokens = False if not vesting_options else True
+        self.cliff_days = 0 if not vesting_options else vesting_options.cliff_days
+        self.halflife_days = 0 if not vesting_options else vesting_options.halflife_days
+
+        self.spent = 0
 
     def __repr__(self):
         o = "TokenBatch {} {}, Unlocked: {}".format(

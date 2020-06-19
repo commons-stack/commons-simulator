@@ -129,7 +129,7 @@ def gen_new_participant(network, new_participant_tokens):
     network.nodes[i]['sentiment'] = s_rv
     network.nodes[i]['holdings_vesting'] = None
     network.nodes[i]['holdings_nonvesting'] = TokenBatch(
-        new_participant_tokens, 5, 5)
+        new_participant_tokens)
 
     # Connect this new participant to existing proposals.
     for j in get_nodes_by_type(network, 'proposal'):
