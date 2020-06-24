@@ -72,6 +72,11 @@ class TokenBatch:
             "Hatch" if self.hatch_tokens else "", self.value, self.unlocked_fraction())
         return o
 
+    def __bool__(self):
+        if self.value > 0:
+            return True
+        return False
+
     def unlocked_fraction(self) -> float:
         """
         returns what fraction of the TokenBatch is unlocked to date

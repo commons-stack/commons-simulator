@@ -21,8 +21,8 @@ class HatchTest(unittest.TestCase):
 
 class TokenBatchTest(unittest.TestCase):
     def test_unlocked_fraction(self):
-        tbh = TokenBatch(10000, 3, 3, True)
-        tb = TokenBatch(10000, 5, 10, False)
+        tbh = TokenBatch(10000, vesting_options=VestingOptions(3, 3))
+        tb = TokenBatch(10000)
 
         self. assertEqual(tbh.unlocked_fraction(), 0)
         tbh.current_date = datetime.datetime.today() + datetime.timedelta(days=3)
@@ -33,12 +33,12 @@ class TokenBatchTest(unittest.TestCase):
         self.assertEqual(tb.unlocked_fraction(), 1.0)
 
     def test_spend(self):
-        tbh = TokenBatch(10000, 3, 3, True)
+        tbh = TokenBatch(10000, vesting_options=VestingOptions(3, 3))
 
         with self.assertRaises(Exception):
             tbh.spend(100)
 
-        tb = TokenBatch(10000, 3, 3, False)
+        tb = TokenBatch(10000)
         tb.spend(100)
         self.assertEqual(tb.value, 9900)
         self.assertEqual(tb.spent, 100)
@@ -48,6 +48,12 @@ class TokenBatchTest(unittest.TestCase):
 
         with self.assertRaises(Exception):
             tb.spend(10000)
+
+    def test_bool_is_false_if_zero(self):
+        zero = TokenBatch(0)
+        something = TokenBatch(1)
+        self.assertTrue(bool(something))
+        self.assertFalse(bool(zero))
 
 
 class CommonsTest(unittest.TestCase):
