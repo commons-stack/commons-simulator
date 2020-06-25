@@ -173,9 +173,9 @@ def gen_new_proposal(network, funds, supply, trigger_func, scale_factor=1.0/100)
 
 
 def calc_total_funds_requested(network):
-    proposals = get_proposals(network)
-    fund_requests = [network.nodes[j]["item"].funds_requested
-                     for j in proposals if network.nodes[j]["item"].status == ProposalStatus.CANDIDATE]
+    candidates = get_proposals(network, status=ProposalStatus.CANDIDATE)
+    fund_requests = [network.nodes[j]
+                     ["item"].funds_requested for j in candidates]
     total_funds_requested = np.sum(fund_requests)
     return total_funds_requested
 
@@ -304,23 +304,22 @@ def make_active_proposals_complete_or_fail_randomly(params, step, sL, s):
     idea
     """
     network = s['network']
-    proposals = get_proposals(network)
+    active_proposals = get_proposals(network, status=ProposalStatus.ACTIVE)
 
     completed = []
     failed = []
-    for j in proposals:
-        if network.nodes[j]['item'].status == ProposalStatus.ACTIVE:
-            grant_size = network.nodes[j]['item'].funds_requested
+    for j in active_proposals:
+        grant_size = network.nodes[j]['item'].funds_requested
 
-            base_completion_rate = params[0]['base_completion_rate']
-            base_failure_rate = params[0]['base_failure_rate']
-            likelihood = 1.0/(base_completion_rate+np.log(grant_size))
-            failure_rate = 1.0/(base_failure_rate+np.log(grant_size))
+        base_completion_rate = params[0]['base_completion_rate']
+        base_failure_rate = params[0]['base_failure_rate']
+        likelihood = 1.0/(base_completion_rate+np.log(grant_size))
+        failure_rate = 1.0/(base_failure_rate+np.log(grant_size))
 
-            if np.random.rand() < likelihood:
-                completed.append(j)
-            elif np.random.rand() < failure_rate:
-                failed.append(j)
+        if np.random.rand() < likelihood:
+            completed.append(j)
+        elif np.random.rand() < failure_rate:
+            failed.append(j)
     return({'completed': completed, 'failed': failed})
 
 
@@ -354,12 +353,12 @@ def sentiment_decays_wo_completed_proposals(params, step, sL, s, _input):
         return force
 
     network = s['network']
-    proposals = get_proposals(network)
+    active_proposals = get_proposals(network, status=ProposalStatus.ACTIVE)
     completed = _input['completed']
     failed = _input['failed']
 
     grants_outstanding = np.sum([network.nodes[j]['item'].funds_requested
-                                 for j in proposals if network.nodes[j]['item'].status == ProposalStatus.ACTIVE])
+                                 for j in active_proposals])
     grants_completed = np.sum(
         [network.nodes[j]['item'].funds_requested for j in completed])
     grants_failed = np.sum(
@@ -476,11 +475,11 @@ def decrement_commons_funding_pool(params, step, sL, s, _input):
 
 def update_sentiment_on_release(params, step, sL, s, _input):
     network = s['network']
-    proposals = get_proposals(network)
+    candidates = get_proposals(network, status=ProposalStatus.CANDIDATE)
     accepted = _input['accepted']
 
     proposals_outstanding = np.sum([network.nodes[j]['item'].funds_requested
-                                    for j in proposals if network.nodes[j]['item'].status == ProposalStatus.CANDIDATE])
+                                    for j in candidates])
     proposals_accepted = np.sum(
         [network.nodes[j]['item'].funds_requested for j in accepted])
 
@@ -540,9 +539,8 @@ def update_proposals(params, step, sL, s, _input):
 def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step, sL, s):
     network = s['network']
     participants = get_participants(network)
-    proposals = get_proposals(network)
-    candidate_proposals = [
-        j for j in proposals if network.nodes[j]['item'].status == ProposalStatus.CANDIDATE]
+    candidate_proposals = get_proposals(
+        network, status=ProposalStatus.CANDIDATE)
     sentiment_sensitivity = params[0]['sentiment_sensitivity']
 
     delta_holdings = {}
@@ -577,11 +575,9 @@ def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step,
 
 def update_holdings_nonvesting_of_participants(params, step, sL, s, _input):
     network = s['network']
-    proposals = get_proposals(network)
+    candidates = get_proposals(network, status=ProposalStatus.CANDIDATE)
     proposals_supported = _input['proposals_supported']
     alpha = params[0]['alpha']
-    candidates = [j for j in proposals if network.nodes[j]
-                  ['item'].status == ProposalStatus.CANDIDATE]
     min_support = params[0]['min_supp']
 
     # Update the participants holdings
