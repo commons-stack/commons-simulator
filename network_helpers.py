@@ -39,8 +39,12 @@ def get_edges_by_type(g, edge_type_selection):
     return [edge for edge in g.edges if g.edges[edge]['type'] == edge_type_selection]
 
 
-def get_proposals(network):
-    return [i for i in network.nodes if isinstance(network.nodes[i]["item"], Proposal)]
+def get_proposals(network, status: ProposalStatus = None):
+    proposals = [i for i in network.nodes if isinstance(
+        network.nodes[i]["item"], Proposal)]
+    if status:
+        return [j for j in proposals if network.nodes[j]['item'].status == status]
+    return proposals
 
 
 def get_participants(network):
