@@ -133,7 +133,7 @@ def gen_new_participant(network, new_participant_tokens):
         a_rv = 1-4*(1-rv)*rv  # polarized distribution
         network.edges[(i, j)]['affinity'] = a_rv
         network.edges[(i, j)]['tokens'] = a_rv * \
-            network.nodes[i]['holdings_nonvesting'].value
+            network.nodes[i]['item'].holdings_nonvesting.value
         network.edges[(i, j)]['conviction'] = 0
         network.edges[(i, j)]['type'] = 'support'
 
@@ -538,15 +538,15 @@ def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step,
     participants = get_participants(network)
     proposals = get_proposals(network)
     candidate_proposals = [
-        j for j in proposals if network.nodes[j]['status'] == 'candidate']
+        j for j in proposals if network.nodes[j]['item'].status == ProposalStatus.CANDIDATE]
     sentiment_sensitivity = params[0]['sentiment_sensitivity']
 
     delta_holdings = {}
     proposals_supported = {}
     for i in participants:
-        engagement_rate = .3*network.nodes[i]['sentiment']
+        engagement_rate = .3*network.nodes[i]['item'].sentiment
         if np.random.rand() < engagement_rate:
-            force = network.nodes[i]['sentiment']-sentiment_sensitivity
+            force = network.nodes[i]['item'].sentiment-sentiment_sensitivity
             # because implementing "vesting+nonvesting holdings" calculation is best done outside the scope of this function
             delta_holdings[i] = np.random.rand()*force
 
@@ -577,13 +577,13 @@ def update_holdings_nonvesting_of_participants(params, step, sL, s, _input):
     proposals_supported = _input['proposals_supported']
     alpha = params[0]['alpha']
     candidates = [j for j in proposals if network.nodes[j]
-                  ['status'] == 'candidate']
+                  ['item'].status == ProposalStatus.CANDIDATE]
     min_support = params[0]['min_supp']
 
     # Update the participants holdings
     participants = get_participants(network)
     for i in participants:
-        network.nodes[i]["holdings_nonvesting"].value += _input["delta_holdings"][i]
+        network.nodes[i]['item'].holdings_nonvesting.value += _input["delta_holdings"][i]
         supported = proposals_supported[i]
         total_affinity = np.sum(
             [network.edges[(i, j)]['affinity'] for j in supported])
@@ -592,7 +592,7 @@ def update_holdings_nonvesting_of_participants(params, step, sL, s, _input):
                 normalized_affinity = network.edges[(
                     i, j)]['affinity']/total_affinity
                 network.edges[(i, j)]['tokens'] = normalized_affinity * \
-                    network.nodes[i]['holdings_nonvesting'].value
+                    network.nodes[i]['item'].holdings_nonvesting.value
             else:
                 network.edges[(i, j)]['tokens'] = 0
 
@@ -607,5 +607,5 @@ def update_holdings_nonvesting_of_participants(params, step, sL, s, _input):
         total_tokens = np.sum([network.edges[(i, j)]['tokens']
                                for i in participants])
         if total_tokens < min_support:
-            network.nodes[j]['status'] = 'killed'
+            network.nodes[j]['item'].status = ProposalStatus.FAILED
     return ("network", network)
