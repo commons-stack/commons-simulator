@@ -6,7 +6,7 @@ from convictionvoting import trigger_threshold
 from IPython.core.debugger import set_trace
 from functools import wraps
 import pprint as pp
-from entities import Participant, Proposal
+from entities import Participant, Proposal, ProposalStatus
 
 
 def dump_output(f):
@@ -79,13 +79,11 @@ def add_proposals_and_relationships_to_network(n: nx.DiGraph, proposals: int, fu
     participant_count = len(n)
     for i in range(proposals):
         j = participant_count + i
-        n.add_node(j, type="proposal", conviction=0,
-                   status="candidate", age=0)
-
         r_rv = gamma.rvs(3, loc=0.001, scale=10000)
-        n.nodes[j]['funds_requested'] = r_rv
-        n.nodes[j]['trigger'] = trigger_threshold(
-            r_rv, funding_pool, token_supply)
+
+        proposal = Proposal(funds_requested=r_rv, trigger=trigger_threshold(
+            r_rv, funding_pool, token_supply))
+        n.add_node(j, item=proposal)
 
         for i in range(participant_count):
             n.add_edge(i, j)
@@ -124,16 +122,11 @@ def gen_new_participant(network, new_participant_tokens):
     i = len([node for node in network.nodes])
 
     network.add_node(i)
-    network.nodes[i]['type'] = "participant"
-
-    s_rv = np.random.rand()
-    network.nodes[i]['sentiment'] = s_rv
-    network.nodes[i]['holdings_vesting'] = None
-    network.nodes[i]['holdings_nonvesting'] = TokenBatch(
-        new_participant_tokens)
+    network.nodes[i]['item'] = Participant(
+        holdings_vesting=None, holdings_nonvesting=TokenBatch(new_participant_tokens))
 
     # Connect this new participant to existing proposals.
-    for j in get_nodes_by_type(network, 'proposal'):
+    for j in get_proposals(network):
         network.add_edge(i, j)
 
         rv = np.random.rand()
@@ -149,20 +142,14 @@ def gen_new_participant(network, new_participant_tokens):
 
 def gen_new_proposal(network, funds, supply, trigger_func, scale_factor=1.0/100):
     j = len([node for node in network.nodes])
-    network.add_node(j)
-    network.nodes[j]['type'] = "proposal"
-
-    network.nodes[j]['conviction'] = 0
-    network.nodes[j]['status'] = 'candidate'
-    network.nodes[j]['age'] = 0
 
     rescale = funds*scale_factor
     r_rv = gamma.rvs(3, loc=0.001, scale=rescale)
-    network.nodes[j]['funds_requested'] = r_rv
+    proposal = Proposal(funds_requested=r_rv,
+                        trigger=trigger_func(r_rv, funds, supply))
+    network.add_node(j, item=proposal)
 
-    network.nodes[j]['trigger'] = trigger_func(r_rv, funds, supply)
-
-    participants = get_nodes_by_type(network, 'participant')
+    participants = get_participants(network)
     proposing_participant = np.random.choice(participants)
 
     for i in participants:
@@ -183,8 +170,8 @@ def gen_new_proposal(network, funds, supply, trigger_func, scale_factor=1.0/100)
 
 def calc_total_funds_requested(network):
     proposals = get_proposals(network)
-    fund_requests = [network.nodes[j]['funds_requested']
-                     for j in proposals if network.nodes[j]['status'] == 'candidate']
+    fund_requests = [network.nodes[j]["item"].funds_requested
+                     for j in proposals if network.nodes[j]["item"].status == ProposalStatus.CANDIDATE]
     total_funds_requested = np.sum(fund_requests)
     return total_funds_requested
 
@@ -276,16 +263,16 @@ def add_participants_proposals_to_network(params, step, sL, s, _input):
         network = gen_new_proposal(network, funds, supply, trigger_func)
 
     # update age of the existing proposals
-    proposals = get_nodes_by_type(network, 'proposal')
+    proposals = get_proposals(network)
 
     for j in proposals:
-        network.nodes[j]['age'] = network.nodes[j]['age']+1
-        if network.nodes[j]['status'] == 'candidate':
-            requested = network.nodes[j]['funds_requested']
-            network.nodes[j]['trigger'] = trigger_func(
+        network.nodes[j]["item"].age = network.nodes[j]["item"].age+1
+        if network.nodes[j]["item"].status == 'candidate':
+            requested = network.nodes[j]["item"].funds_requested
+            network.nodes[j]["item"].trigger = trigger_func(
                 requested, funds, supply)
         else:
-            network.nodes[j]['trigger'] = np.nan
+            network.nodes[j]["item"].trigger = np.nan
 
     key = 'network'
     value = network
@@ -306,19 +293,26 @@ def new_participants_and_new_funds_commons(params, step, sL, s, _input):
 
 
 def make_active_proposals_complete_or_fail_randomly(params, step, sL, s):
+    """
+    Whether a proposal completes or fails depends on its grant size.
+
+    If it has a large grant size, it fails more often or less often? I have no
+    idea
+    """
     network = s['network']
     proposals = get_proposals(network)
 
     completed = []
     failed = []
     for j in proposals:
-        if network.nodes[j]['status'] == 'active':
-            grant_size = network.nodes[j]['funds_requested']
-            base_completion_rate = params[0]['base_completion_rate']
-            likelihood = 1.0/(base_completion_rate+np.log(grant_size))
+        if network.nodes[j]['item'].status == ProposalStatus.ACTIVE:
+            grant_size = network.nodes[j]['item'].funds_requested
 
+            base_completion_rate = params[0]['base_completion_rate']
             base_failure_rate = params[0]['base_failure_rate']
+            likelihood = 1.0/(base_completion_rate+np.log(grant_size))
             failure_rate = 1.0/(base_failure_rate+np.log(grant_size))
+
             if np.random.rand() < likelihood:
                 completed.append(j)
             elif np.random.rand() < failure_rate:
@@ -335,35 +329,48 @@ def get_sentimental(sentiment, force, decay=0):
 
 
 def sentiment_decays_wo_completed_proposals(params, step, sL, s, _input):
+    """
+    The policy before has determined which active proposals are going to
+    complete/fail. The assumption here seems to be that larger grants will
+    affect sentiment more if they succeed/fail.
+
+    force = grants_completed - grants_failed
+            ________________________________
+                    grants_outstanding
+
+    This force pushes the sentiment up, but the max value of force can only be
+    1. I am not sure how sentiment decays naturally without a force holding it
+       up.
+    """
+    def calculate_force(grants_completed, grants_failed, grants_outstanding):
+        if grants_outstanding > 0:
+            force = (grants_completed-grants_failed)/grants_outstanding
+        else:
+            force = 1
+        return force
+
     network = s['network']
     proposals = get_proposals(network)
     completed = _input['completed']
     failed = _input['failed']
 
-    grants_outstanding = np.sum([network.nodes[j]['funds_requested']
-                                 for j in proposals if network.nodes[j]['status'] == 'active'])
+    grants_outstanding = np.sum([network.nodes[j]['item'].funds_requested
+                                 for j in proposals if network.nodes[j]['item'].status == ProposalStatus.ACTIVE])
     grants_completed = np.sum(
-        [network.nodes[j]['funds_requested'] for j in completed])
+        [network.nodes[j]['item'].funds_requested for j in completed])
     grants_failed = np.sum(
-        [network.nodes[j]['funds_requested'] for j in failed])
+        [network.nodes[j]['item'].funds_requested for j in failed])
 
     sentiment = s['sentiment']
-
-    if grants_outstanding > 0:
-        force = (grants_completed-grants_failed)/grants_outstanding
-    else:
-        force = 1
-
     mu = params[0]['sentiment_decay']
+    force = calculate_force(
+        grants_completed, grants_failed, grants_outstanding)
     if (force >= 0) and (force <= 1):
         sentiment = get_sentimental(sentiment, force, mu)
     else:
         sentiment = get_sentimental(sentiment, 0, mu)
 
-    key = 'sentiment'
-    value = sentiment
-
-    return (key, value)
+    return 'sentiment', sentiment
 
 
 def update_network_w_proposal_status(params, step, sL, s, _input):
@@ -407,7 +414,7 @@ def update_network_w_proposal_status(params, step, sL, s, _input):
 def calculate_conviction(params, step, sL, s):
     def sort_proposals_by_conviction(network, proposals):
         ordered = sorted(
-            proposals, key=lambda j: network.nodes[j]['conviction'], reverse=True)
+            proposals, key=lambda j: network.nodes[j]['item'].conviction, reverse=True)
         return ordered
     network = s['network']
     funding_pool = s['funding_pool']
@@ -420,13 +427,13 @@ def calculate_conviction(params, step, sL, s):
     triggers = {}
     funds_to_be_released = 0
     for j in proposals:
-        if network.nodes[j]['status'] == 'candidate':
-            requested = network.nodes[j]['funds_requested']
-            age = network.nodes[j]['age']
+        if network.nodes[j]['item'].status == ProposalStatus.CANDIDATE:
+            requested = network.nodes[j]['item'].funds_requested
+            age = network.nodes[j]['item'].age
 
             threshold = trigger_func(requested, funding_pool, token_supply)
             if age > min_proposal_age:
-                conviction = network.nodes[j]['conviction']
+                conviction = network.nodes[j]['item'].conviction
                 if conviction > threshold:
                     accepted.append(j)
                     funds_to_be_released = funds_to_be_released + requested
@@ -444,9 +451,9 @@ def calculate_conviction(params, step, sL, s):
             accepted = []
             release = 0
             ind = 0
-            while release + network.nodes[ordered[ind]]['funds_requested'] < funding_pool:
+            while release + network.nodes[ordered[ind]]['item'].funds_requested < funding_pool:
                 accepted.append(ordered[ind])
-                release = network.nodes[ordered[ind]]['funds_requested']
+                release = network.nodes[ordered[ind]]['item'].funds_requested
                 ind = ind+1
 
     return({'accepted': accepted, 'triggers': triggers})
@@ -458,11 +465,9 @@ def decrement_commons_funding_pool(params, step, sL, s, _input):
     accepted = _input['accepted']
 
     for j in accepted:
-        commons.spend(network.nodes[j]['funds_requested'])
+        commons.spend(network.nodes[j]['item'].funds_requested)
 
-    key = 'commons'
-    value = commons
-    return (key, value)
+    return 'commons', commons
 
 
 def update_sentiment_on_release(params, step, sL, s, _input):
@@ -470,10 +475,10 @@ def update_sentiment_on_release(params, step, sL, s, _input):
     proposals = get_proposals(network)
     accepted = _input['accepted']
 
-    proposals_outstanding = np.sum([network.nodes[j]['funds_requested']
-                                    for j in proposals if network.nodes[j]['status'] == 'candidate'])
+    proposals_outstanding = np.sum([network.nodes[j]['item'].funds_requested
+                                    for j in proposals if network.nodes[j]['item'].status == ProposalStatus.CANDIDATE])
     proposals_accepted = np.sum(
-        [network.nodes[j]['funds_requested'] for j in accepted])
+        [network.nodes[j]['item'].funds_requested for j in accepted])
 
     sentiment = s['sentiment']
     force = proposals_accepted/proposals_outstanding
@@ -482,9 +487,7 @@ def update_sentiment_on_release(params, step, sL, s, _input):
     else:
         sentiment = get_sentimental(sentiment, 0, False)
 
-    key = 'sentiment'
-    value = sentiment
-    return (key, value)
+    return 'sentiment', sentiment
 
 
 def update_proposals(params, step, sL, s, _input):
