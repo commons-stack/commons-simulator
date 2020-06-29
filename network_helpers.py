@@ -31,10 +31,6 @@ def dump_input(f):
     return wrapper
 
 
-def get_nodes_by_type(g, node_type_selection):
-    return [node for node in g.nodes if g.nodes[node]['type'] == node_type_selection]
-
-
 def get_edges_by_type(g, edge_type_selection):
     return [edge for edge in g.edges if g.edges[edge]['type'] == edge_type_selection]
 
