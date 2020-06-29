@@ -48,6 +48,11 @@ def get_participants(network):
 
 
 def initial_social_network(network: nx.DiGraph, scale=1, sigmas=3) -> nx.DiGraph:
+    """
+    Every Participant has influence on other Participants.
+
+    TODO: how is the influence distributed? rv seems to mean random value...
+    """
     participants = get_participants(network)
 
     for i in participants:
@@ -62,6 +67,12 @@ def initial_social_network(network: nx.DiGraph, scale=1, sigmas=3) -> nx.DiGraph
 
 
 def initial_conflict_network(network: nx.DiGraph, rate=.25) -> nx.DiGraph:
+    """
+    Supporting one Proposal may mean going against another Proposal.
+
+    TODO: really how often does this happen? how can we be sure this is
+    represented accurately?
+    """
     proposals = get_proposals(network)
 
     for i in proposals:
@@ -119,6 +130,14 @@ def update_funding_pool(params, step, sL, s, _input):
 
 
 def gen_new_participant(network, new_participant_tokens):
+    """
+    Create a Participant, and link him to existing Proposals.
+
+    TODO: edges.tokens seems to be the total value of his nonvesting holdings -
+    how can we verify that a_rv is distributing his sum total of nonvesting
+    tokens over the existing proposals? How can we be sure that a_rv ensures that
+    all of his tokens are staked?
+    """
     i = len([node for node in network.nodes])
 
     network.add_node(i)
@@ -141,6 +160,12 @@ def gen_new_participant(network, new_participant_tokens):
 
 
 def gen_new_proposal(network, funds, supply, trigger_func, scale_factor=1.0/100):
+    """
+    Add a new Proposal to the network. Connect it with all Participants.
+
+    If the Participant is the one who made this Proposal, his affinity for it is
+    1.
+    """
     j = len([node for node in network.nodes])
 
     rescale = funds*scale_factor
@@ -190,6 +215,17 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
     sentiment = s['sentiment']
 
     def randomly_gen_new_participant(participant_count, sentiment, current_token_supply, commons):
+        """
+        If the Commons sentiment is high (as given by calling function), then
+        more Participants will be generated?
+
+        Randomly generate the amount of collateral that the new Participant puts
+        into the funding pool. Calcualte how many tokens he would get for that
+        price, without actually updating Commons. That will be done by the state
+        update functions.
+
+        TODO: so, the higher the sentiment, the lower the arrival rate?
+        """
         arrival_rate = 10/(1+sentiment)
         rv1 = np.random.rand()
         new_participant = bool(rv1 < 1/arrival_rate)
@@ -207,6 +243,11 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
             return new_participant, 0, 0
 
     def randomly_gen_new_proposal(total_funds_requested, median_affinity, funding_pool):
+        """
+        TODO: So, how the hell does the affinity affect proposal rate again?
+        TODO: total_funds_requested/funding_pool - how should that affect proposal rate?
+        """
+
         proposal_rate = 1/median_affinity * \
             (1+total_funds_requested/funding_pool)
         rv2 = np.random.rand()
@@ -218,6 +259,8 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
         Each step, more funding comes to the Commons through the exit tribute,
         because after the hatching phase, all incoming money goes to the
         collateral reserve, not to the funding pool.
+
+        TODO: how does scale factor change the funds_arrival? how do we know that's realistic?
         """
         scale_factor = funds*sentiment**2/10000
         if scale_factor < 1:
@@ -246,6 +289,17 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
 
 
 def add_participants_proposals_to_network(params, step, sL, s, _input):
+    """
+    If the policy function has decided to generate a new participant, add one to
+    the network. Same for the proposal.
+
+    TODO: the following functionality should not belong in the same function,
+    but has to because cadCAD only allows one state update function per state
+    variable per substep.
+
+    For each Proposal, update its age and update its conviction threshold (to pass).
+    BUG: isn't this already calculated/updated elsewhere? How to deal with this? Is this intentional?
+    """
     network = s['network']
     funds = s['funding_pool']
     supply = s['token_supply']
@@ -296,8 +350,7 @@ def make_active_proposals_complete_or_fail_randomly(params, step, sL, s):
     """
     Whether a proposal completes or fails depends on its grant size.
 
-    If it has a large grant size, it fails more often or less often? I have no
-    idea
+    If it has a large grant size, it is harder for it to pass.
     """
     network = s['network']
     active_proposals = get_proposals(network, status=ProposalStatus.ACTIVE)
@@ -411,6 +464,18 @@ def update_network_w_proposal_status(params, step, sL, s, _input):
 
 
 def calculate_conviction(params, step, sL, s):
+    """
+    Look at all the candidate proposals.
+
+    Calculate their new conviction thresholds (they change depending on the
+    funding_pool and token_supply) - if the Proposal's conviction is above this
+    threshold, it is accepted.
+
+    Proposals need to be a minimum age before they can get accepted.
+
+    But if accepting these new proposals would empty the funding pool,
+    prioritize Proposals with the highest conviction.
+    """
     def sort_proposals_by_conviction(network, proposals):
         ordered = sorted(
             proposals, key=lambda j: network.nodes[j]['item'].conviction, reverse=True)
@@ -533,6 +598,13 @@ def update_proposals(params, step, sL, s, _input):
 
 
 def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step, sL, s):
+    """
+    The higher a Participant's sentiment, the more he will interact with the Commons.
+
+    TODO: don't quite understand sentiment_sensitivity
+    TODO: don't quite understand how his affinity makes him interact with proposals and cutoff
+    """
+
     network = s['network']
     participants = get_participants(network)
     candidate_proposals = get_proposals(
@@ -570,6 +642,17 @@ def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step,
 
 
 def update_holdings_nonvesting_of_participants(params, step, sL, s, _input):
+    """
+    The function before has told us how much each Participant has decided to
+    increase his nonvesting_holdings.
+
+    The Participant will distribute his tokens across the Proposals that he
+    supports, proportional to his affinity to each Proposal.
+
+    But this function is not just about the participants. The function before
+    has told us what are the new conviction values for each candidate Proposal.
+    If they're below a minimum value, then the Proposal is marked as failed.
+    """
     network = s['network']
     candidates = get_proposals(network, status=ProposalStatus.CANDIDATE)
     proposals_supported = _input['proposals_supported']
