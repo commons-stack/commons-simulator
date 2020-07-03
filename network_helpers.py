@@ -58,7 +58,14 @@ def initial_social_network(network: nx.DiGraph, scale=1, sigmas=3) -> nx.DiGraph
     for i in participants:
         for j in participants:
             if not(j == i):
+                # This exponential distribution gives you a lot more values
+                # smaller than 1, but quite a few outliers that could go all the
+                # way up to even 8.
                 influence_rv = expon.rvs(loc=0.0, scale=scale)
+                # Unless your influence is 3 standard deviations above the norm,
+                # you don't have any influence at all. Scale seems to just be
+                # something needed by the expon.rvs(). Probably makes sense to
+                # modify sigma, not scale.
                 if influence_rv > scale+sigmas*scale**2:
                     network.add_edge(i, j)
                     network.edges[(i, j)]['influence'] = influence_rv
@@ -78,15 +85,20 @@ def initial_conflict_network(network: nx.DiGraph, rate=.25) -> nx.DiGraph:
     for i in proposals:
         for j in proposals:
             if not(j == i):
+                # (rate=0.25) means 25% of other Proposals are going to conflict with this particular Proposal
                 conflict_rv = np.random.rand()
                 if conflict_rv < rate:
                     network.add_edge(i, j)
+                    # the 25% of Proposals that do conflict, conflict A LOT. (might wanna change this)
                     network.edges[(i, j)]['conflict'] = 1-conflict_rv
                     network.edges[(i, j)]['type'] = 'conflict'
     return network
 
 
 def add_proposals_and_relationships_to_network(n: nx.DiGraph, proposals: int, funding_pool: float, token_supply: float) -> nx.DiGraph:
+    """
+
+    """
     participant_count = len(n)
     for i in range(proposals):
         j = participant_count + i
@@ -100,6 +112,11 @@ def add_proposals_and_relationships_to_network(n: nx.DiGraph, proposals: int, fu
             n.add_edge(i, j)
             rv = np.random.rand()
             a_rv = 1-4*(1-rv)*rv  # polarized distribution
+            # Token Holder -> Proposal Relationship
+            # Looks like Zargham skewed this distribution heavily towards
+            # numbers smaller than 0.25 This is the affinity towards proposals.
+            # Most Participants won't care about most proposals, but then there
+            # will be a few Proposals that they really care about.
             n.edges[(i, j)]['affinity'] = a_rv
             n.edges[(i, j)]['tokens'] = 0
             n.edges[(i, j)]['conviction'] = 0
@@ -126,6 +143,18 @@ def update_funding_pool(params, step, sL, s, _input):
     commons = s["commons"]
     s["funding_pool"] = commons._funding_pool
     return "funding_pool", commons._funding_pool
+
+
+def print_proposal_status(params, step, sL, s, _input):
+    network = s["network"]
+    candidates = len(get_proposals(network, status=ProposalStatus.CANDIDATE))
+    active = len(get_proposals(network, status=ProposalStatus.ACTIVE))
+    completed = len(get_proposals(network, status=ProposalStatus.COMPLETED))
+    failed = len(get_proposals(network, status=ProposalStatus.FAILED))
+    print("Proposals: CANDIDATE {} ACTIVE {} COMPLETED {} FAILED {}".format(
+        candidates, active, completed, failed))
+    return "network", network
+
 # =========================================================================================================
 
 
@@ -150,9 +179,10 @@ def gen_new_participant(network, new_participant_tokens):
 
         rv = np.random.rand()
         a_rv = 1-4*(1-rv)*rv  # polarized distribution
+        # give him default affinity: some Proposals he likes a lot, but most of them are meh
         network.edges[(i, j)]['affinity'] = a_rv
         network.edges[(i, j)]['tokens'] = a_rv * \
-            network.nodes[i]['item'].holdings_nonvesting.value
+            network.nodes[i]['item'].holdings_nonvesting.value  # simply proportional to how many tokens he has already
         network.edges[(i, j)]['conviction'] = 0
         network.edges[(i, j)]['type'] = 'support'
 
@@ -177,6 +207,7 @@ def gen_new_proposal(network, funds, supply, trigger_func, scale_factor=1.0/100)
     participants = get_participants(network)
     proposing_participant = np.random.choice(participants)
 
+    # TODO: does this need to be the same code as gen_new_participant? maybe can break this out
     for i in participants:
         network.add_edge(i, j)
         if i == proposing_participant:
@@ -211,7 +242,7 @@ def calc_median_affinity(network):
 def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
     network = s['network']
     commons = s['commons']
-    funds = s['funding_pool']
+    funding_pool = s['funding_pool']
     sentiment = s['sentiment']
 
     def randomly_gen_new_participant(participant_count, sentiment, current_token_supply, commons):
@@ -227,8 +258,11 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
         TODO: so, the higher the sentiment, the lower the arrival rate?
         """
         arrival_rate = 10/(1+sentiment)
+        # this is going to be between 5-10, based on the sentiment
         rv1 = np.random.rand()
         new_participant = bool(rv1 < 1/arrival_rate)
+        # so it's going to be 10-20% of the time
+        # the actual arrival rate is 1/'arrival_rate', so this is just bad naming
 
         if new_participant:
             # Below line is quite different from Zargham's original, which gave
@@ -236,6 +270,9 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
             # post-Hatch investment, in DAI/USD. Here the settings for
             # expon.rvs() should generate investments of ~0-500 DAI.
             new_participant_investment = expon.rvs(loc=0.0, scale=100)
+            # expon.rvs(scale=) so scale is actually the size of the standard
+            # deviation. loc is the smallest amount of investment, so if
+            # loc=100, there will be no investments less than 100.
             new_participant_tokens = commons.dai_to_tokens(
                 new_participant_investment)
             return new_participant, new_participant_investment, new_participant_tokens
@@ -247,22 +284,44 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
         TODO: So, how the hell does the affinity affect proposal rate again?
         TODO: total_funds_requested/funding_pool - how should that affect proposal rate?
         """
-
+        # 1/median affinity: how much do Participants like the Proposals that
+        # are already out there This number has to be multiplied by a number
+        # greater than 1.
+        #
+        # IF the median affinity is high, the Proposal Rate
+        # should be high. If the ratio of funds_requested in CANDIDATE proposals
+        # is much lower than the funding pool, then people are just going to pour in more Proposals
         proposal_rate = 1/median_affinity * \
             (1+total_funds_requested/funding_pool)
         rv2 = np.random.rand()
         new_proposal = bool(rv2 < 1/proposal_rate)
         return new_proposal
 
-    def randomly_gen_new_funding(funds, sentiment):
+    def randomly_gen_new_funding(funding_pool, sentiment):
         """
-        Each step, more funding comes to the Commons through the exit tribute,
-        because after the hatching phase, all incoming money goes to the
-        collateral reserve, not to the funding pool.
+        Calculates the funding that comes to the Commons from speculators'
+        trades. Remember after the hatching phase, all incoming money goes to
+        the collateral reserve, not to the funding pool.
 
-        TODO: how does scale factor change the funds_arrival? how do we know that's realistic?
+        TODO: how does scale factor change the funds_arrival? how do we know
+        that's realistic?
         """
-        scale_factor = funds*sentiment**2/10000
+        # More like divide the funding pool by 10000, * sentiment^2. It's to
+        # anchor the funding pool around 10000, so if funding pool is bigger
+        # than 10000 then the scaling factor will mostly be bigger than 1. we
+        # can experiment with setting exit tribute at 1%, see if speculators
+        # like that more.
+        #
+        # So if the Commons has less than 10000, speculators might be saying
+        # "this is dead in the water or dying soon" and won't touch it.
+        #
+        # We should also make this variable more visible, "funding coming in to
+        # Commons through speculation", probably put this into the state
+        # variable. Because having money in the funding pool is a good indicator
+        # of project health. Because an org can also take money in its funding
+        # pool and put it into the collateral pool, minting more tokens and
+        # raising the price.
+        scale_factor = (funding_pool*sentiment**2)/10000
         if scale_factor < 1:
             scale_factor = 1
 
@@ -277,9 +336,9 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
         len(get_participants(network)), sentiment, s['token_supply'], commons)
 
     new_proposal = randomly_gen_new_proposal(
-        calc_total_funds_requested(network), calc_median_affinity(network), funds)
+        calc_total_funds_requested(network), calc_median_affinity(network), funding_pool)
 
-    funds_arrival = randomly_gen_new_funding(funds, sentiment)
+    funds_arrival = randomly_gen_new_funding(funding_pool, sentiment)
 
     return({'new_participant': new_participant,
             'new_participant_investment': new_participant_investment,
@@ -303,7 +362,6 @@ def add_participants_proposals_to_network(params, step, sL, s, _input):
     network = s['network']
     funds = s['funding_pool']
     supply = s['token_supply']
-
     trigger_func = params[0]["trigger_threshold"]
 
     new_participant = _input['new_participant']  # T/F
@@ -316,12 +374,16 @@ def add_participants_proposals_to_network(params, step, sL, s, _input):
     if new_proposal:
         network = gen_new_proposal(network, funds, supply, trigger_func)
 
-    # update age of the existing proposals
+    # TODO: this needs to be done elsewhere, this is just bookkeeping. Perhaps
+    # Proposal.age++, Proposal.update_trigger(), or a separate state update
+    # function in another cadCAD substep.
+    #
+    #  Update age of existing Proposals, and thus the trigger.
     proposals = get_proposals(network)
 
     for j in proposals:
         network.nodes[j]["item"].age = network.nodes[j]["item"].age+1
-        if network.nodes[j]["item"].status == 'candidate':
+        if network.nodes[j]["item"].status == ProposalStatus.CANDIDATE:
             requested = network.nodes[j]["item"].funds_requested
             network.nodes[j]["item"].trigger = trigger_func(
                 requested, funds, supply)
@@ -348,9 +410,12 @@ def new_participants_and_new_funds_commons(params, step, sL, s, _input):
 
 def make_active_proposals_complete_or_fail_randomly(params, step, sL, s):
     """
-    Whether a proposal completes or fails depends on its grant size.
+    Whether a proposal completes or fails depends on its grant size. If it has a
+    large grant size, it is harder for it to pass or fail, because huge things
+    take time to move or get to a specific conclusion.
 
-    If it has a large grant size, it is harder for it to pass.
+    BUG: base_completion_rate, base_failure_rate were never in params! we
+    probably never hit this because proposals weren't becomiong active.
     """
     network = s['network']
     active_proposals = get_proposals(network, status=ProposalStatus.ACTIVE)
@@ -362,7 +427,12 @@ def make_active_proposals_complete_or_fail_randomly(params, step, sL, s):
 
         base_completion_rate = params[0]['base_completion_rate']
         base_failure_rate = params[0]['base_failure_rate']
+        # when base_completion_rate = 100, the completion rate will be 1%,
+        # fudged a little bit by the grant size.
         likelihood = 1.0/(base_completion_rate+np.log(grant_size))
+        # same thing for the failure rate, except now the failure rate is 0.5%.
+        # Basically we are assuming that Proposals are half as likely to fail as
+        # to succeed.
         failure_rate = 1.0/(base_failure_rate+np.log(grant_size))
 
         if np.random.rand() < likelihood:
@@ -373,6 +443,10 @@ def make_active_proposals_complete_or_fail_randomly(params, step, sL, s):
 
 
 def get_sentimental(sentiment, force, decay=0):
+    """
+    Sentiment goes down by, say, 10% each timestep, (look at the decay variable)
+    but is replenished by the force, which is added to the sentiment.
+    """
     mu = decay
     sentiment = sentiment*(1-mu) + force
     if sentiment > 1:
@@ -390,9 +464,10 @@ def sentiment_decays_wo_completed_proposals(params, step, sL, s, _input):
             ________________________________
                     grants_outstanding
 
-    This force pushes the sentiment up, but the max value of force can only be
-    1. I am not sure how sentiment decays naturally without a force holding it
-       up.
+    This force pushes the sentiment up, but the max value of force can only be 1
+
+    BUG: actually sentiment goes up when price goes up! just look at the price
+    of ETH, BTC, even if things are getting done.
     """
     def calculate_force(grants_completed, grants_failed, grants_outstanding):
         if grants_outstanding > 0:
@@ -426,12 +501,29 @@ def sentiment_decays_wo_completed_proposals(params, step, sL, s, _input):
 
 
 def update_network_w_proposal_status(params, step, sL, s, _input):
+    """
+    Update the participant's affinity to each proposal.
+    If the Proposal was completed, then the Participant gets a nice boost to his sentiment.
+    If the Proposal failed, then the Participant's sentiment gets a negative force.
+
+    TODO: For a completed Proposal, its competing Proposals will now have less affinity from all Participants?
+    Participant's Affinity to a Proposal =       affinity
+                                          _______________________
+                                               1 - conflict
+    BUG: The Participant's sentiment is not being updated correctly! Fix that
+    """
     network = s['network']
     participants = get_participants(network)
     proposals = get_proposals(network)
     competitors = get_edges_by_type(network, 'conflict')
     completed = _input['completed']
     for j in completed:
+        # When a Proposal completes, then there is less need for the other
+        # Proposals that conflicted with it. Thus the Participants' affinities
+        # to the competing Proposals would drop.
+        #
+        # TODO: Competing Proposals should also get a negative nudge when a
+        # Proposal becomes ACTIVE.
         network.nodes[j]['status'] = 'completed'
 
         for c in proposals:
@@ -535,17 +627,34 @@ def decrement_commons_funding_pool(params, step, sL, s, _input):
 
 
 def update_sentiment_on_release(params, step, sL, s, _input):
+    """
+    When a Proposal becomes ACTIVE, this can only be a positive boost to the
+    Commons' sentiment. The question is only how much.
+
+    If the size (measured by funds allocated) of Active Proposals is larger than
+    Proposals waiting to be funded, then there is a positive boost to the
+    sentiment (force).
+
+    By now it is obvious that there is no standard calculation of "force". It
+    just has to be 0 < force < 1.
+
+    TODO: There is the Commons sentiment (here), and there is the
+    Participant.sentiment. This is confusing. At least rename, but probably
+    better to rethink this.
+
+    TODO: rename is misleading... it means "funding proposals"
+    """
     network = s['network']
     candidates = get_proposals(network, status=ProposalStatus.CANDIDATE)
-    accepted = _input['accepted']
+    active = _input['accepted']
 
-    proposals_outstanding = np.sum([network.nodes[j]['item'].funds_requested
-                                    for j in candidates])
-    proposals_accepted = np.sum(
-        [network.nodes[j]['item'].funds_requested for j in accepted])
+    proposals_candidate = np.sum([network.nodes[j]['item'].funds_requested
+                                  for j in candidates])
+    proposals_active = np.sum(
+        [network.nodes[j]['item'].funds_requested for j in active])
 
     sentiment = s['sentiment']
-    force = proposals_accepted/proposals_outstanding
+    force = proposals_active/proposals_candidate
     if (force >= 0) and (force <= 1):
         sentiment = get_sentimental(sentiment, force, False)
     else:
@@ -555,6 +664,22 @@ def update_sentiment_on_release(params, step, sL, s, _input):
 
 
 def update_proposals(params, step, sL, s, _input):
+    """
+    Proposals: once they've been voted in, clear the conviction value and set
+    their status to "Active". The tokens staked on this Proposal are set to 0
+    and the conviction gathered by a Participant on a particular Proposal is
+    also set to NaN.
+
+    Let's look at Participants' relationships to other, non-accepted Proposals
+    BUG: does this include hitherto FAILED/COMPLETED/CANDIDATE Proposals?
+
+    If the Participant has no relationship to any other Proposals, force is 0
+    and his sentiment will not change (because the decay is set to 0)
+    If he has relationships to other Proposals, take the largest affinity he has...
+    force affecting Participant's sentiment =     affinity (to a particular
+    Proposal) - sentiment_sensitivity * max_affinity
+    TODO: Why is it calculated this way?
+    """
     network = s['network']
     accepted = _input['accepted']
     triggers = _input['triggers']
@@ -568,8 +693,8 @@ def update_proposals(params, step, sL, s, _input):
 
     # bookkeeping conviction and participant sentiment
     for j in accepted:
-        network.nodes[j]['status'] = 'active'
-        network.nodes[j]['conviction'] = np.nan
+        network.nodes[j]['item'].status = ProposalStatus.ACTIVE
+        network.nodes[j]['item'].conviction = np.nan
         # change status to active
         for i in participants:
             # operating on edge = (i,j)
@@ -577,19 +702,28 @@ def update_proposals(params, step, sL, s, _input):
             network.edges[(i, j)]['tokens'] = 0
             network.edges[(i, j)]['conviction'] = np.nan
 
-            # update participants sentiments (positive or negative)
+            # The Participant's sentiment should change when a Proposal gets
+            # accepted. Calculate the force at which the sentiment changes based
+            # on his affinity.
+            #
+            # BUG: what about Proposals that the Participant
+            # didn't like? No mention of negative affinities so far... or is
+            # that elsewhere?
             affinities = [network.edges[(i, p)]['affinity']
                           for p in proposals if not(p in accepted)]
             if len(affinities) > 1:
                 max_affinity = np.max(affinities)
+                # TODO: force CAN be negative after all, if you realize that
+                # affinity can be 0. But this is not expressed anywhere
+                # explicitly.
                 force = network.edges[(i, j)]['affinity'] - \
                     sentiment_sensitivity*max_affinity
             else:
                 force = 0
 
             # based on what their affinities to the accepted proposals
-            network.nodes[i]['sentiment'] = get_sentimental(
-                network.nodes[i]['sentiment'], force, False)
+            network.nodes[i]['item'].sentiment = get_sentimental(
+                network.nodes[i]['item'].sentiment, force, 0)
 
     key = 'network'
     value = network
@@ -614,12 +748,18 @@ def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step,
     delta_holdings = {}
     proposals_supported = {}
     for i in participants:
+        # TODO: 30% engagement rate is kinda high
         engagement_rate = .3*network.nodes[i]['item'].sentiment
         if np.random.rand() < engagement_rate:
             force = network.nodes[i]['item'].sentiment-sentiment_sensitivity
             # because implementing "vesting+nonvesting holdings" calculation is best done outside the scope of this function
             delta_holdings[i] = np.random.rand()*force
 
+            # Put your tokens on your favourite Proposals, where favourite is
+            # calculated as 0.75 * (the affinity for the Proposal you like the
+            # most) e.g. if there are 2 Proposals that you have affinity 0.8,
+            # 0.9, then 0.75*0.9 = 0.675, so you will end up voting for both of
+            # these Proposals
             support = []
             for j in candidate_proposals:
                 affinity = network.edges[(i, j)]['affinity']
