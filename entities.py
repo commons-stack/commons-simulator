@@ -24,7 +24,7 @@ ProposalStatus = Enum("ProposalStatus", "CANDIDATE ACTIVE COMPLETED FAILED")
 
 
 class Proposal:
-    def __init__(self, funds_requested: int, trigger):
+    def __init__(self, funds_requested: int, trigger: float):
         self.name = "{} {}".format(
             random.choice(list(english_words_set)),
             random.choice(list(english_words_set)))
