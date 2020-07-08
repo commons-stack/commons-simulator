@@ -49,9 +49,8 @@ def get_participants(network):
 
 def initial_social_network(network: nx.DiGraph, scale=1, sigmas=3) -> nx.DiGraph:
     """
-    Every Participant has influence on other Participants.
-
-    TODO: how is the influence distributed? rv seems to mean random value...
+    Calculates the chances that a Participant is influential enough to have an
+    'influence' edge in the network to other Participants, and sets it up.
     """
     participants = get_participants(network)
 
@@ -62,10 +61,9 @@ def initial_social_network(network: nx.DiGraph, scale=1, sigmas=3) -> nx.DiGraph
                 # smaller than 1, but quite a few outliers that could go all the
                 # way up to even 8.
                 influence_rv = expon.rvs(loc=0.0, scale=scale)
-                # Unless your influence is 3 standard deviations above the norm,
-                # you don't have any influence at all. Scale seems to just be
-                # something needed by the expon.rvs(). Probably makes sense to
-                # modify sigma, not scale.
+                # Unless your influence is 3 standard deviations above the norm
+                # (where scale determines the size of the standard deviation),
+                # you don't have any influence at all.
                 if influence_rv > scale+sigmas*scale**2:
                     network.add_edge(i, j)
                     network.edges[(i, j)]['influence'] = influence_rv
@@ -75,21 +73,21 @@ def initial_social_network(network: nx.DiGraph, scale=1, sigmas=3) -> nx.DiGraph
 
 def initial_conflict_network(network: nx.DiGraph, rate=.25) -> nx.DiGraph:
     """
-    Supporting one Proposal may mean going against another Proposal.
-
-    TODO: really how often does this happen? how can we be sure this is
-    represented accurately?
+    Supporting one Proposal may mean going against another Proposal, in which
+    case a Proposal-Proposal conflict edge is created. This function calculates
+    the chances of that happening and the 'strength' of such a conflict.
     """
     proposals = get_proposals(network)
 
     for i in proposals:
         for j in proposals:
             if not(j == i):
-                # (rate=0.25) means 25% of other Proposals are going to conflict with this particular Proposal
+                # (rate=0.25) means 25% of other Proposals are going to conflict
+                # with this particular Proposal. And when they do conflict, the
+                # conflict number is high (at least 1 - 0.25 = 0.75).
                 conflict_rv = np.random.rand()
                 if conflict_rv < rate:
                     network.add_edge(i, j)
-                    # the 25% of Proposals that do conflict, conflict A LOT. (might wanna change this)
                     network.edges[(i, j)]['conflict'] = 1-conflict_rv
                     network.edges[(i, j)]['type'] = 'conflict'
     return network
@@ -97,7 +95,9 @@ def initial_conflict_network(network: nx.DiGraph, rate=.25) -> nx.DiGraph:
 
 def add_proposals_and_relationships_to_network(n: nx.DiGraph, proposals: int, funding_pool: float, token_supply: float) -> nx.DiGraph:
     """
-
+    At this point, there are Participants in the network but they are not
+    related to each other. This function adds Proposals as nodes and the
+    relationships between every Participant and these new Proposals.
     """
     participant_count = len(n)
     for i in range(proposals):
@@ -160,12 +160,7 @@ def print_proposal_status(params, step, sL, s, _input):
 
 def gen_new_participant(network, new_participant_tokens):
     """
-    Create a Participant, and link him to existing Proposals.
-
-    TODO: edges.tokens seems to be the total value of his nonvesting holdings -
-    how can we verify that a_rv is distributing his sum total of nonvesting
-    tokens over the existing proposals? How can we be sure that a_rv ensures that
-    all of his tokens are staked?
+    Create a new Participant, and calculate his relationship to existing Proposals.
     """
     i = len([node for node in network.nodes])
 
@@ -173,16 +168,17 @@ def gen_new_participant(network, new_participant_tokens):
     network.nodes[i]['item'] = Participant(
         holdings_vesting=None, holdings_nonvesting=TokenBatch(new_participant_tokens))
 
-    # Connect this new participant to existing proposals.
     for j in get_proposals(network):
         network.add_edge(i, j)
 
         rv = np.random.rand()
-        a_rv = 1-4*(1-rv)*rv  # polarized distribution
-        # give him default affinity: some Proposals he likes a lot, but most of them are meh
+        a_rv = 1-4*(1-rv)*rv
+        # Most Proposals he finds 'meh', but some Proposals he likes a lot. The
+        # amount of tokens he invests in a Proposal is proportional to his
+        # affinity for them.
         network.edges[(i, j)]['affinity'] = a_rv
         network.edges[(i, j)]['tokens'] = a_rv * \
-            network.nodes[i]['item'].holdings_nonvesting.value  # simply proportional to how many tokens he has already
+            network.nodes[i]['item'].holdings_nonvesting.value
         network.edges[(i, j)]['conviction'] = 0
         network.edges[(i, j)]['type'] = 'support'
 
@@ -194,7 +190,7 @@ def gen_new_proposal(network, funds, supply, trigger_func, scale_factor=1.0/100)
     Add a new Proposal to the network. Connect it with all Participants.
 
     If the Participant is the one who made this Proposal, his affinity for it is
-    1.
+    1. Otherwise, the affinity is calculated the same way as in gen_new_participant().
     """
     j = len([node for node in network.nodes])
 
@@ -207,7 +203,6 @@ def gen_new_proposal(network, funds, supply, trigger_func, scale_factor=1.0/100)
     participants = get_participants(network)
     proposing_participant = np.random.choice(participants)
 
-    # TODO: does this need to be the same code as gen_new_participant? maybe can break this out
     for i in participants:
         network.add_edge(i, j)
         if i == proposing_participant:
@@ -254,25 +249,25 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
         into the funding pool. Calcualte how many tokens he would get for that
         price, without actually updating Commons. That will be done by the state
         update functions.
-
-        TODO: so, the higher the sentiment, the lower the arrival rate?
         """
-        arrival_rate = 10/(1+sentiment)
-        # this is going to be between 5-10, based on the sentiment
-        rv1 = np.random.rand()
-        new_participant = bool(rv1 < 1/arrival_rate)
-        # so it's going to be 10-20% of the time
-        # the actual arrival rate is 1/'arrival_rate', so this is just bad naming
+        # The sentiment can range from 0-1.0, therefore the rate at which new
+        # Participants arrive can range from 10-20%.
+        arrival_rate = (1+sentiment)/10
+        new_participant = bool(np.random.rand() < arrival_rate)
 
         if new_participant:
-            # Below line is quite different from Zargham's original, which gave
-            # tokens instead. Here we randomly generate each participant's
-            # post-Hatch investment, in DAI/USD. Here the settings for
-            # expon.rvs() should generate investments of ~0-500 DAI.
+            # Here we randomly generate each participant's post-Hatch
+            # investment, in DAI/USD.
+            #
+            # expon.rvs() arguments:
+            #
+            # loc is the minimum number, so if loc=100, there will be no
+            # investments < 100
+            #
+            # scale is the standard deviation, so if scale=2, investments will
+            # be around 0-12 DAI or even 15, if scale=100, the investments will be
+            # around 0-600 DAI.
             new_participant_investment = expon.rvs(loc=0.0, scale=100)
-            # expon.rvs(scale=) so scale is actually the size of the standard
-            # deviation. loc is the smallest amount of investment, so if
-            # loc=100, there will be no investments less than 100.
             new_participant_tokens = commons.dai_to_tokens(
                 new_participant_investment)
             return new_participant, new_participant_investment, new_participant_tokens
@@ -281,8 +276,7 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
 
     def randomly_gen_new_proposal(total_funds_requested, median_affinity, funding_pool):
         """
-        TODO: So, how the hell does the affinity affect proposal rate again?
-        TODO: total_funds_requested/funding_pool - how should that affect proposal rate?
+        TODO: Convert Zargham inverse proposal rate to normal proposal rate
         """
         # 1/median affinity: how much do Participants like the Proposals that
         # are already out there This number has to be multiplied by a number
@@ -299,29 +293,29 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
 
     def randomly_gen_new_funding(funding_pool, sentiment):
         """
-        Calculates the funding that comes to the Commons from speculators'
-        trades. Remember after the hatching phase, all incoming money goes to
-        the collateral reserve, not to the funding pool.
+        Randomly generates the funding that comes to the Commons from
+        speculators' trades. This implementation does not however take into
+        account an exit tribute! Remember after the hatching phase, all incoming
+        money goes to the collateral reserve, not to the funding pool.
 
-        TODO: how does scale factor change the funds_arrival? how do we know
-        that's realistic?
+        Dividing the funding pool by x (in this case 10000) means that if the
+        funding pool is less than x, speculators won't trade in its token
+        because they think "this Commons is dead or dying".
+
+        TODO: Might want to simulate trading volume instead, and then the exit
+        tribute off that, which will then become the generated funds, because
+        simply randomly generating the funds based on sentiment does not take
+        into account how speculators behaviour is affected by the exit tribute
+        size.
+
+        TODO: We should also make this variable more visible, "funding coming in
+        to Commons through speculation", probably put this into the state
+        variable. Because having money in the funding pool is a good indicator
+        of project health. Because an org can also take money in its funding
+        pool and put it into the collateral pool, minting more tokens and
+        raising the price.
         """
-        # More like divide the funding pool by 10000, * sentiment^2. It's to
-        # anchor the funding pool around 10000, so if funding pool is bigger
-        # than 10000 then the scaling factor will mostly be bigger than 1. we
-        # can experiment with setting exit tribute at 1%, see if speculators
-        # like that more.
-        #
-        # So if the Commons has less than 10000, speculators might be saying
-        # "this is dead in the water or dying soon" and won't touch it.
-        #
-        # We should also make this variable more visible, "funding coming in to
-        # Commons through speculation", probably put this into the state
-        # variable. Because having money in the funding pool is a good indicator
-        # of project health. Because an org can also take money in its funding
-        # pool and put it into the collateral pool, minting more tokens and
-        # raising the price.
-        scale_factor = (funding_pool*sentiment**2)/10000
+        scale_factor = (funding_pool/10000) * sentiment**2
         if scale_factor < 1:
             scale_factor = 1
 
