@@ -299,19 +299,6 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
         Dividing the funding pool by x (in this case 10000) means that if the
         funding pool is less than x, speculators won't trade in its token
         because they think "this Commons is dead or dying".
-
-        TODO: Might want to simulate trading volume instead, and then the exit
-        tribute off that, which will then become the generated funds, because
-        simply randomly generating the funds based on sentiment does not take
-        into account how speculators behaviour is affected by the exit tribute
-        size.
-
-        TODO: We should also make this variable more visible, "funding coming in
-        to Commons through speculation", probably put this into the state
-        variable. Because having money in the funding pool is a good indicator
-        of project health. Because an org can also take money in its funding
-        pool and put it into the collateral pool, minting more tokens and
-        raising the price.
         """
         scale_factor = (funding_pool/10000) * sentiment**2
         if scale_factor < 1:
@@ -344,12 +331,7 @@ def add_participants_proposals_to_network(params, step, sL, s, _input):
     If the policy function has decided to generate a new participant, add one to
     the network. Same for the proposal.
 
-    TODO: the following functionality should not belong in the same function,
-    but has to because cadCAD only allows one state update function per state
-    variable per substep.
-
     For each Proposal, update its age and update its conviction threshold (to pass).
-    BUG: isn't this already calculated/updated elsewhere? How to deal with this? Is this intentional?
     """
     network = s['network']
     funds = s['funding_pool']
@@ -366,11 +348,7 @@ def add_participants_proposals_to_network(params, step, sL, s, _input):
     if new_proposal:
         network = gen_new_proposal(network, funds, supply, trigger_func)
 
-    # TODO: this needs to be done elsewhere, this is just bookkeeping. Perhaps
-    # Proposal.age++, Proposal.update_trigger(), or a separate state update
-    # function in another cadCAD substep.
-    #
-    #  Update age of existing Proposals, and thus the trigger.
+    # Update age of existing Proposals, and thus the trigger.
     proposals = get_proposals(network)
 
     for j in proposals:
@@ -457,9 +435,6 @@ def sentiment_decays_wo_completed_proposals(params, step, sL, s, _input):
                     grants_outstanding
 
     This force pushes the sentiment up, but the max value of force can only be 1
-
-    BUG: actually sentiment goes up when price goes up! just look at the price
-    of ETH, BTC, even if things are getting done.
     """
     def calculate_force(grants_completed, grants_failed, grants_outstanding):
         if grants_outstanding > 0:
@@ -618,7 +593,7 @@ def decrement_commons_funding_pool(params, step, sL, s, _input):
     return 'commons', commons
 
 
-def update_sentiment_on_release(params, step, sL, s, _input):
+def update_sentiment_on_funding_proposals(params, step, sL, s, _input):
     """
     When a Proposal becomes ACTIVE, this can only be a positive boost to the
     Commons' sentiment. The question is only how much.
@@ -629,12 +604,6 @@ def update_sentiment_on_release(params, step, sL, s, _input):
 
     By now it is obvious that there is no standard calculation of "force". It
     just has to be 0 < force < 1.
-
-    TODO: There is the Commons sentiment (here), and there is the
-    Participant.sentiment. This is confusing. At least rename, but probably
-    better to rethink this.
-
-    TODO: rename is misleading... it means "funding proposals"
     """
     network = s['network']
     candidates = get_proposals(network, status=ProposalStatus.CANDIDATE)
@@ -662,15 +631,11 @@ def update_proposals(params, step, sL, s, _input):
     and the conviction gathered by a Participant on a particular Proposal is
     also set to NaN.
 
-    Let's look at Participants' relationships to other, non-accepted Proposals
-    BUG: does this include hitherto FAILED/COMPLETED/CANDIDATE Proposals?
-
     If the Participant has no relationship to any other Proposals, force is 0
     and his sentiment will not change (because the decay is set to 0)
     If he has relationships to other Proposals, take the largest affinity he has...
     force affecting Participant's sentiment =     affinity (to a particular
     Proposal) - sentiment_sensitivity * max_affinity
-    TODO: Why is it calculated this way?
     """
     network = s['network']
     accepted = _input['accepted']
@@ -680,6 +645,8 @@ def update_proposals(params, step, sL, s, _input):
     sentiment_sensitivity = params[0]['sentiment_sensitivity']
 
     # Update candidate proposals with their new conviction thresholds (if any)
+    # BUG: How does this work with add_participants_proposals_to_network()
+    # conviction threshold calculation?
     for j in proposals:
         network.nodes[j]['trigger'] = triggers[j]
 
@@ -689,25 +656,24 @@ def update_proposals(params, step, sL, s, _input):
         network.nodes[j]['item'].conviction = np.nan
         # change status to active
         for i in participants:
-            # operating on edge = (i,j)
             # reset tokens assigned to other candidates
             network.edges[(i, j)]['tokens'] = 0
             network.edges[(i, j)]['conviction'] = np.nan
 
+            # Let's look at Participants' relationships to other, non-accepted Proposals
+            # BUG: does this include hitherto FAILED/COMPLETED/CANDIDATE Proposals?
+            affinities = [network.edges[(i, p)]['affinity']
+                          for p in proposals if not(p in accepted)]
+
             # The Participant's sentiment should change when a Proposal gets
             # accepted. Calculate the force at which the sentiment changes based
             # on his affinity.
-            #
-            # BUG: what about Proposals that the Participant
-            # didn't like? No mention of negative affinities so far... or is
-            # that elsewhere?
-            affinities = [network.edges[(i, p)]['affinity']
-                          for p in proposals if not(p in accepted)]
+            # BUG: what about Proposals that the Participant didn't like? No
+            # mention of negative affinities so far... or is that elsewhere?
             if len(affinities) > 1:
                 max_affinity = np.max(affinities)
-                # TODO: force CAN be negative after all, if you realize that
-                # affinity can be 0. But this is not expressed anywhere
-                # explicitly.
+                # force CAN be negative after all, if you realize that affinity
+                # can be 0. But this is not expressed anywhere explicitly.
                 force = network.edges[(i, j)]['affinity'] - \
                     sentiment_sensitivity*max_affinity
             else:
@@ -727,7 +693,6 @@ def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step,
     """
     The higher a Participant's sentiment, the more he will interact with the Commons.
 
-    TODO: don't quite understand sentiment_sensitivity
     TODO: don't quite understand how his affinity makes him interact with proposals and cutoff
     """
 
@@ -740,7 +705,6 @@ def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step,
     delta_holdings = {}
     proposals_supported = {}
     for i in participants:
-        # TODO: 30% engagement rate is kinda high
         engagement_rate = .3*network.nodes[i]['item'].sentiment
         if np.random.rand() < engagement_rate:
             force = network.nodes[i]['item'].sentiment-sentiment_sensitivity
@@ -752,6 +716,8 @@ def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step,
             # most) e.g. if there are 2 Proposals that you have affinity 0.8,
             # 0.9, then 0.75*0.9 = 0.675, so you will end up voting for both of
             # these Proposals
+            #
+            # A Zargham work of art.
             support = []
             for j in candidate_proposals:
                 affinity = network.edges[(i, j)]['affinity']
