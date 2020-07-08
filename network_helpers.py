@@ -276,19 +276,17 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
 
     def randomly_gen_new_proposal(total_funds_requested, median_affinity, funding_pool):
         """
-        TODO: Convert Zargham inverse proposal rate to normal proposal rate
+        The intent of this equation is:
+
+        If the median affinity is high, the Proposal Rate should be high.
+
+        If total funds_requested in candidate proposals is much lower than the
+        funding pool (i.e. the Commons has lots of spare money), then people are
+        just going to pour in more Proposals.
         """
-        # 1/median affinity: how much do Participants like the Proposals that
-        # are already out there This number has to be multiplied by a number
-        # greater than 1.
-        #
-        # IF the median affinity is high, the Proposal Rate
-        # should be high. If the ratio of funds_requested in CANDIDATE proposals
-        # is much lower than the funding pool, then people are just going to pour in more Proposals
-        proposal_rate = 1/median_affinity * \
-            (1+total_funds_requested/funding_pool)
-        rv2 = np.random.rand()
-        new_proposal = bool(rv2 < 1/proposal_rate)
+        proposal_rate = (median_affinity * funding_pool) / \
+            (total_funds_requested + funding_pool)
+        new_proposal = bool(np.random.rand() < proposal_rate)
         return new_proposal
 
     def randomly_gen_new_funding(funding_pool, sentiment):
@@ -409,7 +407,7 @@ def make_active_proposals_complete_or_fail_randomly(params, step, sL, s):
     take time to move or get to a specific conclusion.
 
     BUG: base_completion_rate, base_failure_rate were never in params! we
-    probably never hit this because proposals weren't becomiong active.
+    probably never hit this because proposals weren't becoming active.
     """
     network = s['network']
     active_proposals = get_proposals(network, status=ProposalStatus.ACTIVE)
