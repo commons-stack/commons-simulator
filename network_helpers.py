@@ -779,7 +779,7 @@ def update_holdings_nonvesting_of_participants(params, step, sL, s, _input):
                 alpha*prior_conviction
 
     for j in candidates:
-        network.nodes[j]['conviction'] = np.sum(
+        network.nodes[j]["item"].conviction = np.sum(
             [network.edges[(i, j)]['conviction'] for i in participants])
         total_tokens = np.sum([network.edges[(i, j)]['tokens']
                                for i in participants])

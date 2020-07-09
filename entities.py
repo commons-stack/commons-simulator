@@ -35,4 +35,4 @@ class Proposal:
         self.trigger = trigger
 
     def __repr__(self):
-        return "<{} \"{}\" status: {}, age: {}, funds_requested: {}>".format(self.__class__.__name__, self.name, self.status, self.age, self.funds_requested)
+        return "<{} \"{}\" status: {}, age: {}, funds_requested: {}, conviction: {}>".format(self.__class__.__name__, self.name, self.status, self.age, self.funds_requested, self.conviction)
