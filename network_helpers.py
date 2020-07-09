@@ -284,8 +284,9 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
         funding pool (i.e. the Commons has lots of spare money), then people are
         just going to pour in more Proposals.
         """
-        proposal_rate = (median_affinity * funding_pool) / \
-            (total_funds_requested + funding_pool)
+        percent_of_funding_pool_being_requested = total_funds_requested/funding_pool
+        proposal_rate = median_affinity / \
+            (1 + percent_of_funding_pool_being_requested)
         new_proposal = bool(np.random.rand() < proposal_rate)
         return new_proposal
 
