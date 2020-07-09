@@ -478,7 +478,6 @@ def update_network_w_proposal_status(params, step, sL, s, _input):
     Participant's Affinity to a Proposal =       affinity
                                           _______________________
                                                1 - conflict
-    BUG: The Participant's sentiment is not being updated correctly! Fix that
     """
     network = s['network']
     participants = get_participants(network)
@@ -492,7 +491,7 @@ def update_network_w_proposal_status(params, step, sL, s, _input):
         #
         # TODO: Competing Proposals should also get a negative nudge when a
         # Proposal becomes ACTIVE.
-        network.nodes[j]['status'] = 'completed'
+        network.nodes[j]["item"].status = ProposalStatus.COMPLETED
 
         for c in proposals:
             if (j, c) in competitors:
@@ -503,17 +502,17 @@ def update_network_w_proposal_status(params, step, sL, s, _input):
 
         for i in participants:
             force = network.edges[(i, j)]['affinity']
-            sentiment = network.nodes[i]['sentiment']
-            network.nodes[i]['sentiment'] = get_sentimental(
+            sentiment = network.nodes[i]["item"].sentiment
+            network.nodes[i]["item"].sentiment = get_sentimental(
                 sentiment, force, decay=0)
 
     failed = _input['failed']
     for j in failed:
-        network.nodes[j]['status'] = 'failed'
+        network.nodes[j]["item"].status = ProposalStatus.FAILED
         for i in participants:
             force = -network.edges[(i, j)]['affinity']
-            sentiment = network.nodes[i]['sentiment']
-            network.nodes[i]['sentiment'] = get_sentimental(
+            sentiment = network.nodes[i]["item"].sentiment
+            network.nodes[i]["item"].sentiment = get_sentimental(
                 sentiment, force, decay=0)
 
     key = 'network'
