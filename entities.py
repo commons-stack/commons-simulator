@@ -1,6 +1,7 @@
 import numpy as np
 from hatch import TokenBatch
 from enum import Enum
+from convictionvoting import trigger_threshold
 from english_words import english_words_set
 import random
 
@@ -36,3 +37,13 @@ class Proposal:
 
     def __repr__(self):
         return "<{} \"{}\" status: {}, age: {}, funds_requested: {}, conviction: {}>".format(self.__class__.__name__, self.name, self.status, self.age, self.funds_requested, self.conviction)
+
+    def update_age(self):
+        self.age += 1
+        return self.age
+
+    def update_threshold(self, funding_pool, token_supply):
+        if self.status == ProposalStatus.CANDIDATE:
+            self.trigger = trigger_threshold(
+                self.funds_requested, funding_pool, token_supply)
+        return self.trigger
