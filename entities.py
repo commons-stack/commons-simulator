@@ -67,4 +67,6 @@ class Proposal:
         if self.status == ProposalStatus.CANDIDATE:
             self.trigger = trigger_threshold(
                 self.funds_requested, funding_pool, token_supply)
+        else:
+            self.trigger = np.nan
         return self.trigger

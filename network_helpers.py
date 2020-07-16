@@ -539,24 +539,21 @@ def calculate_conviction(params, step, sL, s):
     token_supply = s['token_supply']
     proposals = get_proposals(network)
     min_proposal_age = params[0]['min_proposal_age_days']
-    trigger_func = params[0]['trigger_threshold']
 
     accepted = []
     triggers = {}
     funds_to_be_released = 0
     for j in proposals:
-        if network.nodes[j]['item'].status == ProposalStatus.CANDIDATE:
-            requested = network.nodes[j]['item'].funds_requested
-            age = network.nodes[j]['item'].age
+        print(network.nodes[j]['item'])
+        threshold = network.nodes[j]["item"].update_threshold(
+            funding_pool, token_supply)
 
-            threshold = trigger_func(requested, funding_pool, token_supply)
-            if age > min_proposal_age:
-                conviction = network.nodes[j]['item'].conviction
-                if conviction > threshold:
-                    accepted.append(j)
-                    funds_to_be_released = funds_to_be_released + requested
-        else:
-            threshold = np.nan
+        if network.nodes[j]['item'].age > min_proposal_age:
+            conviction = network.nodes[j]['item'].conviction
+            if conviction > threshold:
+                accepted.append(j)
+                funds_to_be_released = funds_to_be_released + \
+                    network.nodes[j]['item'].funds_requested
 
         triggers[j] = threshold
 
