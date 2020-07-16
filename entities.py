@@ -1,9 +1,30 @@
+from types import FunctionType
+from inspect import getmembers
 import numpy as np
 from hatch import TokenBatch
 from enum import Enum
 from convictionvoting import trigger_threshold
 from english_words import english_words_set
 import random
+
+"""
+Helper functions from
+https://stackoverflow.com/questions/192109/is-there-a-built-in-function-to-print-all-the-current-properties-and-values-of-a
+to print all attributes of a class without me explicitly coding it out.
+"""
+
+
+def api(obj):
+    return [name for name in dir(obj) if name[0] != '_']
+
+
+def attrs(obj):
+    disallowed_properties = {
+        name for name, value in getmembers(type(obj))
+        if isinstance(value, (property, FunctionType))}
+    return {
+        name: getattr(obj, name) for name in api(obj)
+        if name not in disallowed_properties and hasattr(obj, name)}
 
 
 class Participant:
@@ -14,7 +35,7 @@ class Participant:
         self.holdings_nonvesting = holdings_nonvesting
 
     def __repr__(self):
-        return "<{} {}, holdings_vesting: {}, holdings_nonvesting: {}>".format(self.__class__.__name__, self.sentiment, self.holdings_vesting, self.holdings_vesting)
+        return "<{} {}>".format(self.__class__.__name__, attrs(self))
 
 
 ProposalStatus = Enum("ProposalStatus", "CANDIDATE ACTIVE COMPLETED FAILED")
@@ -36,7 +57,7 @@ class Proposal:
         self.trigger = trigger
 
     def __repr__(self):
-        return "<{} \"{}\" status: {}, age: {}, funds_requested: {}, conviction: {}>".format(self.__class__.__name__, self.name, self.status, self.age, self.funds_requested, self.conviction)
+        return "<{} {}>".format(self.__class__.__name__, attrs(self))
 
     def update_age(self):
         self.age += 1
