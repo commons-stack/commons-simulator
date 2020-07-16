@@ -469,7 +469,6 @@ def update_network_w_proposal_status(params, step, sL, s, _input):
     If the Proposal was completed, then the Participant gets a nice boost to his sentiment.
     If the Proposal failed, then the Participant's sentiment gets a negative force.
 
-    TODO: For a completed Proposal, its competing Proposals will now have less affinity from all Participants?
     Participant's Affinity to a Proposal =       affinity
                                           _______________________
                                                1 - conflict
@@ -517,6 +516,7 @@ def update_network_w_proposal_status(params, step, sL, s, _input):
 # =========================================================================================================
 
 
+@dump_output
 def calculate_conviction(params, step, sL, s):
     """
     Look at all the candidate proposals.
@@ -782,6 +782,7 @@ def update_holdings_nonvesting_of_participants(params, step, sL, s, _input):
             [network.edges[(i, j)]['conviction'] for i in participants])
         total_tokens = np.sum([network.edges[(i, j)]['tokens']
                                for i in participants])
+        print("total_tokens", total_tokens)
         if total_tokens < min_support:
             network.nodes[j]['item'].status = ProposalStatus.FAILED
     return ("network", network)
