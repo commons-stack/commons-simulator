@@ -691,9 +691,16 @@ def update_proposals(params, step, sL, s, _input):
 
 def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step, sL, s):
     """
-    The higher a Participant's sentiment, the more he will interact with the Commons.
+    The higher a Participant's sentiment, the more likely he will interact with
+    the Commons. He will change his holdings (read: buy more tokens) according
+    to his sentiment. Then he will vote on his top favourite Proposals, although
+    how much he likes these Proposals also determines how many favourites he
+    will vote for.
 
-    TODO: don't quite understand how his affinity makes him interact with proposals and cutoff
+    If he doesn't choose to interact, though, the Participant will continue to
+    do nothing.
+
+    TODO: where does he sell and exit? probably not in this policy?
     """
 
     network = s['network']
