@@ -353,13 +353,8 @@ def add_participants_proposals_to_network(params, step, sL, s, _input):
     proposals = get_proposals(network)
 
     for j in proposals:
-        network.nodes[j]["item"].age = network.nodes[j]["item"].age+1
-        if network.nodes[j]["item"].status == ProposalStatus.CANDIDATE:
-            requested = network.nodes[j]["item"].funds_requested
-            network.nodes[j]["item"].trigger = trigger_func(
-                requested, funds, supply)
-        else:
-            network.nodes[j]["item"].trigger = np.nan
+        network.nodes[j]["item"].update_age()
+        network.nodes[j]["item"].update_threshold(funds, supply)
 
     key = 'network'
     value = network
