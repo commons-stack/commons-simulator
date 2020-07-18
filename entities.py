@@ -63,7 +63,7 @@ class Proposal:
         self.age += 1
         return self.age
 
-    def update_threshold(self, funding_pool, token_supply):
+    def update_threshold(self, funding_pool: float, token_supply: float):
         if self.status == ProposalStatus.CANDIDATE:
             self.trigger = trigger_threshold(
                 self.funds_requested, funding_pool, token_supply)
