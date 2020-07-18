@@ -1,17 +1,17 @@
 import unittest
-
+from unittest.mock import patch, MagicMock
 import networkx as nx
 
 from convictionvoting import trigger_threshold
 from entities import Participant, Proposal
-from network_helpers import (
-    get_proposals, participants_more_likely_to_buy_with_high_sentiment)
+import network_helpers
 
 
 def are_there_nonzero_values_in_dict(dictionary):
     """
     Example:
-    {'delta_holdings': {0: 0.13405269115654075, 1: 0, 2: 0, 3: 0.24943837481994094, 4: 0}}
+    {'delta_holdings': {0: 0.13405269115654075,
+        1: 0, 2: 0, 3: 0.24943837481994094, 4: 0}}
     should report 0: True, 3: True
     """
     answer = False
@@ -29,15 +29,32 @@ class TestNetworkUtils(unittest.TestCase):
             self.network.add_node(i, item=Proposal(500, 5))
 
     def test_get_proposals(self):
-        proposals = get_proposals(self.network)
+        proposals = network_helpers.get_proposals(self.network)
         for i in proposals:
             self.assertIsInstance(self.network.nodes[i]["item"], Proposal)
 
+    def test_probability(self):
+        results = []
+        for _ in range(10):
+            results.append(network_helpers.probability(0.1))
+        self.assertGreater(results.count(False), results.count(True))
+
+        results2 = []
+        for _ in range(2):
+            results2.append(network_helpers.probability(1.0))
+        self.assertEqual(results2.count(True), 2)
+
 
 """
-When writing tests for a non-deterministic system, we don't really need to check
-that y happens x% of the time. What is important is that it lets us access the
-code easily, independent of other components.
+As much as possible, make all software components deterministic.
+
+In cases where it is impossible to do so, it actually isn't so important to
+check that y happens x% of the time. What is important is that it lets us access
+the code easily, independent of other components.
+
+Remember: a model is just a theory. We write tests not to verify the model, but
+we do need to know that it is working as intended and we need to be able to dive in
+quickly if there is a problem.
 """
 
 
@@ -63,23 +80,31 @@ class ParticipantsActingTest(unittest.TestCase):
 
     def test_participants_more_likely_to_buy_with_high_sentiment(self):
         """
-        If we set their sentiment to max 1.0, Participants should buy in 30% of the time
+        Test that the function works. If we set the probability to 1, all Participants should buy in.
+        If we set the probability to 0, no Participants should buy in.
         """
+
         state = {
             "network": self.network,
         }
 
-        yes_there_were_nonzero_values = 0
-        for _ in range(10):
-            answer = participants_more_likely_to_buy_with_high_sentiment(
+        with patch('network_helpers.probability') as mock:
+            mock.return_value = True
+            answer = network_helpers.participants_more_likely_to_buy_with_high_sentiment(
                 self.params, 1, 1, state)
             print(are_there_nonzero_values_in_dict(
                 answer["delta_holdings"]), answer["delta_holdings"])
 
-            if are_there_nonzero_values_in_dict(answer["delta_holdings"]):
-                yes_there_were_nonzero_values += 1
+            self.assertTrue(all(answer["delta_holdings"].values()))
 
-        self.assertGreaterEqual(yes_there_were_nonzero_values, 3)
+        with patch('network_helpers.probability') as mock:
+            mock.return_value = False
+            answer = network_helpers.participants_more_likely_to_buy_with_high_sentiment(
+                self.params, 1, 1, state)
+            print(are_there_nonzero_values_in_dict(
+                answer["delta_holdings"]), answer["delta_holdings"])
+
+            self.assertFalse(any(answer["delta_holdings"].values()))
 
 
 if __name__ == '__main__':

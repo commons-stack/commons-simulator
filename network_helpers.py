@@ -47,6 +47,16 @@ def get_participants(network):
     return [i for i in network.nodes if isinstance(network.nodes[i]["item"], Participant)]
 
 
+def probability(rate):
+    """
+    The higher the rate, the more likely this function will return True (up till 1.0)
+    Mock this function out to make behaviour deterministic.
+    """
+    if rate > 1.0:
+        raise Exception("Rate has a maximum value of 1.0")
+    return np.random.rand() < rate
+
+
 def initial_social_network(network: nx.DiGraph, scale=1, sigmas=3) -> nx.DiGraph:
     """
     Calculates the chances that a Participant is influential enough to have an
@@ -253,7 +263,7 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
         # The sentiment can range from 0-1.0, therefore the rate at which new
         # Participants arrive can range from 10-20%.
         arrival_rate = (1+sentiment)/10
-        new_participant = bool(np.random.rand() < arrival_rate)
+        new_participant = probability(arrival_rate)
 
         if new_participant:
             # Here we randomly generate each participant's post-Hatch
@@ -287,7 +297,7 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
         percent_of_funding_pool_being_requested = total_funds_requested/funding_pool
         proposal_rate = median_affinity / \
             (1 + percent_of_funding_pool_being_requested)
-        new_proposal = bool(np.random.rand() < proposal_rate)
+        new_proposal = probability(proposal_rate)
         return new_proposal
 
     def randomly_gen_new_funding(funding_pool, sentiment):
@@ -401,9 +411,9 @@ def make_active_proposals_complete_or_fail_randomly(params, step, sL, s):
         # to succeed.
         failure_rate = 1.0/(base_failure_rate+np.log(grant_size))
 
-        if np.random.rand() < likelihood:
+        if probability(likelihood):
             completed.append(j)
-        elif np.random.rand() < failure_rate:
+        elif probability(failure_rate):
             failed.append(j)
     return({'completed': completed, 'failed': failed})
 
@@ -703,7 +713,7 @@ def participants_more_likely_to_buy_with_high_sentiment(params, step, sL, s):
     delta_holdings = {}
     for i in participants:
         engagement_rate = .3*network.nodes[i]['item'].sentiment
-        if np.random.rand() < engagement_rate:
+        if probability(engagement_rate):
             force = network.nodes[i]['item'].sentiment-sentiment_sensitivity
             # because implementing "vesting+nonvesting holdings" calculation is best done outside the scope of this function
             delta_holdings[i] = np.random.rand()*force
@@ -738,7 +748,7 @@ def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step,
     proposals_supported = {}
     for i in participants:
         engagement_rate = .3*network.nodes[i]['item'].sentiment
-        if np.random.rand() < engagement_rate:
+        if probability(engagement_rate):
             force = network.nodes[i]['item'].sentiment-sentiment_sensitivity
             # because implementing "vesting+nonvesting holdings" calculation is best done outside the scope of this function
             delta_holdings[i] = np.random.rand()*force
