@@ -544,7 +544,6 @@ def calculate_conviction(params, step, sL, s):
     triggers = {}
     funds_to_be_released = 0
     for j in proposals:
-        print(network.nodes[j]['item'])
         threshold = network.nodes[j]["item"].update_threshold(
             funding_pool, token_supply)
 
@@ -681,6 +680,40 @@ def update_proposals(params, step, sL, s, _input):
 # =========================================================================================================
 
 
+def participants_more_likely_to_buy_with_high_sentiment(params, step, sL, s):
+    """
+    The higher a Participant's sentiment, the more likely he will interact with
+    the Commons. He will change his holdings (read: buy more tokens) according
+    to his sentiment. Then he will vote on his top favourite Proposals, although
+    how much he likes these Proposals also determines how many favourites he
+    will vote for.
+
+    If he doesn't choose to interact, though, the Participant will continue to
+    do nothing.
+
+    TODO: where does he sell and exit? probably not in this policy?
+    """
+
+    network = s['network']
+    participants = get_participants(network)
+    candidate_proposals = get_proposals(
+        network, status=ProposalStatus.CANDIDATE)
+    sentiment_sensitivity = params[0]['sentiment_sensitivity']
+
+    delta_holdings = {}
+    for i in participants:
+        engagement_rate = .3*network.nodes[i]['item'].sentiment
+        if np.random.rand() < engagement_rate:
+            force = network.nodes[i]['item'].sentiment-sentiment_sensitivity
+            # because implementing "vesting+nonvesting holdings" calculation is best done outside the scope of this function
+            delta_holdings[i] = np.random.rand()*force
+
+        else:
+            delta_holdings[i] = 0
+
+    return({'delta_holdings': delta_holdings})
+
+
 def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step, sL, s):
     """
     The higher a Participant's sentiment, the more likely he will interact with
@@ -769,6 +802,8 @@ def update_holdings_nonvesting_of_participants(params, step, sL, s, _input):
                     i, j)]['affinity']/total_affinity
                 network.edges[(i, j)]['tokens'] = normalized_affinity * \
                     network.nodes[i]['item'].holdings_nonvesting.value
+                print("Participant {} has put {} tokens on Proposal {}, so he has {} conviction (Proposal's conviction percentage: {})".format(
+                    i, network.edges[(i, j)]['tokens'], j, network.edges[(i, j)]['conviction'], network.nodes[j]["item"].conviction / network.nodes[j]["item"].trigger))
             else:
                 network.edges[(i, j)]['tokens'] = 0
 
@@ -782,7 +817,6 @@ def update_holdings_nonvesting_of_participants(params, step, sL, s, _input):
             [network.edges[(i, j)]['conviction'] for i in participants])
         total_tokens = np.sum([network.edges[(i, j)]['tokens']
                                for i in participants])
-        print("total_tokens", total_tokens)
         if total_tokens < min_support:
             network.nodes[j]['item'].status = ProposalStatus.FAILED
     return ("network", network)
