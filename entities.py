@@ -70,3 +70,19 @@ class Proposal:
         else:
             self.trigger = np.nan
         return self.trigger
+
+    def has_enough_conviction(self, funding_pool: float, token_supply: float):
+        """
+        It's just a conviction < threshold check, but we recalculate the
+        trigger_threshold so that the programmer doesn't have to remember to run
+        update_threshold before running this method.
+        """
+        if self.status == ProposalStatus.CANDIDATE:
+            threshold = trigger_threshold(
+                self.funds_requested, funding_pool, token_supply)
+            if self.conviction < threshold:
+                return False
+            return True
+        else:
+            raise(Exception(
+                "Proposal {} is not a Candidate Proposal and so asking it if it will pass is inappropriate".format(self.name)))
