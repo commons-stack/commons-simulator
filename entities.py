@@ -39,7 +39,7 @@ class Participant:
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, attrs(self))
 
-    def buy_more(self) -> float:
+    def buy(self) -> float:
         """
         If the Participant decides to buy more tokens, returns the number of
         tokens. Otherwise, return 0.
@@ -51,6 +51,22 @@ class Participant:
         engagement_rate = 0.3 * self.sentiment
         force = self.sentiment - config.sentiment_sensitivity
         if probability(engagement_rate) and force > 0:
+            delta_holdings = np.random.rand() * force
+            return delta_holdings
+        return 0
+
+    def sell(self) -> float:
+        """
+        If the Participant decides to sell some tokens, returns the number of
+        tokens. Otherwise, return 0.
+
+        This method does not modify itself, it simply returns the answer so that
+        cadCAD's state update functions will make the changes and maintain its
+        functional-ness.
+        """
+        engagement_rate = 0.3 * self.sentiment
+        force = self.sentiment - config.sentiment_sensitivity
+        if probability(engagement_rate) and force < 0:
             delta_holdings = np.random.rand() * force
             return delta_holdings
         return 0
