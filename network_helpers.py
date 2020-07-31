@@ -5,6 +5,7 @@ from hatch import TokenBatch
 from convictionvoting import trigger_threshold
 from IPython.core.debugger import set_trace
 from functools import wraps
+from utils import probability
 import pprint as pp
 from entities import Participant, Proposal, ProposalStatus
 
@@ -45,16 +46,6 @@ def get_proposals(network, status: ProposalStatus = None):
 
 def get_participants(network):
     return [i for i in network.nodes if isinstance(network.nodes[i]["item"], Participant)]
-
-
-def probability(rate):
-    """
-    The higher the rate, the more likely this function will return True (up till 1.0)
-    Mock this function out to make behaviour deterministic.
-    """
-    if rate > 1.0:
-        raise Exception("Rate has a maximum value of 1.0")
-    return np.random.rand() < rate
 
 
 def initial_social_network(network: nx.DiGraph, scale=1, sigmas=3) -> nx.DiGraph:
