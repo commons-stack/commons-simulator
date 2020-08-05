@@ -275,22 +275,6 @@ def gen_new_participants_proposals_funding_randomly(params, step, sL, s):
         else:
             return new_participant, 0, 0
 
-    def randomly_gen_new_proposal(total_funds_requested, median_affinity, funding_pool):
-        """
-        The intent of this equation is:
-
-        If the median affinity is high, the Proposal Rate should be high.
-
-        If total funds_requested in candidate proposals is much lower than the
-        funding pool (i.e. the Commons has lots of spare money), then people are
-        just going to pour in more Proposals.
-        """
-        percent_of_funding_pool_being_requested = total_funds_requested/funding_pool
-        proposal_rate = median_affinity / \
-            (1 + percent_of_funding_pool_being_requested)
-        new_proposal = probability(proposal_rate)
-        return new_proposal
-
     def randomly_gen_new_funding(funding_pool, sentiment):
         """
         Randomly generates the funding that comes to the Commons from

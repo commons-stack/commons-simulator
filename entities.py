@@ -57,8 +57,9 @@ class Participant:
 
     def sell(self) -> float:
         """
-        If the Participant decides to sell some tokens, returns the number of
-        tokens. Otherwise, return 0.
+        Decides to sell some tokens, and if so how many. If the Participant
+        decides to sell some tokens, returns the number of tokens. Otherwise,
+        return 0.
 
         This method does not modify itself, it simply returns the answer so that
         cadCAD's state update functions will make the changes and maintain its
@@ -70,6 +71,27 @@ class Participant:
             delta_holdings = np.random.rand() * force
             return delta_holdings
         return 0
+
+    def create_proposal(self, total_funds_requested, median_affinity, funding_pool) -> bool:
+        """
+        Here the Participant will decide whether or not to create a new
+        Proposal.
+
+        This equation, originally from randomly_gen_new_proposal(), is a
+        systems-type simulation. An individual Participant would likely think in a different way, and thus this equation should change.
+        Nevertheless for simplicity's sake, we use this same equation for now.
+
+        Explanation: If the median affinity is high, the Proposal Rate should be high.
+
+        If total funds_requested in candidate proposals is much lower than the
+        funding pool (i.e. the Commons has lots of spare money), then people are
+        just going to pour in more Proposals.
+        """
+        percent_of_funding_pool_being_requested = total_funds_requested/funding_pool
+        proposal_rate = median_affinity / \
+            (1 + percent_of_funding_pool_being_requested)
+        new_proposal = probability(proposal_rate)
+        return new_proposal
 
 
 ProposalStatus = Enum("ProposalStatus", "CANDIDATE ACTIVE COMPLETED FAILED")
