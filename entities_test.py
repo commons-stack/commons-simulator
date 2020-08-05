@@ -1,3 +1,4 @@
+import uuid
 import unittest
 from unittest.mock import patch, MagicMock
 from entities import Proposal, ProposalStatus, Participant
@@ -65,6 +66,57 @@ class TestParticipant(unittest.TestCase):
         with patch('entities.probability') as mock:
             mock.return_value = False
             self.assertFalse(self.p.create_proposal(10000, 0.5, 100000))
+
+    def test_vote_on_candidate_proposals(self):
+        """
+        Test that the function works. If we set the probability to 1, we should
+        get a dict of Proposal UUIDs that the Participant would vote on. If not,
+        we should get an empty dict.
+        """
+
+        candidate_proposals = {
+            uuid.UUID(int=179821351946450230734044638685583215499): 1.0,
+            uuid.UUID(int=215071290061070589371009813111193284959): 1.0,
+            uuid.UUID(int=20468923874830131214536379780280861909): 1.0,
+        }
+        with patch('entities.probability') as mock:
+            mock.return_value = False
+            ans = self.p.vote_on_candidate_proposals(candidate_proposals)
+            self.assertFalse(ans["new_voted_proposals"])
+
+        with patch('entities.probability') as mock:
+            mock.return_value = True
+            ans = self.p.vote_on_candidate_proposals(candidate_proposals)
+            self.assertEqual(len(ans["new_voted_proposals"]), 3)
+
+    def test_vote_on_candidate_proposals_zargham_algorithm(self):
+        """
+        Test that Zargham's algorithm works as intended.
+
+        A cutoff value is set based on your affinity to your favourite Proposal.
+        If there are other Proposals that you like almost as much, you will vote
+        for them too, otherwise if they don't meet the cutoff value you will
+        only vote for your favourite Proposal.
+        """
+
+        candidate_proposals = {
+            uuid.UUID(int=179821351946450230734044638685583215499): 1.0,
+            uuid.UUID(int=215071290061070589371009813111193284959): 0.9,
+            uuid.UUID(int=20468923874830131214536379780280861909): 0.8,
+            uuid.UUID(int=268821512376988039567204465930241984322): 0.4,
+        }
+        with patch('entities.probability') as mock:
+            mock.return_value = True
+            ans = self.p.vote_on_candidate_proposals(candidate_proposals)[
+                "new_voted_proposals"]
+            self.assertIn(
+                uuid.UUID(int=179821351946450230734044638685583215499), ans)
+            self.assertIn(
+                uuid.UUID(int=215071290061070589371009813111193284959), ans)
+            self.assertIn(
+                uuid.UUID(int=20468923874830131214536379780280861909), ans)
+            self.assertNotIn(
+                uuid.UUID(int=268821512376988039567204465930241984322), ans)
 
 
 if __name__ == '__main__':

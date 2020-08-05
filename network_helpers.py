@@ -699,63 +699,6 @@ def participants_more_likely_to_buy_with_high_sentiment(params, step, sL, s):
     return({'delta_holdings': delta_holdings})
 
 
-def participants_buy_more_if_they_feel_good_and_vote_for_proposals(params, step, sL, s):
-    """
-    The higher a Participant's sentiment, the more likely he will interact with
-    the Commons. He will change his holdings (read: buy more tokens) according
-    to his sentiment. Then he will vote on his top favourite Proposals, although
-    how much he likes these Proposals also determines how many favourites he
-    will vote for.
-
-    If he doesn't choose to interact, though, the Participant will continue to
-    do nothing.
-
-    TODO: where does he sell and exit? probably not in this policy?
-    """
-
-    network = s['network']
-    participants = get_participants(network)
-    candidate_proposals = get_proposals(
-        network, status=ProposalStatus.CANDIDATE)
-    sentiment_sensitivity = params[0]['sentiment_sensitivity']
-
-    delta_holdings = {}
-    proposals_supported = {}
-    for i in participants:
-        engagement_rate = .3*network.nodes[i]['item'].sentiment
-        if probability(engagement_rate):
-            force = network.nodes[i]['item'].sentiment-sentiment_sensitivity
-            # because implementing "vesting+nonvesting holdings" calculation is best done outside the scope of this function
-            delta_holdings[i] = np.random.rand()*force
-
-            # Put your tokens on your favourite Proposals, where favourite is
-            # calculated as 0.75 * (the affinity for the Proposal you like the
-            # most) e.g. if there are 2 Proposals that you have affinity 0.8,
-            # 0.9, then 0.75*0.9 = 0.675, so you will end up voting for both of
-            # these Proposals
-            #
-            # A Zargham work of art.
-            support = []
-            for j in candidate_proposals:
-                affinity = network.edges[(i, j)]['affinity']
-                cutoff = sentiment_sensitivity * \
-                    np.max([network.edges[(i, p)]['affinity']
-                            for p in candidate_proposals])
-                if cutoff < .5:
-                    cutoff = .5
-
-                if affinity > cutoff:
-                    support.append(j)
-
-            proposals_supported[i] = support
-        else:
-            delta_holdings[i] = 0
-            proposals_supported[i] = [
-                j for j in candidate_proposals if network.edges[(i, j)]['tokens'] > 0]
-
-    return({'delta_holdings': delta_holdings, 'proposals_supported': proposals_supported})
-
-
 def update_holdings_nonvesting_of_participants(params, step, sL, s, _input):
     """
     The function before has told us how much each Participant has decided to
