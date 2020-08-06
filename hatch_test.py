@@ -20,6 +20,22 @@ class HatchTest(unittest.TestCase):
 
 
 class TokenBatchTest(unittest.TestCase):
+    def test_bool(self):
+        zero = TokenBatch(0)
+        something = TokenBatch(1)
+        self.assertTrue(bool(something))
+        self.assertFalse(bool(zero))
+
+    def test_add_(self):
+        two = TokenBatch(2)
+        three = TokenBatch(3)
+        self.assertEqual(two+three, 5)
+
+    def test_sub_(self):
+        five = TokenBatch(5)
+        four = TokenBatch(4)
+        self.assertEqual(five-four, 1)
+
     def test_unlocked_fraction(self):
         tbh = TokenBatch(10000, vesting_options=VestingOptions(3, 3))
         tb = TokenBatch(10000)
@@ -48,12 +64,6 @@ class TokenBatchTest(unittest.TestCase):
 
         with self.assertRaises(Exception):
             tb.spend(10000)
-
-    def test_bool_is_false_if_zero(self):
-        zero = TokenBatch(0)
-        something = TokenBatch(1)
-        self.assertTrue(bool(something))
-        self.assertFalse(bool(zero))
 
 
 class CommonsTest(unittest.TestCase):

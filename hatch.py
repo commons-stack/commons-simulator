@@ -77,6 +77,12 @@ class TokenBatch:
             return True
         return False
 
+    def __add__(self, other):
+        return self.value + other.value
+
+    def __sub__(self, other):
+        return self.value - other.value
+
     def unlocked_fraction(self) -> float:
         """
         returns what fraction of the TokenBatch is unlocked to date
