@@ -1,8 +1,10 @@
-import uuid
 import unittest
-from unittest.mock import patch, MagicMock
-from entities import Proposal, ProposalStatus, Participant
+import uuid
+from unittest.mock import MagicMock, patch
+
 import utils
+from entities import Participant, Proposal, ProposalStatus
+from hatch import TokenBatch
 
 
 class TestProposal(unittest.TestCase):
@@ -116,6 +118,43 @@ class TestParticipant(unittest.TestCase):
                 uuid.UUID(int=20468923874830131214536379780280861909), ans)
             self.assertNotIn(
                 uuid.UUID(int=268821512376988039567204465930241984322), ans)
+
+    def test_stake_across_all_supported_proposals(self):
+        """
+        Test that the rebalancing code works as intended.
+
+        Given 4 Proposals which the Participant has affinity 0.9, 0.9, 0.8, 0.6
+        to, we should expect an allocation of 0.28125, 0.28125, 02.5, 0.1872
+        respectively.
+
+        The calculation should also include vesting and nonvesting TokenBatches.
+        """
+        p = [Proposal(0, 0) for _ in range(4)]
+        p[0].uuid = uuid.UUID(int=179821351946450230734044638685583215499)
+        p[1].uuid = uuid.UUID(int=215071290061070589371009813111193284959)
+        p[2].uuid = uuid.UUID(int=20468923874830131214536379780280861909)
+        p[3].uuid = uuid.UUID(int=268821512376988039567204465930241984322)
+        supported_proposals = [
+            (0.9, p[0]),
+            (0.9, p[1]),
+            (0.8, p[2]),
+            (0.6, p[3]),
+        ]
+
+        self.p.holdings_vesting = TokenBatch(500)
+        self.p.holdings_nonvesting = TokenBatch(500)
+
+        ans = self.p.stake_across_all_supported_proposals(supported_proposals)
+        print(ans)
+
+        self.assertEqual(
+            ans[uuid.UUID(int=179821351946450230734044638685583215499)], 281.25000000000006)
+        self.assertEqual(
+            ans[uuid.UUID(int=215071290061070589371009813111193284959)], 281.25000000000006)
+        self.assertEqual(
+            ans[uuid.UUID(int=20468923874830131214536379780280861909)], 250.00000000000006)
+        self.assertEqual(
+            ans[uuid.UUID(int=268821512376988039567204465930241984322)], 187.5)
 
 
 if __name__ == '__main__':

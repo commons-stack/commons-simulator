@@ -9,7 +9,6 @@ from typing import List, Tuple
 import numpy as np
 
 import config
-from config import sentiment_sensitivity
 from convictionvoting import trigger_threshold
 from hatch import TokenBatch
 from utils import probability
@@ -33,6 +32,54 @@ def attrs(obj):
     return {
         name: getattr(obj, name) for name in api(obj)
         if name not in disallowed_properties and hasattr(obj, name)}
+
+
+ProposalStatus = Enum("ProposalStatus", "CANDIDATE ACTIVE COMPLETED FAILED")
+# candidate: proposal is being evaluated by the commons
+# active: has been approved and is funded
+# completed: the proposal was effective/successful
+# failed: did not get to active status or failed after funding
+
+
+class Proposal:
+    def __init__(self, funds_requested: int, trigger: float):
+        self.uuid = uuid.uuid4()
+        self.conviction = 0
+        self.status = ProposalStatus.CANDIDATE
+        self.age = 0
+        self.funds_requested = funds_requested
+        self.trigger = trigger
+
+    def __repr__(self):
+        return "<{} {}>".format(self.__class__.__name__, attrs(self))
+
+    def update_age(self):
+        self.age += 1
+        return self.age
+
+    def update_threshold(self, funding_pool: float, token_supply: float):
+        if self.status == ProposalStatus.CANDIDATE:
+            self.trigger = trigger_threshold(
+                self.funds_requested, funding_pool, token_supply)
+        else:
+            self.trigger = np.nan
+        return self.trigger
+
+    def has_enough_conviction(self, funding_pool: float, token_supply: float):
+        """
+        It's just a conviction < threshold check, but we recalculate the
+        trigger_threshold so that the programmer doesn't have to remember to run
+        update_threshold before running this method.
+        """
+        if self.status == ProposalStatus.CANDIDATE:
+            threshold = trigger_threshold(
+                self.funds_requested, funding_pool, token_supply)
+            if self.conviction < threshold:
+                return False
+            return True
+        else:
+            raise(Exception(
+                "Proposal {} is not a Candidate Proposal and so asking it if it will pass is inappropriate".format(str(self.uuid))))
 
 
 class Participant:
@@ -148,50 +195,26 @@ class Participant:
 
         return new_voted_proposals
 
-
-ProposalStatus = Enum("ProposalStatus", "CANDIDATE ACTIVE COMPLETED FAILED")
-# candidate: proposal is being evaluated by the commons
-# active: has been approved and is funded
-# completed: the proposal was effective/successful
-# failed: did not get to active status or failed after funding
-
-
-class Proposal:
-    def __init__(self, funds_requested: int, trigger: float):
-        self.uuid = uuid.uuid4()
-        self.conviction = 0
-        self.status = ProposalStatus.CANDIDATE
-        self.age = 0
-        self.funds_requested = funds_requested
-        self.trigger = trigger
-
-    def __repr__(self):
-        return "<{} {}>".format(self.__class__.__name__, attrs(self))
-
-    def update_age(self):
-        self.age += 1
-        return self.age
-
-    def update_threshold(self, funding_pool: float, token_supply: float):
-        if self.status == ProposalStatus.CANDIDATE:
-            self.trigger = trigger_threshold(
-                self.funds_requested, funding_pool, token_supply)
-        else:
-            self.trigger = np.nan
-        return self.trigger
-
-    def has_enough_conviction(self, funding_pool: float, token_supply: float):
+    def stake_across_all_supported_proposals(self, supported_proposals: List[Tuple[float, Proposal]]) -> dict:
         """
-        It's just a conviction < threshold check, but we recalculate the
-        trigger_threshold so that the programmer doesn't have to remember to run
-        update_threshold before running this method.
+        Rebalances the Participant's tokens across the (possibly updated) list of Proposals
+        supported by this Participant.
+
+        These tokens can come from a Participant's vesting and nonvesting TokenBatches.
         """
-        if self.status == ProposalStatus.CANDIDATE:
-            threshold = trigger_threshold(
-                self.funds_requested, funding_pool, token_supply)
-            if self.conviction < threshold:
-                return False
-            return True
-        else:
-            raise(Exception(
-                "Proposal {} is not a Candidate Proposal and so asking it if it will pass is inappropriate".format(str(self.uuid))))
+        tokens_per_supported_proposal = {}
+        supported_proposals = sorted(
+            supported_proposals, key=lambda tup: tup[0])
+
+        total_tokens = 0
+        if self.holdings_vesting:
+            total_tokens += self.holdings_vesting.value
+        if self.holdings_nonvesting:
+            total_tokens += self.holdings_nonvesting.value
+
+        affinity_total = sum([a for a, p in supported_proposals])
+        for affinity, proposal in supported_proposals:
+            tokens_per_supported_proposal[proposal.uuid] = total_tokens * (
+                affinity/affinity_total)
+
+        return tokens_per_supported_proposal
