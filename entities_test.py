@@ -82,12 +82,12 @@ class TestParticipant(unittest.TestCase):
         with patch('entities.probability') as mock:
             mock.return_value = False
             ans = self.p.vote_on_candidate_proposals(candidate_proposals)
-            self.assertFalse(ans["new_voted_proposals"])
+            self.assertFalse(ans)
 
         with patch('entities.probability') as mock:
             mock.return_value = True
             ans = self.p.vote_on_candidate_proposals(candidate_proposals)
-            self.assertEqual(len(ans["new_voted_proposals"]), 3)
+            self.assertEqual(len(ans), 3)
 
     def test_vote_on_candidate_proposals_zargham_algorithm(self):
         """
@@ -107,8 +107,7 @@ class TestParticipant(unittest.TestCase):
         }
         with patch('entities.probability') as mock:
             mock.return_value = True
-            ans = self.p.vote_on_candidate_proposals(candidate_proposals)[
-                "new_voted_proposals"]
+            ans = self.p.vote_on_candidate_proposals(candidate_proposals)
             self.assertIn(
                 uuid.UUID(int=179821351946450230734044638685583215499), ans)
             self.assertIn(

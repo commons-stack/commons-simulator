@@ -4,9 +4,9 @@ from enum import Enum
 from inspect import getmembers
 from os.path import abspath
 from types import FunctionType
+from typing import List, Tuple
 
 import numpy as np
-from english_words import english_words_set
 
 import config
 from config import sentiment_sensitivity
@@ -146,7 +146,7 @@ class Participant:
                 if affinity > cutoff:
                     new_voted_proposals[candidate] = affinity
 
-        return {'new_voted_proposals': new_voted_proposals}
+        return new_voted_proposals
 
 
 ProposalStatus = Enum("ProposalStatus", "CANDIDATE ACTIVE COMPLETED FAILED")
@@ -194,4 +194,4 @@ class Proposal:
             return True
         else:
             raise(Exception(
-                "Proposal {} is not a Candidate Proposal and so asking it if it will pass is inappropriate".format(self.name)))
+                "Proposal {} is not a Candidate Proposal and so asking it if it will pass is inappropriate".format(str(self.uuid))))
