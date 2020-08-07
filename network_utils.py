@@ -1,26 +1,43 @@
-from typing import List
-import numpy as np
+from typing import Dict, List
+
 import networkx as nx
-from hatch import TokenBatch
+import numpy as np
 from scipy.stats import expon, gamma
-from entities import Participant, Proposal, ProposalStatus
+
 from convictionvoting import trigger_threshold
+from entities import Participant, Proposal, ProposalStatus
+from hatch import TokenBatch
 
 
-def get_edges_by_type(g, edge_type_selection):
-    return [edge for edge in g.edges if g.edges[edge]['type'] == edge_type_selection]
+def get_edges_by_type(network, edge_type_selection):
+    def filter_by_type(n1, n2):
+        if network.edges[(n1, n2)]["type"] == edge_type_selection:
+            return True
+        return False
+
+    view = nx.subgraph_view(network, filter_edge=filter_by_type)
+    return view.edges()
 
 
 def get_proposals(network, status: ProposalStatus = None):
-    proposals = [i for i in network.nodes if isinstance(
-        network.nodes[i]["item"], Proposal)]
-    if status:
-        return [j for j in proposals if network.nodes[j]['item'].status == status]
-    return proposals
+    def filter_proposal(n):
+        if isinstance(network.nodes[n]["item"], Proposal):
+            if status:
+                return network.nodes[n]["item"].status == status
+            return True
+        return False
+
+    view = nx.subgraph_view(network, filter_node=filter_proposal)
+    return view.nodes(data="item")
 
 
-def get_participants(network):
-    return [i for i in network.nodes if isinstance(network.nodes[i]["item"], Participant)]
+def get_participants(network) -> Dict[int, Participant]:
+    def filter_participant(n):
+        if isinstance(network.nodes[n]["item"], Participant):
+            return True
+        return False
+    view = nx.subgraph_view(network, filter_node=filter_participant)
+    return view.nodes(data="item")
 
 
 def add_hatchers_to_network(participants: List[TokenBatch]) -> nx.DiGraph:
@@ -36,31 +53,48 @@ def add_hatchers_to_network(participants: List[TokenBatch]) -> nx.DiGraph:
     return network
 
 
-def initial_social_network(network: nx.DiGraph, scale=1, sigmas=3) -> nx.DiGraph:
+def influence(scale=1, sigmas=3):
+    """
+    Calculates the likelihood of one node having influence over another node. If
+    so, it returns an influence value, else None.
+
+    expon.rvs with the standard kwargs gives you a lot more values smaller than
+    1, but quite a few outliers that could go all the way up to even 8.
+
+    Unless your influence is 3 standard deviations above the norm (where scale
+    determines the size of the standard deviation), you don't have any influence
+    at all.
+
+    This is broken out so that code that populates the graph initially and code
+    that adds new Participants later on can share this code.
+    """
+
+    influence_rv = expon.rvs(loc=0.0, scale=scale)
+    if influence_rv > scale+sigmas*scale**2:
+        return influence_rv
+    return None
+
+
+def setup_influence_edges(network: nx.DiGraph, scale=1, sigmas=3) -> nx.DiGraph:
     """
     Calculates the chances that a Participant is influential enough to have an
-    'influence' edge in the network to other Participants, and sets it up.
+    'influence' edge in the network to other Participants, and creates the
+    corresponding edge in the graph.
     """
     participants = get_participants(network)
 
     for i in participants:
         for j in participants:
             if not(j == i):
-                # This exponential distribution gives you a lot more values
-                # smaller than 1, but quite a few outliers that could go all the
-                # way up to even 8.
-                influence_rv = expon.rvs(loc=0.0, scale=scale)
-                # Unless your influence is 3 standard deviations above the norm
-                # (where scale determines the size of the standard deviation),
-                # you don't have any influence at all.
-                if influence_rv > scale+sigmas*scale**2:
+                influence_rv = influence()
+                if influence_rv:
                     network.add_edge(i, j)
                     network.edges[(i, j)]['influence'] = influence_rv
                     network.edges[(i, j)]['type'] = 'influence'
     return network
 
 
-def initial_conflict_network(network: nx.DiGraph, rate=.25) -> nx.DiGraph:
+def setup_conflict_edges(network: nx.DiGraph, rate=.25) -> nx.DiGraph:
     """
     Supporting one Proposal may mean going against another Proposal, in which
     case a Proposal-Proposal conflict edge is created. This function calculates
@@ -111,6 +145,6 @@ def add_proposals_and_relationships_to_network(n: nx.DiGraph, proposals: int, fu
             n.edges[(i, j)]['conviction'] = 0
             n.edges[(i, j)]['type'] = 'support'
 
-        n = initial_conflict_network(n, rate=.25)
-        n = initial_social_network(n, scale=1)
+        n = setup_conflict_edges(n, rate=.25)
+        n = setup_influence_edges(n, scale=1)
     return n
