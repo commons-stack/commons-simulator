@@ -1,3 +1,4 @@
+from typing import List
 from scipy.stats import expon, gamma
 import numpy as np
 import networkx as nx
@@ -46,6 +47,19 @@ def get_proposals(network, status: ProposalStatus = None):
 
 def get_participants(network):
     return [i for i in network.nodes if isinstance(network.nodes[i]["item"], Participant)]
+
+
+def add_hatchers_to_network(participants: List[TokenBatch]) -> nx.DiGraph:
+    """
+    Creates a new DiGraph with Participants corresponding to the input
+    TokenBatches.
+    """
+    network = nx.DiGraph()
+    for i, p in enumerate(participants):
+        p_instance = Participant(
+            holdings_vesting=p, holdings_nonvesting=TokenBatch(0))
+        network.add_node(i, item=p_instance)
+    return network
 
 
 def initial_social_network(network: nx.DiGraph, scale=1, sigmas=3) -> nx.DiGraph:
