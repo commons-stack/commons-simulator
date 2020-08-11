@@ -43,200 +43,41 @@ def jsonifyNetwork(network):
 def root():
     return app.send_static_file('index.html')
 
-@app.route('/community', methods = ['GET', 'POST'])
-def community():
+@app.route('/cadcad', methods = ['GET', 'POST'])
+def cadcad():
     try:
-
         n = getInteger('participants') #initial participants
         m = getInteger('proposals') #initial proposals
 
-        initial_sentiment = getFloat('initial_sentiment')
+        alpha = getFloat('alpha')
+        beta = getFloat('beta')
+
+        exit_tribute = getFloat('exit_tribute')
+        theta = getFloat('theta')
+
+        initial_sentiment = 0.1 # getFloat('initial_sentiment')
+        hatch_price = 0.1 # getFloat('hatch_price')
+        kappa = 6 # getFloat('kappa')
+        rho = 0.05 # getFloat('rho')
 
     except Exception as err:
         return str(err), 422
-
-    plot_name = str(n)+str(m)
-
 
     #initializer
     network, initial_supply, total_requested = initialize_network(n,m)
 
-    proposals = get_nodes_by_type(network, 'proposal')
-    participants = get_nodes_by_type(network, 'participant')
-    supporters = get_edges_by_type(network, 'support')
-    influencers = get_edges_by_type(network, 'influence')
-    competitors = get_edges_by_type(network, 'conflict')
-
-    nx.draw_kamada_kawai(network, nodelist = participants, edgelist=influencers)
-    plt.title('Participants Social Network')
-    plt.savefig('static/plot3-'+plot_name+'.png')
-    plt.clf()
-
-    nx.draw_kamada_kawai(network, nodelist = proposals, edgelist=competitors, node_color='b')
-    plt.title('Proposals Conflict Network')
-    plt.savefig('static/plot4-'+plot_name+'.png')
-    plt.clf()
-
-    plt.hist([ network.nodes[i]['holdings'] for i in participants])
-    plt.title('Histogram of Participants Token Holdings')
-    plt.savefig('static/plot5-'+plot_name+'.png')
-    plt.clf()
-
-    plt.hist([ network.nodes[i]['funds_requested'] for i in proposals])
-    plt.title('Histogram of Proposals Funds Requested')
-    plt.savefig('static/plot6-'+plot_name+'.png')
-    plt.clf()
-
-    affinities = np.empty((n,m))
-    for i_ind in range(n):
-        for j_ind in range(m):
-            i = participants[i_ind]
-            j = proposals[j_ind]
-            affinities[i_ind][j_ind] = network.edges[(i,j)]['affinity']
-
-    dims = (20, 5)
-    fig, ax = plt.subplots(figsize=dims)
-
-    sns.heatmap(affinities.T,
-                xticklabels=participants,
-                yticklabels=proposals,
-                square=True,
-                cbar=True,
-                ax=ax)
-
-    plt.title('affinities between participants and proposals')
-    plt.ylabel('proposal_id')
-    plt.xlabel('participant_id')
-    plt.savefig('static/plot7-'+plot_name+'.png')
-    plt.clf()
-
-    nx.write_gpickle(network, 'static/network.gpickle')
-
-    return jsonify({
-      # inputs
-      'participants': m,
-      'proposals': n,
-      'initial_sentiment': initial_sentiment,
-      # outputs
-      'initial_supply': initial_supply,
-      'results': [
-        'plot3-'+plot_name+'.png',
-        'plot4-'+plot_name+'.png',
-        'plot5-'+plot_name+'.png',
-        'plot6-'+plot_name+'.png',
-        'plot7-'+plot_name+'.png',
-      ],
-      'network': jsonifyNetwork(network)
-    })
-
-@app.route('/hatch', methods = ['GET', 'POST'])
-def hatch():
-    try:
-        theta = getFloat('theta')
-        vesting = getFloat('vesting')
-        hatch_price = getFloat('hatch_price')
-    except Exception as err:
-        return str(err), 422
-    return jsonify({
-        # inputs
-        'theta': theta,
-        'vesting': vesting,
-        'hatch_price': hatch_price,
-    })
-
-@app.route('/abc', methods = ['GET', 'POST'])
-def abc():
-    try:
-        initial_supply = getFloat('initial_supply')
-        hatch_price = getFloat('hatch_price')
-        kappa = getInteger('kappa')
-        theta = getFloat('theta')
-        exit_tribute = getFloat('exit_tribute')
-    except Exception as err:
-        return str(err), 422
-
     initial_funds = total_funds_given_total_supply(initial_supply, theta, hatch_price)
 
     initial_reserve, invariant, starting_price = initialize_bonding_curve(initial_supply, initial_price = hatch_price, kappa = kappa, theta = theta)
-    return jsonify({
-        # inputs
-        'initial_supply': initial_supply,
-        'kappa': kappa,
-        'exit_tribute': exit_tribute,
-        # outputs
-        'initial_reserve': initial_reserve,
-        'invariant': invariant,
-        'initial_funds': initial_funds,
-        'starting_price': starting_price
-    })
 
-@app.route('/conviction', methods = ['POST'])
-def conviction():
-  try:
-      alpha = getFloat('alpha')
-      beta = getFloat('beta')
-      rho = getFloat('rho')
-  except Exception as err:
-      print(err)
-      return str(err), 422
-  plot_name = str(beta)+str(rho)
-
-  def trigger_threshold(requested, funds, supply, beta=beta , rho=rho):
-
-      share = requested/funds
-      if share < beta:
-          return rho*supply/(beta-share)**2
-      else:
-          return np.inf
-
-  dict1 = trigger_sweep('token_supply', trigger_threshold, beta)
-
-  trigger_plotter(dict1['share_of_funds'],
-                  dict1['log10_trigger'],
-                  'Log10 Amount of Conviction Required to Pass',
-                  dict1['total_supply'],
-                  'Token Supply')
-  axis = plt.axis()
-
-  plt.savefig('static/plot1-'+plot_name+'.png')
-  plt.clf()
-
-  dict2 = trigger_sweep('alpha',trigger_threshold, xmax=beta)
-
-
-  trigger_plotter(dict2['share_of_funds'],
-                dict2['log10_share_of_max_conv'],
-                'Log10 Share of Conviction Required to Pass',
-                dict2['alpha'],
-                'alpha')
-
-  plt.savefig('static/plot2-'+plot_name+'.png')
-  plt.clf()
-  return jsonify({'alpha': alpha, 'beta': beta, 'rho': rho, 'results': ['plot1-'+plot_name+'.png', 'plot2-'+plot_name+'.png']})
-
-@app.route('/cadcad', methods = ['GET', 'POST'])
-def cadcad():
-
-    try:
-        alpha = getFloat('alpha')
-        exit_tribute = getFloat('exit_tribute')
-
-        kappa = getFloat('kappa')
-        invariant = getFloat('invariant')
-        beta = getFloat('beta')
-        rho = getFloat('rho')
-
-        initial_conditions = {
-          'supply': getFloat('initial_supply'),
-          'funds': getFloat('initial_funds'),
-          'reserve': getFloat('initial_reserve'),
-          'spot_price': getFloat('starting_price'),
-          'sentiment': getFloat('initial_sentiment'),
-          'network': nx.read_gpickle('static/network.gpickle')
-        }
-
-    except Exception as err:
-        return str(err), 422
+    initial_conditions = {
+        'supply': initial_supply,
+        'funds': initial_funds,
+        'reserve': initial_reserve,
+        'spot_price': starting_price,
+        'sentiment': initial_sentiment,
+        'network': network
+    }
 
     def trigger_threshold(requested, funds, supply, beta=beta, rho=rho):
 

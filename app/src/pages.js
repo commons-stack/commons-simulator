@@ -28,15 +28,86 @@ import { serverURI } from './config'
 
 import { useSelector, useDispatch } from 'react-redux'
 
-export const HomePage = () => (
-  <Header>
-    <Title>Can you build a sustainable Commons?</Title>
-    <Subtitle>Give it a try!</Subtitle>
-    <Button color="primary" variant="contained" href="/#/step1">Next</Button>
-  </Header>
-)
-
 const marks = marks => marks.map(m => ({value: m, label: m}))
+
+export const HomePage = () => {
+  const [results, setResults] = React.useState(false)
+  const dispatch = useDispatch()
+  const ref = React.useRef(null)
+  const { alpha, exitTribute, kappa, invariant, beta, rho, initialSupply, initialFunds, initialReserve, startingPrice, initialSentiment } = useSelector(state => state.parameters)
+  const handleSubmit = e => {
+    e.preventDefault()
+    const data = new FormData(ref.current)
+    console.log(new URLSearchParams(data).toString())
+    cadCADAction(setResults, dispatch)(data)
+  }
+  return (
+    <div>
+      <Layout
+        title="Select the parameters"
+        description={
+          <>
+           Select some parameters in order to run the cadCAD simulation.
+          </>
+         }
+         primary={
+          <Params onSubmit={cadCADAction(setResults, useDispatch())}>
+            <SliderField
+              label="Number of participants"
+              name="participants"
+              defaultValue={30}
+              step={5}
+              min={5}
+              max={150}
+            />
+            <SliderField
+              label="Number of proposals"
+              name="proposals"
+              icon={BallotIcon}
+              defaultValue={3}
+              step={1}
+              min={1}
+              max={10}
+            />
+            <SliderField
+              label="Theta"
+              name="theta"
+              defaultValue={0.4}
+              step={0.01}
+              min={0}
+              max={1}
+            />
+            <SliderField
+              label="Exit tribute"
+              name="exit_tribute"
+              defaultValue={0.2}
+              step={0.05}
+              min={0}
+              max={1}
+            />
+            <SliderField
+              label="Alpha (in the future: Time to reach 80% voting power)"
+              name="alpha"
+              defaultValue={0.9}
+              step={0.05}
+              min={0.5}
+              max={1}
+            />
+            <SliderField
+              label="Max Proposal Amount that can be spent in one proposal"
+              name="beta"
+              defaultValue={0.2}
+              step={0.05}
+              min={0.1}
+              max={1}
+            />
+          </Params>
+         }
+         secondary={<Results results={results} />}
+         />
+        </div>
+  )
+}
 
 // Step 1
 export const CommunityPage = () => {
