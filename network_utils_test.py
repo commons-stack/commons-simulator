@@ -1,9 +1,11 @@
 import unittest
+from unittest.mock import patch
 
 import networkx as nx
 
 from entities import Participant, Proposal, ProposalStatus
-from network_utils import get_participants, get_proposals, get_edges_by_type
+from network_utils import (get_edges_by_type, get_participants, get_proposals,
+                           setup_conflict_edges, setup_influence_edges)
 
 
 class TestNetworkUtils(unittest.TestCase):
@@ -39,3 +41,64 @@ class TestNetworkUtils(unittest.TestCase):
     def test_get_edges_by_type(self):
         res = get_edges_by_type(self.network, "support")
         self.assertEqual(len(res), 90)
+
+    def test_setup_influence_edges_multiple(self):
+        """
+        Test that the code works, and that edges are created between DIFFERENT
+        nodes. Also ensures that edges refer to the node index, not the Participant
+        object stored within the node.
+        """
+        with patch('network_utils.influence') as mock:
+            mock.return_value = 0.5
+            self.network = setup_influence_edges(self.network)
+            edges = get_edges_by_type(self.network, "influence")
+            print(edges)
+            self.assertEqual(len(edges), 20)
+            for e in edges:
+                self.assertIsInstance(e[0], int)
+                self.assertIsInstance(e[1], int)
+                self.assertNotEqual(e[0], e[1])
+
+    def test_setup_influence_edges_single(self):
+        with patch('network_utils.influence') as mock:
+            mock.return_value = 0.5
+            self.network = setup_influence_edges(self.network, participant=0)
+            edges = get_edges_by_type(self.network, "influence")
+            print(edges)
+            self.assertEqual(len(edges), 4)
+            for e in edges:
+                self.assertIsInstance(e[0], int)
+                self.assertIsInstance(e[1], int)
+                self.assertNotEqual(e[0], e[1])
+
+    def test_setup_conflict_edges_multiple(self):
+        """
+        Test that the code works, and that edges are created between DIFFERENT
+        nodes. Also ensures that edges refer to the node index, not the Proposal
+        object stored within the node.
+        """
+        self.network = setup_conflict_edges(self.network, rate=1)
+        edges = get_edges_by_type(self.network, "conflict")
+
+        self.assertEqual(len(edges), 20)
+        for e in edges:
+            self.assertIsInstance(e[0], int)
+            self.assertIsInstance(e[1], int)
+            self.assertNotEqual(e[0], e[1])
+
+    def test_setup_conflict_edges_single(self):
+        """
+        Test that the code works, and that edges are created between DIFFERENT
+        nodes. Also ensures that edges refer to the node index, not the Proposal
+        object stored within the node.
+        """
+        proposal_count = len(get_proposals(self.network))
+
+        self.network = setup_conflict_edges(self.network, 1, rate=1)
+        edges = get_edges_by_type(self.network, "conflict")
+
+        self.assertEqual(len(edges), proposal_count-1)
+        for e in edges:
+            self.assertIsInstance(e[0], int)
+            self.assertIsInstance(e[1], int)
+            self.assertNotEqual(e[0], e[1])

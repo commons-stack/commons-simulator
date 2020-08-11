@@ -75,45 +75,75 @@ def influence(scale=1, sigmas=3):
     return None
 
 
-def setup_influence_edges(network: nx.DiGraph, scale=1, sigmas=3) -> nx.DiGraph:
+def setup_influence_edges(network: nx.DiGraph, participant=None) -> nx.DiGraph:
     """
     Calculates the chances that a Participant is influential enough to have an
     'influence' edge in the network to other Participants, and creates the
     corresponding edge in the graph.
-    """
-    participants = get_participants(network)
 
-    for i in participants:
-        for j in participants:
-            if not(j == i):
+    Takes an optional participant argument, which is the index number of the
+    Participant in network.nodes. If this argument is present, it will setup the
+    influence edges only for this Participant.
+    """
+    def loop_over_other_participants(network, participants, i):
+        for other_participant in participants:
+            if not(other_participant == i):
                 influence_rv = influence()
                 if influence_rv:
-                    network.add_edge(i, j)
-                    network.edges[(i, j)]['influence'] = influence_rv
-                    network.edges[(i, j)]['type'] = 'influence'
-    return network
+                    network.add_edge(i, other_participant)
+                    network.edges[(i, other_participant)
+                                  ]['influence'] = influence_rv
+                    network.edges[(i, other_participant)]['type'] = 'influence'
+        return network
+    # Turn it into a dict to make a copy out of the View, because the View
+    # changes whenever we add edges to the graph, which results in RuntimeError:
+    # dictionary changed size during iteration
+    participants = dict(get_participants(network))
+
+    # Do not use "if not participant" - index number 0 will evaluate to False.
+    if participant is None:
+        for i in participants:
+            n = loop_over_other_participants(network, participants, i)
+        return n
+
+    return loop_over_other_participants(network, participants, participant)
 
 
-def setup_conflict_edges(network: nx.DiGraph, rate=.25) -> nx.DiGraph:
+def setup_conflict_edges(network: nx.DiGraph, proposal=None, rate=.25) -> nx.DiGraph:
     """
     Supporting one Proposal may mean going against another Proposal, in which
     case a Proposal-Proposal conflict edge is created. This function calculates
     the chances of that happening and the 'strength' of such a conflict.
-    """
-    proposals = get_proposals(network)
 
-    for i in proposals:
-        for j in proposals:
-            if not(j == i):
+    Takes an optional proposal argument, which is the index number of the
+    Proposal in network.nodes. If this argument is present, it will setup the
+    conflict edges only for this Proposal.
+    """
+    def loop_over_other_proposals(network, proposals, proposal):
+        for other_proposal in proposals:
+            if not(other_proposal == proposal):
                 # (rate=0.25) means 25% of other Proposals are going to conflict
                 # with this particular Proposal. And when they do conflict, the
                 # conflict number is high (at least 1 - 0.25 = 0.75).
                 conflict_rv = np.random.rand()
                 if conflict_rv < rate:
-                    network.add_edge(i, j)
-                    network.edges[(i, j)]['conflict'] = 1-conflict_rv
-                    network.edges[(i, j)]['type'] = 'conflict'
-    return network
+                    network.add_edge(proposal, other_proposal)
+                    network.edges[(proposal, other_proposal)
+                                  ]['conflict'] = 1-conflict_rv
+                    network.edges[(proposal, other_proposal)
+                                  ]['type'] = 'conflict'
+        return network
+    # Turn it into a dict to make a copy out of the View, because the View
+    # changes whenever we add edges to the graph, which results in RuntimeError:
+    # dictionary changed size during iteration
+    proposals = dict(get_proposals(network))
+
+    # Do not use "if not proposal" - index number 0 will evaluate to False.
+    if proposal is None:
+        for i in proposals:
+            n = loop_over_other_proposals(network, proposals, i)
+        return n
+    return loop_over_other_proposals(network, proposals, proposal)
 
 
 def add_proposals_and_relationships_to_network(n: nx.DiGraph, proposals: int, funding_pool: float, token_supply: float) -> nx.DiGraph:
@@ -146,5 +176,5 @@ def add_proposals_and_relationships_to_network(n: nx.DiGraph, proposals: int, fu
             n.edges[(i, j)]['type'] = 'support'
 
         n = setup_conflict_edges(n, rate=.25)
-        n = setup_influence_edges(n, scale=1)
+        n = setup_influence_edges(n)
     return n
