@@ -40,7 +40,7 @@ def get_participants(network) -> Dict[int, Participant]:
     return view.nodes(data="item")
 
 
-def add_hatchers_to_network(participants: List[TokenBatch]) -> nx.DiGraph:
+def create_network(participants: List[TokenBatch]) -> nx.DiGraph:
     """
     Creates a new DiGraph with Participants corresponding to the input
     TokenBatches.

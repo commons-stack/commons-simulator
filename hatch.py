@@ -31,7 +31,7 @@ def hatch_raise_split_pools(total_hatch_raise, hatch_tribute) -> Tuple[float, fl
     return funding_pool, collateral_pool
 
 
-def contributions_to_token_batches(hatcher_contributions: List[int], desired_token_price: float, vesting_80p_unlocked: int) -> Tuple[List[float], float]:
+def create_token_batches(hatcher_contributions: List[int], desired_token_price: float, vesting_80p_unlocked: int) -> Tuple[List[float], float]:
     """
     hatcher_contributions: a list of hatcher contributions in DAI/ETH/whatever
     desired_token_price: used to determine the initial token supply
