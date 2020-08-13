@@ -103,8 +103,8 @@ def setup_influence_edges(network: nx.DiGraph, participant=None) -> nx.DiGraph:
     # Do not use "if not participant" - index number 0 will evaluate to False.
     if participant is None:
         for i in participants:
-            n = loop_over_other_participants(network, participants, i)
-        return n
+            network = loop_over_other_participants(network, participants, i)
+        return network
 
     return loop_over_other_participants(network, participants, participant)
 
@@ -141,40 +141,63 @@ def setup_conflict_edges(network: nx.DiGraph, proposal=None, rate=.25) -> nx.DiG
     # Do not use "if not proposal" - index number 0 will evaluate to False.
     if proposal is None:
         for i in proposals:
-            n = loop_over_other_proposals(network, proposals, i)
-        return n
+            network = loop_over_other_proposals(network, proposals, i)
+        return network
     return loop_over_other_proposals(network, proposals, proposal)
 
 
-def add_proposals_and_relationships_to_network(n: nx.DiGraph, proposals: int, funding_pool: float, token_supply: float) -> nx.DiGraph:
+def setup_support_edges(network: nx.DiGraph, idx=None) -> nx.DiGraph:
     """
-    At this point, there are Participants in the network but they are not
-    related to each other. This function adds Proposals as nodes and the
-    relationships between every Participant and these new Proposals.
+    Every Participant has a 'support' edge to every Proposal, and vice versa,
+    indicating how much that Participant supports that Proposal. This function
+    adds support edges between every Participant and Proposal in the network.
+
+    Takes an optional node index. If the node is a Participant, it will setup
+    support edges to other Proposal nodes and vice versa if the node is a
+    Proposal.
     """
-    participant_count = len(n)
-    for i in range(proposals):
-        j = participant_count + i
+    def create_support_edge(n, i, j):
+        # Token Holder -> Proposal Relationship
+        # Looks like Zargham skewed this distribution heavily towards
+        # numbers smaller than 0.25 This is the affinity towards proposals.
+        # Most Participants won't care about most proposals, but then there
+        # will be a few Proposals that they really care about.
+        rv = np.random.rand()
+        a_rv = 1-4*(1-rv)*rv
+        n.add_edge(i, j, affinity=a_rv, tokens=0, conviction=0, type="support")
+        return n
+    participants = dict(get_participants(network))
+    proposals = dict(get_proposals(network))
+
+    if idx is None:
+        for prop in proposals:
+            for par in participants:
+                network = create_support_edge(network, par, prop)
+
+    else:
+        if isinstance(network.nodes[idx]['item'], Proposal):
+            for par in participants:
+                network = create_support_edge(network, par, idx)
+        elif isinstance(network.nodes[idx]['item'], Participant):
+            for prop in proposals:
+                network = create_support_edge(network, idx, prop)
+    return network
+
+
+def bootstrap_network(n_participants: List[TokenBatch], n_proposals: int, funding_pool: float, token_supply: float) -> nx.DiGraph:
+    """
+    Convenience function that creates a network ready for simulation in
+    the Python notebook in one line.
+    """
+    n = create_network(n_participants)
+
+    for _ in range(n_proposals):
+        idx = len(n)
         r_rv = gamma.rvs(3, loc=0.001, scale=10000)
+        n.add_node(idx, item=Proposal(funds_requested=r_rv, trigger=trigger_threshold(
+            r_rv, funding_pool, token_supply)))
 
-        proposal = Proposal(funds_requested=r_rv, trigger=trigger_threshold(
-            r_rv, funding_pool, token_supply))
-        n.add_node(j, item=proposal)
-
-        for i in range(participant_count):
-            n.add_edge(i, j)
-            rv = np.random.rand()
-            a_rv = 1-4*(1-rv)*rv  # polarized distribution
-            # Token Holder -> Proposal Relationship
-            # Looks like Zargham skewed this distribution heavily towards
-            # numbers smaller than 0.25 This is the affinity towards proposals.
-            # Most Participants won't care about most proposals, but then there
-            # will be a few Proposals that they really care about.
-            n.edges[(i, j)]['affinity'] = a_rv
-            n.edges[(i, j)]['tokens'] = 0
-            n.edges[(i, j)]['conviction'] = 0
-            n.edges[(i, j)]['type'] = 'support'
-
-        n = setup_conflict_edges(n, rate=.25)
-        n = setup_influence_edges(n)
+    n = setup_support_edges(n)
+    n = setup_conflict_edges(n)
+    n = setup_influence_edges(n)
     return n
