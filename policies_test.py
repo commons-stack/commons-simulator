@@ -4,7 +4,7 @@ import networkx as nx
 
 from convictionvoting import trigger_threshold
 from entities import Participant, Proposal
-import network_helpers
+import network_utils
 
 
 def are_there_nonzero_values_in_dict(dictionary):
@@ -18,31 +18,6 @@ def are_there_nonzero_values_in_dict(dictionary):
     for i in dictionary:
         answer = answer or bool(dictionary[i])
     return answer
-
-
-class TestNetworkUtils(unittest.TestCase):
-    def setUp(self):
-        self.network = nx.DiGraph()
-        for i in range(10):
-            self.network.add_node(i, item=Participant())
-        for i in range(5):
-            self.network.add_node(i, item=Proposal(500, 5))
-
-    def test_get_proposals(self):
-        proposals = network_helpers.get_proposals(self.network)
-        for i in proposals:
-            self.assertIsInstance(self.network.nodes[i]["item"], Proposal)
-
-    def test_probability(self):
-        results = []
-        for _ in range(10):
-            results.append(network_helpers.probability(0.1))
-        self.assertGreater(results.count(False), results.count(True))
-
-        results2 = []
-        for _ in range(2):
-            results2.append(network_helpers.probability(1.0))
-        self.assertEqual(results2.count(True), 2)
 
 
 """
@@ -88,18 +63,18 @@ class ParticipantsActingTest(unittest.TestCase):
             "network": self.network,
         }
 
-        with patch('network_helpers.probability') as mock:
+        with patch('network_utils.probability') as mock:
             mock.return_value = True
-            answer = network_helpers.participants_more_likely_to_buy_with_high_sentiment(
+            answer = network_utils.participants_more_likely_to_buy_with_high_sentiment(
                 self.params, 1, 1, state)
             print(are_there_nonzero_values_in_dict(
                 answer["delta_holdings"]), answer["delta_holdings"])
 
             self.assertTrue(all(answer["delta_holdings"].values()))
 
-        with patch('network_helpers.probability') as mock:
+        with patch('network_utils.probability') as mock:
             mock.return_value = False
-            answer = network_helpers.participants_more_likely_to_buy_with_high_sentiment(
+            answer = network_utils.participants_more_likely_to_buy_with_high_sentiment(
                 self.params, 1, 1, state)
             print(are_there_nonzero_values_in_dict(
                 answer["delta_holdings"]), answer["delta_holdings"])
