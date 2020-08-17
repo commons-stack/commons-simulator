@@ -1,86 +1,53 @@
 import unittest
-from unittest.mock import patch, MagicMock
-import networkx as nx
+from unittest.mock import patch
 
-from convictionvoting import trigger_threshold
-from entities import Participant, Proposal
-import network_utils
-
-
-def are_there_nonzero_values_in_dict(dictionary):
-    """
-    Example:
-    {'delta_holdings': {0: 0.13405269115654075,
-        1: 0, 2: 0, 3: 0.24943837481994094, 4: 0}}
-    should report 0: True, 3: True
-    """
-    answer = False
-    for i in dictionary:
-        answer = answer or bool(dictionary[i])
-    return answer
+from hatch import Commons, TokenBatch, VestingOptions
+from network_utils import bootstrap_network
+from policies import GenerateNewParticipant, GenerateNewProposal
 
 
-"""
-As much as possible, make all software components deterministic.
-
-In cases where it is impossible to do so, it actually isn't so important to
-check that y happens x% of the time. What is important is that it lets us access
-the code easily, independent of other components.
-
-Remember: a model is just a theory. We write tests not to verify the model, but
-we do need to know that it is working as intended and we need to be able to dive in
-quickly if there is a problem.
-"""
-
-
-class ParticipantsActingTest(unittest.TestCase):
+class TestGenerateNewParticipant(unittest.TestCase):
     def setUp(self):
-        self.params = {
-            0: {
-                "sentiment_decay": 0.01,
-                "trigger_threshold": trigger_threshold,
-                "min_proposal_age_days": 2,
-                "sentiment_sensitivity": 0.75,
-                "alpha": 0.5,
-                'min_supp': 50,
-            }
-        }
+        self.commons = Commons(10000, 1000)
+        self.sentiment = 0.5
 
-        self.network = nx.DiGraph()
-
-        for i in range(10):
-            p = Participant()
-            p.sentiment = 1.0
-            self.network.add_node(i, item=p)
-
-    def test_participants_more_likely_to_buy_with_high_sentiment(self):
+    def test_p_randomly(self):
         """
-        Test that the function works. If we set the probability to 1, all Participants should buy in.
-        If we set the probability to 0, no Participants should buy in.
+        Simply test that the code runs.
         """
-
         state = {
-            "network": self.network,
+            "commons": self.commons,
+            "sentiment": self.sentiment
         }
+        with patch("policies.probability") as p:
+            p.return_value = True
+            ans = GenerateNewParticipant.p_randomly(None, 0, 0, state)
+            self.assertEqual(ans["new_participant"], True)
+            self.assertIsNotNone(ans["new_participant_investment"])
+            self.assertIsNotNone(ans["new_participant_tokens"])
 
-        with patch('network_utils.probability') as mock:
-            mock.return_value = True
-            answer = network_utils.participants_more_likely_to_buy_with_high_sentiment(
-                self.params, 1, 1, state)
-            print(are_there_nonzero_values_in_dict(
-                answer["delta_holdings"]), answer["delta_holdings"])
+    def test_su_add_to_network(self):
+        """
+        Test that the state update function did add the Participant to the
+        network, and that the network maintained its integrity (i.e. all edges
+        were properly setup)
+        """
+        with patch("network_utils.influence") as p:
+            p.return_value = 0.8
+            n_old = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
+                            for _ in range(4)], 1, 3000, 4e6)
+            import ipdb; ipdb.set_trace()
+            n_old_len = len(n_old.nodes)
 
-            self.assertTrue(all(answer["delta_holdings"].values()))
+            _input = {
+                "new_participant": True,
+                "new_participant_investment": 16.872149388283283,
+                "new_participant_tokens": 1.0545093367677052
+            }
+            _, n_new = GenerateNewParticipant.su_add_to_network(None, 0, 0, {"network": n_old}, _input)
+            n_new_len = len(n_new.nodes)
+            print(n_new.nodes(data="item"))
 
-        with patch('network_utils.probability') as mock:
-            mock.return_value = False
-            answer = network_utils.participants_more_likely_to_buy_with_high_sentiment(
-                self.params, 1, 1, state)
-            print(are_there_nonzero_values_in_dict(
-                answer["delta_holdings"]), answer["delta_holdings"])
-
-            self.assertFalse(any(answer["delta_holdings"].values()))
-
-
-if __name__ == '__main__':
-    unittest.main()
+            self.assertEqual(n_old_len, 5)
+            self.assertEqual(n_new_len, 6)
+            self.assertEqual(n_new.nodes(data="item")[5].holdings_nonvesting.value, 1.0545093367677052)
