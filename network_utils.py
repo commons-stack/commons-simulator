@@ -75,39 +75,47 @@ def influence(scale=1, sigmas=3):
     return None
 
 
-def setup_influence_edges(network: nx.DiGraph, participant=None) -> nx.DiGraph:
+def setup_influence_edges_bulk(network: nx.DiGraph) -> nx.DiGraph:
     """
     Calculates the chances that a Participant is influential enough to have an
     'influence' edge in the network to other Participants, and creates the
-    corresponding edge in the graph.
+    corresponding edge in the graph. If an "influence" type edge already exists,
+    it will skip it.
 
     Takes an optional participant argument, which is the index number of the
     Participant in network.nodes. If this argument is present, it will setup the
     influence edges only for this Participant.
     """
-    def loop_over_other_participants(network, participants, i):
-        for other_participant in participants:
-            if not(other_participant == i):
-                influence_rv = influence()
-                if influence_rv:
-                    network.add_edge(i, other_participant)
-                    network.edges[(i, other_participant)
-                                  ]['influence'] = influence_rv
-                    network.edges[(i, other_participant)]['type'] = 'influence'
-        return network
     # Turn it into a dict to make a copy out of the View, because the View
     # changes whenever we add edges to the graph, which results in RuntimeError:
     # dictionary changed size during iteration
     participants = dict(get_participants(network))
 
-    # Do not use "if not participant" - index number 0 will evaluate to False.
-    if participant is None:
-        for i in participants:
-            network = loop_over_other_participants(network, participants, i)
-        return network
+    for i in participants:
+        for other_participant in participants:
+            if not(other_participant == i) and not network.has_edge(i, other_participant):
+                influence_rv = influence()
+                if influence_rv:
+                    network.add_edge(i, other_participant, influence=influence_rv, type="influence")
+    return network
 
-    return loop_over_other_participants(network, participants, participant)
+def setup_influence_edges_single(network: nx.DiGraph, participant: int):
+    p = dict(get_participants(network))
+    del p[participant]
+    other_participants = p
 
+    # If we already have Participants at index 0,1,2,3,4 and we added a
+    # Participant at index 5, this creates the edges 0,5; 1,5; 2;5 etc.
+    for other in other_participants:
+        if not network.has_edge(other, participant):
+            influence_rv = influence()
+            if influence_rv:
+                network.add_edge(other, participant, influence=influence_rv, type="influence")
+        if not network.has_edge(participant, other):
+            influence_rv = influence()
+            if influence_rv:
+                network.add_edge(participant, other, influence=influence_rv, type="influence")
+    return network
 
 def setup_conflict_edges(network: nx.DiGraph, proposal=None, rate=.25) -> nx.DiGraph:
     """
@@ -199,5 +207,20 @@ def bootstrap_network(n_participants: List[TokenBatch], n_proposals: int, fundin
 
     n = setup_support_edges(n)
     n = setup_conflict_edges(n)
-    n = setup_influence_edges(n)
+    n = setup_influence_edges_bulk(n)
     return n
+
+
+def calc_total_funds_requested(network):
+    candidates = get_proposals(network, status=ProposalStatus.CANDIDATE)
+    fund_requests = [network.nodes[j]
+                     ["item"].funds_requested for j in candidates]
+    total_funds_requested = np.sum(fund_requests)
+    return total_funds_requested
+
+
+def calc_median_affinity(network):
+    supporters = get_edges_by_type(network, 'support')
+    affinities = [network.edges[e]['affinity'] for e in supporters]
+    median_affinity = np.median(affinities)
+    return median_affinity

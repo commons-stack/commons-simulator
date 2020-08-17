@@ -5,7 +5,7 @@ import networkx as nx
 from hatch import TokenBatch, VestingOptions
 from entities import Participant, Proposal, ProposalStatus
 from network_utils import (get_edges_by_type, get_participants, get_proposals,
-                           setup_conflict_edges, setup_influence_edges, setup_support_edges, bootstrap_network)
+                           setup_conflict_edges, setup_influence_edges_bulk, setup_influence_edges_single, setup_support_edges, bootstrap_network)
 
 
 class TestNetworkUtils(unittest.TestCase):
@@ -39,7 +39,7 @@ class TestNetworkUtils(unittest.TestCase):
         res = get_edges_by_type(self.network, "support")
         self.assertEqual(len(res), 1)
 
-    def test_setup_influence_edges_multiple(self):
+    def test_setup_influence_edges_bulk(self):
         """
         Test that the code works, and that edges are created between DIFFERENT
         nodes. Also ensures that edges refer to the node index, not the Participant
@@ -47,7 +47,7 @@ class TestNetworkUtils(unittest.TestCase):
         """
         with patch('network_utils.influence') as mock:
             mock.return_value = 0.5
-            self.network = setup_influence_edges(self.network)
+            self.network = setup_influence_edges_bulk(self.network)
             edges = get_edges_by_type(self.network, "influence")
             self.assertEqual(len(edges), 20)
             for e in edges:
@@ -55,16 +55,77 @@ class TestNetworkUtils(unittest.TestCase):
                 self.assertIsInstance(e[1], int)
                 self.assertNotEqual(e[0], e[1])
 
-    def test_setup_influence_edges_single(self):
+    def test_setup_influence_edges_bulk_wont_overwrite_existing_influences(self):
+        """
+        Test that setup_influence_edges_bulk will not overwrite existing
+        influence edges.
+        """
         with patch('network_utils.influence') as mock:
             mock.return_value = 0.5
-            self.network = setup_influence_edges(self.network, participant=0)
+            self.network = setup_influence_edges_bulk(self.network)
             edges = get_edges_by_type(self.network, "influence")
-            self.assertEqual(len(edges), 4)
+            self.assertEqual(len(edges), 20)
+            for e in edges:
+                self.assertEqual(self.network.get_edge_data(e[0], e[1])["influence"], 0.5)
+
+            mock.return_value = 0.8
+            self.network = setup_influence_edges_bulk(self.network)
+            edges = get_edges_by_type(self.network, "influence")
+            self.assertEqual(len(edges), 20)
+            for e in edges:
+                self.assertEqual(self.network.get_edge_data(e[0], e[1])["influence"], 0.5)
+
+
+    def test_setup_influence_edges_single(self):
+        """
+        Test that the code works, and that if I set up influence edges for a
+        Participant in a network where he has 4 peers, 8 edges will be created,
+        4 from the new Participant to the existing Participants + 4 from
+        the existing Participants to the new Participant
+        """
+        with patch('network_utils.influence') as mock:
+            mock.return_value = 0.5
+            self.network = setup_influence_edges_single(self.network, 0)
+            edges = list(get_edges_by_type(self.network, "influence"))
+            self.assertEqual(len(edges), 8)
             for e in edges:
                 self.assertIsInstance(e[0], int)
                 self.assertIsInstance(e[1], int)
                 self.assertNotEqual(e[0], e[1])
+
+            # Test that Participant 0 has 4 edges to other Participants, and
+            # that other Participants (like Participant 2) only have 1 edge to
+            # Participant 0.
+            a = tuple(zip(*edges))
+            self.assertEqual(a[0].count(0), 4)
+            self.assertEqual(a[0].count(2), 1)
+            self.assertEqual(a[1].count(0), 4)
+            self.assertEqual(a[1].count(2), 1)
+
+    def test_setup_influence_edges_single_wont_overwrite_existing_influences(self):
+        """
+        Test that setup_influence_edges_single will not overwrite existing
+        influence edges.
+        """
+        with patch('network_utils.influence') as mock:
+            mock.return_value = 0.5
+            self.network = setup_influence_edges_single(self.network, 0)
+            edges = list(get_edges_by_type(self.network, "influence"))
+            self.assertEqual(len(edges), 8)
+
+            # First, check that the influence edges all have the original
+            # influence value of 0.5
+            for e in edges:
+                self.assertEqual(self.network.get_edge_data(e[0], e[1])["influence"], 0.5)
+
+            # Now, ensure that the original influence value of 0.5 was not
+            # overwritten with 0.8
+            mock.return_value = 0.8
+            self.network = setup_influence_edges_single(self.network, 0)
+            edges = list(get_edges_by_type(self.network, "influence"))
+            self.assertEqual(len(edges), 8)
+            for e in edges:
+                self.assertEqual(self.network.get_edge_data(e[0], e[1])["influence"], 0.5)
 
     def test_setup_conflict_edges_multiple(self):
         """
@@ -91,7 +152,6 @@ class TestNetworkUtils(unittest.TestCase):
 
         self.network = setup_conflict_edges(self.network, 1, rate=1)
         edges = get_edges_by_type(self.network, "conflict")
-
         self.assertEqual(len(edges), proposal_count-1)
         for e in edges:
             self.assertIsInstance(e[0], int)
