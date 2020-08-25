@@ -73,8 +73,9 @@ class GenerateNewProposal:
         network = s["network"]
 
         participants = get_participants(network)
-        i = random.choice(participants)
-        wants_to_create_proposal = participants[i].create_proposal(calc_total_funds_requested(
+        i, participant = random.sample(participants, 1)[0]
+
+        wants_to_create_proposal = participant.create_proposal(calc_total_funds_requested(
             network), calc_median_affinity(network), funding_pool)
 
         return {"new_proposal": wants_to_create_proposal, "proposed_by_participant": i}
@@ -91,7 +92,7 @@ class GenerateNewProposal:
             rescale = funding_pool * scale_factor
             r_rv = gamma.rvs(3, loc=0.001, scale=rescale)
             proposal = Proposal(funds_requested=r_rv,
-                        trigger=convictionvoting.trigger_threshold(r_rv, funding_pool, token_supply))
+                                trigger=convictionvoting.trigger_threshold(r_rv, funding_pool, token_supply))
             network.add_node(j, item=proposal)
 
             # Create support edges from Participants to this Proposal. If
