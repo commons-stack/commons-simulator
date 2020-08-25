@@ -96,8 +96,10 @@ def setup_influence_edges_bulk(network: nx.DiGraph) -> nx.DiGraph:
             if not(other_participant == i) and not network.has_edge(i, other_participant):
                 influence_rv = influence()
                 if influence_rv:
-                    network.add_edge(i, other_participant, influence=influence_rv, type="influence")
+                    network.add_edge(i, other_participant,
+                                     influence=influence_rv, type="influence")
     return network
+
 
 def setup_influence_edges_single(network: nx.DiGraph, participant: int):
     p = dict(get_participants(network))
@@ -110,12 +112,15 @@ def setup_influence_edges_single(network: nx.DiGraph, participant: int):
         if not network.has_edge(other, participant):
             influence_rv = influence()
             if influence_rv:
-                network.add_edge(other, participant, influence=influence_rv, type="influence")
+                network.add_edge(other, participant,
+                                 influence=influence_rv, type="influence")
         if not network.has_edge(participant, other):
             influence_rv = influence()
             if influence_rv:
-                network.add_edge(participant, other, influence=influence_rv, type="influence")
+                network.add_edge(participant, other,
+                                 influence=influence_rv, type="influence")
     return network
+
 
 def setup_conflict_edges(network: nx.DiGraph, proposal=None, rate=.25) -> nx.DiGraph:
     """
@@ -213,14 +218,16 @@ def bootstrap_network(n_participants: List[TokenBatch], n_proposals: int, fundin
 
 def calc_total_funds_requested(network):
     candidates = get_proposals(network, status=ProposalStatus.CANDIDATE)
-    fund_requests = [network.nodes[j]
-                     ["item"].funds_requested for j in candidates]
+    fund_requests = [j[1].funds_requested for j in candidates]
     total_funds_requested = np.sum(fund_requests)
     return total_funds_requested
 
 
 def calc_median_affinity(network):
     supporters = get_edges_by_type(network, 'support')
+    if len(supporters) == 0:
+        raise Exception("The network has 0 support edges!")
+
     affinities = [network.edges[e]['affinity'] for e in supporters]
     median_affinity = np.median(affinities)
     return median_affinity

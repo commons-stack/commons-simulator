@@ -2,10 +2,14 @@ import unittest
 from unittest.mock import patch
 
 import networkx as nx
-from hatch import TokenBatch, VestingOptions
+
 from entities import Participant, Proposal, ProposalStatus
-from network_utils import (get_edges_by_type, get_participants, get_proposals,
-                           setup_conflict_edges, setup_influence_edges_bulk, setup_influence_edges_single, setup_support_edges, bootstrap_network)
+from hatch import TokenBatch, VestingOptions
+from network_utils import (bootstrap_network, calc_median_affinity,
+                           calc_total_funds_requested, get_edges_by_type,
+                           get_participants, get_proposals,
+                           setup_conflict_edges, setup_influence_edges_bulk,
+                           setup_influence_edges_single, setup_support_edges)
 
 
 class TestNetworkUtils(unittest.TestCase):
@@ -66,15 +70,16 @@ class TestNetworkUtils(unittest.TestCase):
             edges = get_edges_by_type(self.network, "influence")
             self.assertEqual(len(edges), 20)
             for e in edges:
-                self.assertEqual(self.network.get_edge_data(e[0], e[1])["influence"], 0.5)
+                self.assertEqual(self.network.get_edge_data(
+                    e[0], e[1])["influence"], 0.5)
 
             mock.return_value = 0.8
             self.network = setup_influence_edges_bulk(self.network)
             edges = get_edges_by_type(self.network, "influence")
             self.assertEqual(len(edges), 20)
             for e in edges:
-                self.assertEqual(self.network.get_edge_data(e[0], e[1])["influence"], 0.5)
-
+                self.assertEqual(self.network.get_edge_data(
+                    e[0], e[1])["influence"], 0.5)
 
     def test_setup_influence_edges_single(self):
         """
@@ -116,7 +121,8 @@ class TestNetworkUtils(unittest.TestCase):
             # First, check that the influence edges all have the original
             # influence value of 0.5
             for e in edges:
-                self.assertEqual(self.network.get_edge_data(e[0], e[1])["influence"], 0.5)
+                self.assertEqual(self.network.get_edge_data(
+                    e[0], e[1])["influence"], 0.5)
 
             # Now, ensure that the original influence value of 0.5 was not
             # overwritten with 0.8
@@ -125,7 +131,8 @@ class TestNetworkUtils(unittest.TestCase):
             edges = list(get_edges_by_type(self.network, "influence"))
             self.assertEqual(len(edges), 8)
             for e in edges:
-                self.assertEqual(self.network.get_edge_data(e[0], e[1])["influence"], 0.5)
+                self.assertEqual(self.network.get_edge_data(
+                    e[0], e[1])["influence"], 0.5)
 
     def test_setup_conflict_edges_multiple(self):
         """
@@ -202,3 +209,11 @@ class TestNetworkUtils(unittest.TestCase):
         self.assertEqual(edge_types.count('support'), 4)
         self.assertEqual(len(get_participants(network)), 4)
         self.assertEqual(len(get_proposals(network)), 1)
+
+    def test_calc_total_funds_requested(self):
+        sum = calc_total_funds_requested(self.network)
+        self.assertEqual(sum, 50)
+
+    def test_calc_median_affinity_network_with_no_support_edges(self):
+        with self.assertRaises(Exception):
+            calc_median_affinity(self.network)
