@@ -60,6 +60,9 @@ class TestGenerateNewProposal(unittest.TestCase):
                                           for _ in range(4)], 1, 3000, 4e6)
 
     def test_p_randomly(self):
+        """
+        Simply test that the code runs.
+        """
         with patch("entities.probability") as p:
             p.return_value = True
             ans = GenerateNewProposal.p_randomly(
