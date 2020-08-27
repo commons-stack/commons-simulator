@@ -101,3 +101,20 @@ class GenerateNewProposal:
             network = setup_support_edges(network, j)
             network.edges[_input["proposed_by_participant"], j]["affinity"] = 1
         return "network", network
+
+
+class GenerateNewFunding:
+    @staticmethod
+    def p_exit_tribute_of_average_speculator_position_size(params, step, sL, s):
+        """
+        Assuming that on average, x speculators exit a position in the Commons
+        and their position size is x, we take exit_tribute percentage of that.
+        """
+        speculator_position_size_min = 200  # DAI
+        speculator_position_size_stdev = 200
+        speculators = 5
+        exits = [expon.rvs(loc=speculator_position_size_min,
+                           scale=speculator_position_size_stdev) for i in range(speculators)]
+        commons = s["commons"]
+        funding = sum(exits) * commons.exit_tribute
+        return {"funding": funding}

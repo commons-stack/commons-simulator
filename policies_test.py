@@ -1,10 +1,12 @@
 import unittest
+from collections import namedtuple
 from unittest.mock import patch
 
 from entities import Proposal
 from hatch import Commons, TokenBatch, VestingOptions
 from network_utils import bootstrap_network, get_edges_by_type
-from policies import GenerateNewParticipant, GenerateNewProposal
+from policies import (GenerateNewFunding, GenerateNewParticipant,
+                      GenerateNewProposal)
 
 
 class TestGenerateNewParticipant(unittest.TestCase):
@@ -110,3 +112,17 @@ class TestGenerateNewProposal(unittest.TestCase):
         # Check that the Participant that created the Proposal has an affinity
         # of 1 towards it
         self.assertEqual(network.edges[0, 5]["affinity"], 1)
+
+
+class TestGenerateNewFunding(unittest.TestCase):
+    def test_p_exit_tribute_of_average_speculator_position_size(self):
+        """
+        Simply test that the code works.
+        """
+        m_commons = namedtuple("MockCommons", "exit_tribute")
+        m_commons.exit_tribute = 0.10
+        state = {
+            "commons": m_commons}
+        ans = GenerateNewFunding.p_exit_tribute_of_average_speculator_position_size(
+            None, 0, 0, state)
+        self.assertTrue(ans["funding"] > 0)
