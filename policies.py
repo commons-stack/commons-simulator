@@ -107,8 +107,10 @@ class GenerateNewFunding:
     @staticmethod
     def p_exit_tribute_of_average_speculator_position_size(params, step, sL, s):
         """
-        Assuming that on average, x speculators exit a position in the Commons
-        and their position size is x, we take exit_tribute percentage of that.
+        This policy needs Commons.exit_tribute to NOT be 0!
+
+        TODO: buy tokens and sell them immediately within the same simulation
+        step, assuming a certain position size.
         """
         speculator_position_size_min = 200  # DAI
         speculator_position_size_stdev = 200
@@ -125,3 +127,8 @@ class GenerateNewFunding:
         if _input["funding"]:
             commons._funding_pool += _input["funding"]
         return "commons", commons
+
+
+class ActiveProposals:
+    @staticmethod
+    def p_randomly(self):
