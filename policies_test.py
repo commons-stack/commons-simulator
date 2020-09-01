@@ -146,23 +146,23 @@ class TestActiveProposals(unittest.TestCase):
         self.network.nodes[4]["item"].status = ProposalStatus.ACTIVE
         self.network.nodes[5]["item"].status = ProposalStatus.ACTIVE
 
-    def test_p_randomly(self):
+    def test_p_influenced_by_grant_size(self):
         """
         Simply test that the code works.
         """
         with patch("policies.probability") as p:
             p.return_value = True
-            ans = ActiveProposals.p_randomly(
+            ans = ActiveProposals.p_influenced_by_grant_size(
                 None, 0, 0, {"network": copy.copy(self.network)})
 
-            self.assertEqual(ans["failed_proposals"], [4, 5])
+            self.assertEqual(ans["failed"], [4, 5])
 
     def test_su_set_proposal_status(self):
         """
         Simply test that the code works.
         """
         _, network1 = ActiveProposals.su_set_proposal_status(
-            None, 0, 0, {"network": copy.copy(self.network)}, {"failed_proposals": [4, 5]})
+            None, 0, 0, {"network": copy.copy(self.network)}, {"failed": [4, 5]})
         self.assertEqual(network1.nodes[4]
                          ["item"].status, ProposalStatus.FAILED)
         self.assertEqual(network1.nodes[5]

@@ -1,5 +1,5 @@
 import random
-
+import numpy as np
 from scipy.stats import expon, gamma
 
 import convictionvoting
@@ -130,21 +130,31 @@ class GenerateNewFunding:
 
 class ActiveProposals:
     @staticmethod
-    def p_randomly(params, step, sL, s):
-        failure_rate = 0.15
+    def p_influenced_by_grant_size(params, step, sL, s):
+        base_failure_rate = 0.15
+        base_success_rate = 0.30
+
         network = s["network"]
 
         active_proposals = get_proposals(network, status=ProposalStatus.ACTIVE)
-        proposals_that_i_deign_to_fail = []
-        for idx, proposal in active_proposals:
-            if probability(failure_rate):
-                proposals_that_i_deign_to_fail.append(idx)
-        return {"failed_proposals": proposals_that_i_deign_to_fail}
+        proposals_that_will_fail = []
+        proposals_that_will_succeed = []
 
-    @staticmethod
+        for idx, proposal in active_proposals:
+            r_failure = 1/(base_failure_rate +
+                           np.log(proposal.funds_requested))
+            r_success = 1/(base_success_rate +
+                           np.log(proposal.funds_requested))
+            if probability(r_failure):
+                proposals_that_will_fail.append(idx)
+            elif probability(r_success):
+                proposals_that_will_succeed.append(idx)
+        return {"failed": proposals_that_will_fail, "succeeded": proposals_that_will_succeed}
+
+    @ staticmethod
     def su_set_proposal_status(params, step, sL, s, _input):
         network = s["network"]
-        for idx in _input["failed_proposals"]:
+        for idx in _input["failed"]:
             network.nodes[idx]["item"].status = ProposalStatus.FAILED
 
         return "network", network
