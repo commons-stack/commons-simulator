@@ -5,7 +5,7 @@ import networkx as nx
 
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch, VestingOptions
-from network_utils import (bootstrap_network, calc_median_affinity,
+from network_utils import (add_proposal, bootstrap_network, calc_median_affinity,
                            calc_total_funds_requested, get_edges_by_type,
                            get_participants, get_proposals,
                            setup_conflict_edges, setup_influence_edges_bulk,
@@ -217,3 +217,18 @@ class TestNetworkUtils(unittest.TestCase):
     def test_calc_median_affinity_network_with_no_support_edges(self):
         with self.assertRaises(Exception):
             calc_median_affinity(self.network)
+
+    def test_add_proposal(self):
+        """
+        This test ensures that the Proposal was added and that
+        setup_conflict_edges() was executed for that particular node.
+        """
+        n1, j = add_proposal(self.network, Proposal(23, 111))
+        self.assertEqual(n1.nodes[j]["item"].funds_requested, 23)
+        self.assertEqual(n1.nodes[j]["item"].trigger, 111)
+
+        self.assertEqual(len(n1.edges), 5)
+        for u, v, t in n1.edges(data="type"):
+            self.assertEqual(v, 10)
+            self.assertEqual(t, "support")
+            self.assertIn(u, [0, 2, 4, 6, 8])

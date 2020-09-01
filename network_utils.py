@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import networkx as nx
 import numpy as np
@@ -38,6 +38,13 @@ def get_participants(network) -> Dict[int, Participant]:
         return False
     view = nx.subgraph_view(network, filter_node=filter_participant)
     return view.nodes(data="item")
+
+
+def add_proposal(network: nx.DiGraph, p: Proposal) -> Tuple[nx.DiGraph, int]:
+    j = len(network.nodes)
+    network.add_node(j, item=p)
+    network = setup_support_edges(network, j)
+    return network, j
 
 
 def create_network(participants: List[TokenBatch]) -> nx.DiGraph:
