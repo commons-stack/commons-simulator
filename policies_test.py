@@ -1,3 +1,4 @@
+import copy
 import unittest
 from collections import namedtuple
 from unittest.mock import patch
@@ -126,3 +127,10 @@ class TestGenerateNewFunding(unittest.TestCase):
         ans = GenerateNewFunding.p_exit_tribute_of_average_speculator_position_size(
             None, 0, 0, state)
         self.assertTrue(ans["funding"] > 0)
+
+    def test_su_add_funding(self):
+        commons = Commons(10000, 100)
+        _, commons_new = GenerateNewFunding.su_add_funding(
+            None, 0, 0, {"commons": copy.copy(commons)}, {"funding": 111})
+
+        self.assertEqual(commons_new._funding_pool, 2111)

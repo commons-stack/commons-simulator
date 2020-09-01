@@ -118,3 +118,10 @@ class GenerateNewFunding:
         commons = s["commons"]
         funding = sum(exits) * commons.exit_tribute
         return {"funding": funding}
+
+    @staticmethod
+    def su_add_funding(params, step, sL, s, _input):
+        commons = s["commons"]
+        if _input["funding"]:
+            commons._funding_pool += _input["funding"]
+        return "commons", commons
