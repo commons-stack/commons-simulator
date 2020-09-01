@@ -3,11 +3,11 @@ import unittest
 from collections import namedtuple
 from unittest.mock import patch
 
-from entities import Proposal
+from entities import Proposal, ProposalStatus
 from hatch import Commons, TokenBatch, VestingOptions
-from network_utils import bootstrap_network, get_edges_by_type
+from network_utils import bootstrap_network, add_proposal, get_edges_by_type
 from policies import (GenerateNewFunding, GenerateNewParticipant,
-                      GenerateNewProposal)
+                      GenerateNewProposal, ActiveProposals)
 
 
 class TestGenerateNewParticipant(unittest.TestCase):
@@ -134,3 +134,36 @@ class TestGenerateNewFunding(unittest.TestCase):
             None, 0, 0, {"commons": copy.copy(commons)}, {"funding": 111})
 
         self.assertEqual(commons_new._funding_pool, 2111)
+
+
+class TestActiveProposals(unittest.TestCase):
+    def setUp(self):
+        self.network = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
+                                          for _ in range(4)], 1, 3000, 4e6)
+
+        self.network, _ = add_proposal(self.network, Proposal(100, 1))
+
+        self.network.nodes[4]["item"].status = ProposalStatus.ACTIVE
+        self.network.nodes[5]["item"].status = ProposalStatus.ACTIVE
+
+    def test_p_randomly(self):
+        """
+        Simply test that the code works.
+        """
+        with patch("policies.probability") as p:
+            p.return_value = True
+            ans = ActiveProposals.p_randomly(
+                None, 0, 0, {"network": copy.copy(self.network)})
+
+            self.assertEqual(ans["failed_proposals"], [4, 5])
+
+    def test_su_set_proposal_status(self):
+        """
+        Simply test that the code works.
+        """
+        _, network1 = ActiveProposals.su_set_proposal_status(
+            None, 0, 0, {"network": copy.copy(self.network)}, {"failed_proposals": [4, 5]})
+        self.assertEqual(network1.nodes[4]
+                         ["item"].status, ProposalStatus.FAILED)
+        self.assertEqual(network1.nodes[5]
+                         ["item"].status, ProposalStatus.FAILED)

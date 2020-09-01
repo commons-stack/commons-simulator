@@ -1,13 +1,14 @@
 import random
+
 from scipy.stats import expon, gamma
 
-from entities import Participant, Proposal
+import convictionvoting
+from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch
 from network_utils import (add_proposal, calc_median_affinity, calc_total_funds_requested,
                            get_participants, get_proposals, setup_influence_edges_single,
                            setup_support_edges)
 from utils import probability
-import convictionvoting
 
 
 class GenerateNewParticipant:
@@ -88,7 +89,6 @@ class GenerateNewProposal:
         scale_factor = 0.01
         if _input["new_proposal"]:
             # Create the Proposal and add it to the network.
-            j = len(network.nodes)
             rescale = funding_pool * scale_factor
             r_rv = gamma.rvs(3, loc=0.001, scale=rescale)
             proposal = Proposal(funds_requested=r_rv,
@@ -130,4 +130,21 @@ class GenerateNewFunding:
 
 class ActiveProposals:
     @staticmethod
-    def p_randomly(self):
+    def p_randomly(params, step, sL, s):
+        failure_rate = 0.15
+        network = s["network"]
+
+        active_proposals = get_proposals(network, status=ProposalStatus.ACTIVE)
+        proposals_that_i_deign_to_fail = []
+        for idx, proposal in active_proposals:
+            if probability(failure_rate):
+                proposals_that_i_deign_to_fail.append(idx)
+        return {"failed_proposals": proposals_that_i_deign_to_fail}
+
+    @staticmethod
+    def su_set_proposal_status(params, step, sL, s, _input):
+        network = s["network"]
+        for idx in _input["failed_proposals"]:
+            network.nodes[idx]["item"].status = ProposalStatus.FAILED
+
+        return "network", network
