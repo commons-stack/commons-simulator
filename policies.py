@@ -3,8 +3,8 @@ from scipy.stats import expon, gamma
 
 from entities import Participant, Proposal
 from hatch import TokenBatch
-from network_utils import (calc_median_affinity, calc_total_funds_requested,
-                           get_participants, setup_influence_edges_single,
+from network_utils import (add_proposal, calc_median_affinity, calc_total_funds_requested,
+                           get_participants, get_proposals, setup_influence_edges_single,
                            setup_support_edges)
 from utils import probability
 import convictionvoting
@@ -93,12 +93,11 @@ class GenerateNewProposal:
             r_rv = gamma.rvs(3, loc=0.001, scale=rescale)
             proposal = Proposal(funds_requested=r_rv,
                                 trigger=convictionvoting.trigger_threshold(r_rv, funding_pool, token_supply))
-            network.add_node(j, item=proposal)
+            network, j = add_proposal(network, proposal)
 
-            # Create support edges from Participants to this Proposal. If
-            # the Participant is the one who created this Proposal, his affinity
-            # for the Proposal is 1 (maximum).
-            network = setup_support_edges(network, j)
+            # add_proposal() has created support edges from other Participants
+            # to this Proposal. If the Participant is the one who created this
+            # Proposal, change his affinity for the Proposal to 1 (maximum).
             network.edges[_input["proposed_by_participant"], j]["affinity"] = 1
         return "network", network
 
