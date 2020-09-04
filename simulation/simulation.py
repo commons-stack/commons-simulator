@@ -146,5 +146,13 @@ def run_simulation():
 
     # In[ ]:
 
+    result = {
+        "timestep": list(df_final["timestep"]),
+        "funding_pool": list(df_final["funding_pool"]),
+        "token_supply": list(df_final["token_supply"]),
+        "collateral": list(df_final["collateral_pool"])
+    }
+    return result
+
 
 run_simulation()
