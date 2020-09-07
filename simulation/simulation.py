@@ -18,7 +18,25 @@ from cadCAD.configuration import Configuration
 from cadCAD.engine import ExecutionMode, ExecutionContext, Executor
 
 
-def run_simulation():
+# In[ ]:
+
+def run_simulation(hatchers, proposals, hatch_tribute, vesting_80p_unlocked, exit_tribute, kappa, days_to_80p_of_max_voting_weight, proposal_max_size):
+    # For the Flask backend
+
+    # Commons/Augmented Bonding Curve parameters
+    hatchers = hatchers
+    proposals = proposals
+    hatch_tribute = hatch_tribute
+    vesting_80p_unlocked = vesting_80p_unlocked
+    exit_tribute = exit_tribute
+    # kappa = 2, default option set in abcurve.py, there is no way to reach it from here for now
+
+    # Conviction Voting parameters
+    # days_to_80p_of_max_voting_weight
+    # proposal_max_size
+
+    # In[2]:
+
     def update_collateral_pool(params, step, sL, s, _input):
         commons = s["commons"]
         s["collateral_pool"] = commons._collateral_pool
@@ -36,15 +54,14 @@ def run_simulation():
 
     # In[3]:
 
-    # contributions = [5e5, 5e5, 2.5e5]
-    contributions = [np.random.rand() * 10e5 for i in range(60)]
+    contributions = [np.random.rand() * 10e5 for i in range(hatchers)]
     token_batches, initial_token_supply = create_token_batches(
-        contributions, 0.1, 60)
+        contributions, 0.1, vesting_80p_unlocked)
 
-    commons = Commons(sum(contributions),
-                      initial_token_supply, exit_tribute=0.35)
+    commons = Commons(sum(contributions), initial_token_supply,
+                      hatch_tribute=0.2, exit_tribute=0.35)
     network = bootstrap_network(
-        token_batches, 3, commons._funding_pool, commons._token_supply)
+        token_batches, proposals, commons._funding_pool, commons._token_supply)
 
     initial_conditions = {
         "network": network,
@@ -102,7 +119,6 @@ def run_simulation():
             "trigger_threshold": trigger_threshold,
             "min_proposal_age_days": 7,  # minimum periods passed before a proposal can pass,
             "sentiment_sensitivity": 0.75,
-            "alpha": 0.5,  # conviction voting parameter
             'min_supp': 50,  # number of tokens that must be stake for a proposal to be a candidate
         }
     }
@@ -146,6 +162,7 @@ def run_simulation():
 
     # In[ ]:
 
+    # For the Flask backend
     result = {
         "timestep": list(df_final["timestep"]),
         "funding_pool": list(df_final["funding_pool"]),
@@ -153,6 +170,3 @@ def run_simulation():
         "collateral": list(df_final["collateral_pool"])
     }
     return result
-
-
-run_simulation()
