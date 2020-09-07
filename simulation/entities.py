@@ -92,6 +92,10 @@ class Participant:
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, attrs(self))
 
+    @property
+    def holdings(self):
+        return self.holdings_vesting + self.holdings_nonvesting
+
     def buy(self) -> float:
         """
         If the Participant decides to buy more tokens, returns the number of
