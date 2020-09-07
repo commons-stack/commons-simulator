@@ -1,12 +1,14 @@
 import random
+
 import numpy as np
 from scipy.stats import expon, gamma
 
 import convictionvoting
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch
-from network_utils import (add_proposal, calc_median_affinity, calc_total_funds_requested,
-                           get_participants, get_proposals, setup_influence_edges_single,
+from network_utils import (add_proposal, calc_median_affinity,
+                           calc_total_funds_requested, get_participants, get_edges_by_type,
+                           get_proposals, setup_influence_edges_single,
                            setup_support_edges)
 from utils import probability
 
@@ -156,5 +158,76 @@ class ActiveProposals:
         network = s["network"]
         for idx in _input["failed"]:
             network.nodes[idx]["item"].status = ProposalStatus.FAILED
+
+        return "network", network
+
+
+class ProposalFunding:
+    @staticmethod
+    def p_compare_conviction_and_threshold(params, step, sL, s):
+        """
+        This policy simply goes through the Proposals to see if their thresholds
+        are smaller than their gathered conviction
+        """
+        network = s["network"]
+        funding_pool = s["funding_pool"]
+        token_supply = s["token_supply"]
+
+        proposals_w_enough_conviction = []
+        proposals = get_proposals(network, status=ProposalStatus.CANDIDATE)
+        for idx, proposal in proposals:
+            res = proposal.has_enough_conviction(funding_pool, token_supply)
+            if res:
+                proposals_w_enough_conviction.append(idx)
+
+        return {"has_enough_conviction": proposals_w_enough_conviction}
+
+    @staticmethod
+    def su_compare_conviction_and_threshold_make_proposal_active(params, step, sL, s, _input):
+        network = s["network"]
+        funding_pool = s["funding_pool"]
+        token_supply = s["token_supply"]
+
+        for idx in _input["has_enough_conviction"]:
+            network[idx]["item"].status = ProposalStatus.ACTIVE
+
+        return "network", network
+
+    @staticmethod
+    def su_update_age_and_conviction_thresholds(params, step, sL, s, _input):
+        network = s["network"]
+        funding_pool = s["funding_pool"]
+        token_supply = s["token_supply"]
+
+        proposals = get_proposals(
+            s["network"], status=ProposalStatus.CANDIDATE)
+        for proposal in proposals:
+            proposal.update_age()
+            proposal.update_threshold(funding_pool, token_supply)
+
+        return "network", network
+
+    @staticmethod
+    def su_calculate_gathered_conviction(params, step, sL, s, _input):
+        network = s["network"]
+
+        participants = get_participants(network)
+        proposals = get_proposals(network, status=ProposalStatus.CANDIDATE)
+        support_edges = get_edges_by_type(network, "support")
+        total_affinity = np.sum(
+            [network.edges[(i, j)]['affinity'] for i, j in support_edges])
+
+        for i, j in support_edges:
+            participant = network.nodes[i]["item"]
+            normalized_affinity = network.edges[i,
+                                                j]["affinity"]/total_affinity
+            network.edges[i, j]["tokens"] = normalized_affinity * \
+                participant.holdings
+
+            prior_conviction = network.edges[i, j]['conviction']
+            current_tokens = network.edges[i, j]['tokens']
+
+            network.edges[i, j]['conviction'] = current_tokens + \
+                days_to_80p_of_max_voting_weight*prior_conviction
 
         return "network", network

@@ -7,7 +7,7 @@ from entities import Proposal, ProposalStatus
 from hatch import Commons, TokenBatch, VestingOptions
 from network_utils import bootstrap_network, add_proposal, get_edges_by_type
 from policies import (GenerateNewFunding, GenerateNewParticipant,
-                      GenerateNewProposal, ActiveProposals)
+                      GenerateNewProposal, ActiveProposals, ProposalFunding)
 
 
 class TestGenerateNewParticipant(unittest.TestCase):
@@ -167,3 +167,19 @@ class TestActiveProposals(unittest.TestCase):
                          ["item"].status, ProposalStatus.FAILED)
         self.assertEqual(network1.nodes[5]
                          ["item"].status, ProposalStatus.FAILED)
+
+
+class TestProposalFunding(unittest.TestCase):
+    def setUp(self):
+        self.network = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
+                                          for _ in range(4)], 1, 3000, 4e6)
+
+        self.network, _ = add_proposal(self.network, Proposal(100, 1))
+
+        self.network.nodes[4]["item"].status = ProposalStatus.ACTIVE
+        self.network.nodes[5]["item"].status = ProposalStatus.ACTIVE
+
+    def test_su_calculate_gathered_conviction(self):
+        ProposalFunding.su_calculate_gathered_conviction(
+            None, 0, 0, {"network": self.network, "funding_pool": 1000, "token_supply": 1000}, {})
+        print("test_su_calculate_gathered_conviction end")
