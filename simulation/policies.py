@@ -186,8 +186,6 @@ class ProposalFunding:
     @staticmethod
     def su_compare_conviction_and_threshold_make_proposal_active(params, step, sL, s, _input):
         network = s["network"]
-        funding_pool = s["funding_pool"]
-        token_supply = s["token_supply"]
 
         for idx in _input["has_enough_conviction"]:
             network[idx]["item"].status = ProposalStatus.ACTIVE
@@ -222,15 +220,15 @@ class ProposalFunding:
 
         for i, j in support_edges:
             participant = network.nodes[i]["item"]
-            normalized_affinity = network.edges[i,
-                                                j]["affinity"]/total_affinity
-            network.edges[i, j]["tokens"] = normalized_affinity * \
-                participant.holdings
+            edge = network.edges[i, j]
 
-            prior_conviction = network.edges[i, j]['conviction']
-            current_tokens = network.edges[i, j]['tokens']
+            normalized_affinity = edge["affinity"]/total_affinity
+            edge["tokens"] = normalized_affinity * participant.holdings
 
-            network.edges[i, j]['conviction'] = current_tokens + \
+            prior_conviction = edge['conviction']
+            current_tokens = edge['tokens']
+
+            edge['conviction'] = current_tokens + \
                 days_to_80p_of_max_voting_weight*prior_conviction
 
         return "network", network
