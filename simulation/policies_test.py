@@ -15,7 +15,7 @@ class TestGenerateNewParticipant(unittest.TestCase):
         self.commons = Commons(10000, 1000)
         self.sentiment = 0.5
         self.network = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6)
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
 
     def test_p_randomly(self):
         """
@@ -68,7 +68,7 @@ class TestGenerateNewParticipant(unittest.TestCase):
 class TestGenerateNewProposal(unittest.TestCase):
     def setUp(self):
         self.network = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6)
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
 
     def test_p_randomly(self):
         """
@@ -99,7 +99,7 @@ class TestGenerateNewProposal(unittest.TestCase):
         state = {"network":  self.network.copy(),
                  "funding_pool": 100000, "token_supply": 10000}
         _, network = GenerateNewProposal.su_add_to_network(
-            None, 0, 0, state, result_from_policy)
+            {"max_proposal_request": 0.2}, 0, 0, state, result_from_policy)
         self.assertEqual(len(network.nodes), 6)
         self.assertIsInstance(network.nodes[5]["item"], Proposal)
 
@@ -139,7 +139,7 @@ class TestGenerateNewFunding(unittest.TestCase):
 class TestActiveProposals(unittest.TestCase):
     def setUp(self):
         self.network = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6)
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
 
@@ -172,7 +172,7 @@ class TestActiveProposals(unittest.TestCase):
 class TestProposalFunding(unittest.TestCase):
     def setUp(self):
         self.network = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6)
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
 

@@ -94,7 +94,7 @@ class GenerateNewProposal:
             rescale = funding_pool * scale_factor
             r_rv = gamma.rvs(3, loc=0.001, scale=rescale)
             proposal = Proposal(funds_requested=r_rv,
-                                trigger=convictionvoting.trigger_threshold(r_rv, funding_pool, token_supply))
+                                trigger=convictionvoting.trigger_threshold(r_rv, funding_pool, token_supply, params["max_proposal_request"]))
             network, j = add_proposal(network, proposal)
 
             # add_proposal() has created support edges from other Participants
@@ -176,7 +176,8 @@ class ProposalFunding:
         proposals_w_enough_conviction = []
         proposals = get_proposals(network, status=ProposalStatus.CANDIDATE)
         for idx, proposal in proposals:
-            res = proposal.has_enough_conviction(funding_pool, token_supply)
+            res = proposal.has_enough_conviction(
+                funding_pool, token_supply, params["max_proposal_request"])
             if res:
                 proposals_w_enough_conviction.append(idx)
 
@@ -203,13 +204,15 @@ class ProposalFunding:
             s["network"], status=ProposalStatus.CANDIDATE)
         for proposal in proposals:
             proposal.update_age()
-            proposal.update_threshold(funding_pool, token_supply)
+            proposal.update_threshold(
+                funding_pool, token_supply, max_proposal_request=params["max_proposal_request"])
 
         return "network", network
 
     @staticmethod
     def su_calculate_gathered_conviction(params, step, sL, s, _input):
         network = s["network"]
+        days_to_80p_of_max_voting_weight = params["days_to_80p_of_max_voting_weight"]
 
         participants = get_participants(network)
         proposals = get_proposals(network, status=ProposalStatus.CANDIDATE)

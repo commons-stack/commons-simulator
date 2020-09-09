@@ -201,7 +201,7 @@ class TestNetworkUtils(unittest.TestCase):
         """
         token_batches = [TokenBatch(1000, VestingOptions(10, 30))
                          for _ in range(4)]
-        network = bootstrap_network(token_batches, 1, 3000, 4e6)
+        network = bootstrap_network(token_batches, 1, 3000, 4e6, 0.2)
 
         edges = list(network.edges(data="type"))
         _, _, edge_types = list(zip(*edges))

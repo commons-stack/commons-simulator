@@ -57,15 +57,15 @@ class Proposal:
         self.age += 1
         return self.age
 
-    def update_threshold(self, funding_pool: float, token_supply: float):
+    def update_threshold(self, funding_pool: float, token_supply: float, max_proposal_request: float):
         if self.status == ProposalStatus.CANDIDATE:
             self.trigger = trigger_threshold(
-                self.funds_requested, funding_pool, token_supply)
+                self.funds_requested, funding_pool, token_supply, max_proposal_request)
         else:
             self.trigger = np.nan
         return self.trigger
 
-    def has_enough_conviction(self, funding_pool: float, token_supply: float):
+    def has_enough_conviction(self, funding_pool: float, token_supply: float, max_proposal_request):
         """
         It's just a conviction < threshold check, but we recalculate the
         trigger_threshold so that the programmer doesn't have to remember to run
@@ -73,7 +73,7 @@ class Proposal:
         """
         if self.status == ProposalStatus.CANDIDATE:
             threshold = trigger_threshold(
-                self.funds_requested, funding_pool, token_supply)
+                self.funds_requested, funding_pool, token_supply, max_proposal_request)
             if self.conviction < threshold:
                 return False
             return True

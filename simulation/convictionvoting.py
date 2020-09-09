@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def trigger_threshold(funds_requested, funding_pool, token_supply, max_proposal_request=0.2):
+def trigger_threshold(funds_requested, funding_pool, token_supply, max_proposal_request):
     """
     funds_requested: funds requested by the proposal
     funding_pool: the current size of the funding pool

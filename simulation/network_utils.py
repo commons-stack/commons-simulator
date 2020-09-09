@@ -204,7 +204,7 @@ def setup_support_edges(network: nx.DiGraph, idx=None) -> nx.DiGraph:
     return network
 
 
-def bootstrap_network(n_participants: List[TokenBatch], n_proposals: int, funding_pool: float, token_supply: float) -> nx.DiGraph:
+def bootstrap_network(n_participants: List[TokenBatch], n_proposals: int, funding_pool: float, token_supply: float, max_proposal_request: float) -> nx.DiGraph:
     """
     Convenience function that creates a network ready for simulation in
     the Python notebook in one line.
@@ -215,7 +215,7 @@ def bootstrap_network(n_participants: List[TokenBatch], n_proposals: int, fundin
         idx = len(n)
         r_rv = gamma.rvs(3, loc=0.001, scale=10000)
         n.add_node(idx, item=Proposal(funds_requested=r_rv, trigger=trigger_threshold(
-            r_rv, funding_pool, token_supply)))
+            r_rv, funding_pool, token_supply, max_proposal_request)))
 
     n = setup_support_edges(n)
     n = setup_conflict_edges(n)
