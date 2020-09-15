@@ -99,7 +99,7 @@ class TestGenerateNewProposal(unittest.TestCase):
         state = {"network":  self.network.copy(),
                  "funding_pool": 100000, "token_supply": 10000}
         _, network = GenerateNewProposal.su_add_to_network(
-            {"max_proposal_request": 0.2}, 0, 0, state, result_from_policy)
+            [{"max_proposal_request": 0.2}], 0, 0, state, result_from_policy)
         self.assertEqual(len(network.nodes), 6)
         self.assertIsInstance(network.nodes[5]["item"], Proposal)
 

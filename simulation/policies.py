@@ -4,12 +4,13 @@ import numpy as np
 from scipy.stats import expon, gamma
 
 import convictionvoting
+from convictionvoting import trigger_threshold
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch
 from network_utils import (add_proposal, calc_median_affinity,
-                           calc_total_funds_requested, get_participants, get_edges_by_type,
-                           get_proposals, setup_influence_edges_single,
-                           setup_support_edges)
+                           calc_total_funds_requested, get_edges_by_type,
+                           get_participants, get_proposals,
+                           setup_influence_edges_single, setup_support_edges)
 from utils import probability
 
 
@@ -94,7 +95,7 @@ class GenerateNewProposal:
             rescale = funding_pool * scale_factor
             r_rv = gamma.rvs(3, loc=0.001, scale=rescale)
             proposal = Proposal(funds_requested=r_rv,
-                                trigger=convictionvoting.trigger_threshold(r_rv, funding_pool, token_supply, params["max_proposal_request"]))
+                                trigger=convictionvoting.trigger_threshold(r_rv, funding_pool, token_supply, params[0]["max_proposal_request"]))
             network, j = add_proposal(network, proposal)
 
             # add_proposal() has created support edges from other Participants
@@ -177,20 +178,36 @@ class ProposalFunding:
         proposals = get_proposals(network, status=ProposalStatus.CANDIDATE)
         for idx, proposal in proposals:
             res = proposal.has_enough_conviction(
-                funding_pool, token_supply, params["max_proposal_request"])
+                funding_pool, token_supply, params[0]["max_proposal_request"])
+
+            if params[0].get("debug"):
+                print("ProposalFunding: Proposal {} has {} conviction, and needs {} to pass".format(idx,
+                                                                                                    proposal.conviction, proposal.trigger))
             if res:
                 proposals_w_enough_conviction.append(idx)
 
-        return {"has_enough_conviction": proposals_w_enough_conviction}
+        return {"proposal_idxs_with_enough_conviction": proposals_w_enough_conviction}
 
     @staticmethod
     def su_compare_conviction_and_threshold_make_proposal_active(params, step, sL, s, _input):
         network = s["network"]
 
-        for idx in _input["has_enough_conviction"]:
+        for idx in _input["proposal_idxs_with_enough_conviction"]:
             network[idx]["item"].status = ProposalStatus.ACTIVE
 
         return "network", network
+
+    @staticmethod
+    def su_compare_conviction_and_threshold_deduct_funds_from_funding_pool(params, step, sL, s, _input):
+        commons = s["commons"]
+        network = s["network"]
+        for idx in _input["proposal_idxs_with_enough_conviction"]:
+            funds = network.nodes[idx]["item"].funds_requested
+            if params[0].get("debug"):
+                print("ProposalFunding: Proposal {} requested {} funds, deducting from Commons funding pool".format(
+                    idx, funds))
+            commons.spend(funds)
+        return "commons", commons
 
     @staticmethod
     def su_update_age_and_conviction_thresholds(params, step, sL, s, _input):
@@ -203,14 +220,14 @@ class ProposalFunding:
         for _, proposal in proposals:
             proposal.update_age()
             proposal.update_threshold(
-                funding_pool, token_supply, max_proposal_request=params["max_proposal_request"])
+                funding_pool, token_supply, max_proposal_request=params[0]["max_proposal_request"])
 
         return "network", network
 
     @staticmethod
-    def su_calculate_gathered_conviction(params, step, sL, s, _input):
+    def su_update_gathered_conviction(params, step, sL, s, _input):
         network = s["network"]
-        days_to_80p_of_max_voting_weight = params["days_to_80p_of_max_voting_weight"]
+        days_to_80p_of_max_voting_weight = params[0]["days_to_80p_of_max_voting_weight"]
 
         participants = get_participants(network)
         proposals = get_proposals(network, status=ProposalStatus.CANDIDATE)

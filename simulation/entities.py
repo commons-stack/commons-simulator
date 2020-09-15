@@ -93,8 +93,10 @@ class Participant:
         return "<{} {}>".format(self.__class__.__name__, attrs(self))
 
     @property
-    def holdings(self):
-        return self.holdings_vesting + self.holdings_nonvesting
+    def holdings(self) -> float:
+        if self.holdings_vesting:
+            return self.holdings_vesting + self.holdings_nonvesting
+        return float(self.holdings_nonvesting.value)
 
     def buy(self) -> float:
         """
