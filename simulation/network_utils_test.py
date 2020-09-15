@@ -6,7 +6,7 @@ import networkx as nx
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch, VestingOptions
 from network_utils import (add_proposal, bootstrap_network, calc_median_affinity,
-                           calc_total_funds_requested, get_edges_by_type,
+                           calc_total_funds_requested, calc_total_conviction, get_edges_by_type,
                            get_participants, get_proposals,
                            setup_conflict_edges, setup_influence_edges_bulk,
                            setup_influence_edges_single, setup_support_edges)
@@ -232,3 +232,24 @@ class TestNetworkUtils(unittest.TestCase):
             self.assertEqual(v, 10)
             self.assertEqual(t, "support")
             self.assertIn(u, [0, 2, 4, 6, 8])
+
+    def test_calc_total_conviction(self):
+        """
+        Ensure that the function reports the correct sum of conviction from all
+        support edges.
+        """
+        self.network = setup_support_edges(self.network)
+        ans = calc_total_conviction(self.network, 1)
+        self.assertEqual(ans, 0)
+
+        support_edges = get_edges_by_type(self.network, "support")
+
+        # Every support edge gets a conviction value. Since there are 5
+        # Participants and 5 Proposals, this should result in a sum of 5
+        # conviction for each Proposal.
+        for u, v in support_edges:
+            self.network.edges[u, v]["conviction"] = 1
+
+        for i in [1, 3, 5, 7, 9]:
+            ans = calc_total_conviction(self.network, i)
+            self.assertEqual(ans, 5)

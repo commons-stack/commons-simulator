@@ -238,3 +238,15 @@ def calc_median_affinity(network):
     affinities = [network.edges[e]['affinity'] for e in supporters]
     median_affinity = np.median(affinities)
     return median_affinity
+
+
+def calc_total_conviction(network: nx.DiGraph, proposal_idx: int) -> float:
+    proposal = network.nodes(data="item")[proposal_idx]
+    if not isinstance(proposal, Proposal):
+        raise Exception(
+            "proposal_idx must point to a node that has a Proposal")
+
+    incoming_edges = network.in_edges(proposal_idx, data="conviction")
+    convictions = [cv for _, _, cv in incoming_edges]
+
+    return np.sum(convictions)
