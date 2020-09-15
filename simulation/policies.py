@@ -200,7 +200,7 @@ class ProposalFunding:
 
         proposals = get_proposals(
             s["network"], status=ProposalStatus.CANDIDATE)
-        for proposal in proposals:
+        for _, proposal in proposals:
             proposal.update_age()
             proposal.update_threshold(
                 funding_pool, token_supply, max_proposal_request=params["max_proposal_request"])

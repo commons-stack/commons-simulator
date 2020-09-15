@@ -176,10 +176,26 @@ class TestProposalFunding(unittest.TestCase):
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
 
-        self.network.nodes[4]["item"].status = ProposalStatus.ACTIVE
-        self.network.nodes[5]["item"].status = ProposalStatus.ACTIVE
+        self.network.nodes[4]["item"].status = ProposalStatus.CANDIDATE
+        self.network.nodes[5]["item"].status = ProposalStatus.CANDIDATE
 
-    def test_su_calculate_gathered_conviction(self):
-        ProposalFunding.su_calculate_gathered_conviction(
-            None, 0, 0, {"network": self.network, "funding_pool": 1000, "token_supply": 1000}, {})
-        print("test_su_calculate_gathered_conviction end")
+    def test_p_compare_conviction_and_threshold(self):
+        """
+        Simply test that the code runs.
+        """
+        ProposalFunding.p_compare_conviction_and_threshold(
+            [{"max_proposal_request": 0.2}], 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
+
+    def test_su_update_gathered_conviction(self):
+        """
+        Ensure that the edge attributes "conviction" and "tokens" were updated.
+        """
+        _, n_network = ProposalFunding.su_update_gathered_conviction(
+            [{"days_to_80p_of_max_voting_weight": 10}], 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, {})
+        support_edges = get_edges_by_type(n_network, "support")
+
+        # Make sure the conviction actually changed
+        for i, j in support_edges:
+            edge = n_network.edges[i, j]
+            self.assertNotEqual(edge["tokens"], 0)
+            self.assertNotEqual(edge["conviction"], 0)
