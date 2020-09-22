@@ -12,10 +12,10 @@ class TestProposal(unittest.TestCase):
         p = Proposal(500, 0.0)
 
         # a newly created Proposal can't expect to have any Conviction gathered at all
-        self.assertFalse(p.has_enough_conviction(10000, 3e6))
+        self.assertFalse(p.has_enough_conviction(10000, 3e6, 0.2))
 
         p.conviction = 2666666.7
-        self.assertTrue(p.has_enough_conviction(10000, 3e6))
+        self.assertTrue(p.has_enough_conviction(10000, 3e6, 0.2))
 
 
 class TestParticipant(unittest.TestCase):
@@ -77,9 +77,9 @@ class TestParticipant(unittest.TestCase):
         """
 
         candidate_proposals = {
-            uuid.UUID(int=179821351946450230734044638685583215499): 1.0,
-            uuid.UUID(int=215071290061070589371009813111193284959): 1.0,
-            uuid.UUID(int=20468923874830131214536379780280861909): 1.0,
+            0: 1.0,
+            1: 1.0,
+            2: 1.0,
         }
         with patch('entities.probability') as mock:
             mock.return_value = False
@@ -102,22 +102,20 @@ class TestParticipant(unittest.TestCase):
         """
 
         candidate_proposals = {
-            uuid.UUID(int=179821351946450230734044638685583215499): 1.0,
-            uuid.UUID(int=215071290061070589371009813111193284959): 0.9,
-            uuid.UUID(int=20468923874830131214536379780280861909): 0.8,
-            uuid.UUID(int=268821512376988039567204465930241984322): 0.4,
+            0: 1.0,
+            1: 0.9,
+            2: 0.8,
+            3: 0.4,
         }
         with patch('entities.probability') as mock:
             mock.return_value = True
             ans = self.p.vote_on_candidate_proposals(candidate_proposals)
-            self.assertIn(
-                uuid.UUID(int=179821351946450230734044638685583215499), ans)
-            self.assertIn(
-                uuid.UUID(int=215071290061070589371009813111193284959), ans)
-            self.assertIn(
-                uuid.UUID(int=20468923874830131214536379780280861909), ans)
-            self.assertNotIn(
-                uuid.UUID(int=268821512376988039567204465930241984322), ans)
+            reference = {
+                0: 1.0,
+                1: 0.9,
+                2: 0.8
+            }
+            self.assertEqual(ans, reference)
 
     def test_stake_across_all_supported_proposals(self):
         """
@@ -130,31 +128,24 @@ class TestParticipant(unittest.TestCase):
         The calculation should also include vesting and nonvesting TokenBatches.
         """
         p = [Proposal(0, 0) for _ in range(4)]
-        p[0].uuid = uuid.UUID(int=179821351946450230734044638685583215499)
-        p[1].uuid = uuid.UUID(int=215071290061070589371009813111193284959)
-        p[2].uuid = uuid.UUID(int=20468923874830131214536379780280861909)
-        p[3].uuid = uuid.UUID(int=268821512376988039567204465930241984322)
         supported_proposals = [
-            (0.9, p[0]),
-            (0.9, p[1]),
-            (0.8, p[2]),
-            (0.6, p[3]),
+            (0.9, 0),
+            (0.9, 1),
+            (0.8, 2),
+            (0.6, 3),
         ]
 
         self.p.holdings_vesting = TokenBatch(500)
         self.p.holdings_nonvesting = TokenBatch(500)
 
         ans = self.p.stake_across_all_supported_proposals(supported_proposals)
-        print(ans)
-
-        self.assertEqual(
-            ans[uuid.UUID(int=179821351946450230734044638685583215499)], 281.25000000000006)
-        self.assertEqual(
-            ans[uuid.UUID(int=215071290061070589371009813111193284959)], 281.25000000000006)
-        self.assertEqual(
-            ans[uuid.UUID(int=20468923874830131214536379780280861909)], 250.00000000000006)
-        self.assertEqual(
-            ans[uuid.UUID(int=268821512376988039567204465930241984322)], 187.5)
+        reference = {
+            0: 281.25000000000006,
+            1: 281.25000000000006,
+            2: 250.00000000000006,
+            3: 187.5,
+        }
+        self.assertEqual(ans, reference)
 
 
 if __name__ == '__main__':

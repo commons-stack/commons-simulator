@@ -5,9 +5,9 @@ from unittest.mock import patch
 
 from entities import Proposal, ProposalStatus
 from hatch import Commons, TokenBatch, VestingOptions
-from network_utils import bootstrap_network, add_proposal, get_edges_by_type
+from network_utils import bootstrap_network, add_proposal, get_edges_by_type, get_participants
 from policies import (GenerateNewFunding, GenerateNewParticipant,
-                      GenerateNewProposal, ActiveProposals, ProposalFunding)
+                      GenerateNewProposal, ActiveProposals, ProposalFunding, ParticipantVoting)
 
 
 class TestGenerateNewParticipant(unittest.TestCase):
@@ -199,3 +199,64 @@ class TestProposalFunding(unittest.TestCase):
             edge = n_network.edges[i, j]
             self.assertNotEqual(edge["tokens"], 0)
             self.assertNotEqual(edge["conviction"], 0)
+
+
+class TestParticipantVoting(unittest.TestCase):
+    def setUp(self):
+        self.network = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
+
+        self.network, _ = add_proposal(self.network, Proposal(100, 1))
+
+        """
+        For proper testing, we need to make sure the Proposals are CANDIDATE and
+        ensure Proposal-Participant affinities are not some random value
+        """
+        self.network.nodes[4]["item"].status = ProposalStatus.CANDIDATE
+        self.network.nodes[5]["item"].status = ProposalStatus.CANDIDATE
+        support_edges = get_edges_by_type(self.network, "support")
+        for u, v in support_edges:
+            self.network[u][v]["affinity"] = 0.9
+
+    def test_p_participant_votes_on_proposal_according_to_affinity(self):
+        """
+        Ensure that when a Participant votes on 2 Proposals of equal affinity,
+        he will split his tokens 50-50 between them.
+        """
+        with patch("entities.probability") as p:
+            p.return_value = True
+            ans = ParticipantVoting.p_participant_votes_on_proposal_according_to_affinity(
+                [{"debug": False}], 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
+
+            reference = {
+                'participants_stake_on_proposals': {0: {4: 500.0, 5: 500.0},
+                                                    1: {4: 500.0, 5: 500.0},
+                                                    2: {4: 500.0, 5: 500.0},
+                                                    3: {4: 500.0, 5: 500.0}
+                                                    }
+            }
+            self.assertEqual(ans, reference)
+
+    def test_p_participant_votes_on_proposal_according_to_affinity_vesting_nonvesting(self):
+        """
+        Ensure that when a Participant with vesting and nonvesting tokens votes
+        on 2 Proposals of equal affinity, all of his tokens will be split 50-50
+        between them.
+        """
+        participants = get_participants(self.network)
+        for _, participant in participants:
+            participant.holdings_nonvesting = TokenBatch(1000)
+
+        with patch("entities.probability") as p:
+            p.return_value = True
+            ans = ParticipantVoting.p_participant_votes_on_proposal_according_to_affinity(
+                [{"debug": False}], 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
+
+            reference = {
+                'participants_stake_on_proposals': {0: {4: 1000.0, 5: 1000.0},
+                                                    1: {4: 1000.0, 5: 1000.0},
+                                                    2: {4: 1000.0, 5: 1000.0},
+                                                    3: {4: 1000.0, 5: 1000.0}
+                                                    }
+            }
+            self.assertEqual(ans, reference)

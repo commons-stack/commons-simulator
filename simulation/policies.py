@@ -1,3 +1,4 @@
+import ipdb
 import random
 
 import numpy as np
@@ -229,8 +230,6 @@ class ProposalFunding:
         network = s["network"]
         days_to_80p_of_max_voting_weight = params[0]["days_to_80p_of_max_voting_weight"]
 
-        participants = get_participants(network)
-        proposals = get_proposals(network, status=ProposalStatus.CANDIDATE)
         support_edges = get_edges_by_type(network, "support")
         total_affinity = np.sum(
             [network.edges[(i, j)]['affinity'] for i, j in support_edges])
@@ -249,3 +248,44 @@ class ProposalFunding:
                 days_to_80p_of_max_voting_weight*prior_conviction
 
         return "network", network
+
+
+class ParticipantVoting:
+    @staticmethod
+    def p_participant_votes_on_proposal_according_to_affinity(params, step, sL, s):
+        """
+        This policy collects data from the DiGraph to tell the Participant class
+        which candidate proposals it supports, and
+        Participant.vote_on_candidate_proposals() will decide which proposals it
+        will take action on.
+
+        Then, Participant.stake_across_all_supported_proposals() will tell us
+        how much it will stake on each of them.
+        """
+        network = s["network"]
+        participants = get_participants(network)
+        candidate_proposals = get_proposals(
+            network, status=ProposalStatus.CANDIDATE)
+
+        participants_stakes = {}
+        for participant_idx, participant in participants:
+            proposal_idx_affinity = {}  # {4: 0.9, 5: 0.9}
+            for proposal_idx, _ in candidate_proposals:
+                proposal_idx_affinity[proposal_idx] = network[participant_idx][proposal_idx]["affinity"]
+            proposals_that_participant_cares_enough_to_vote_on = participant.vote_on_candidate_proposals(
+                proposal_idx_affinity)
+
+            stake_across_all_supported_proposals_input = []
+            for proposal_idx, affinity in proposals_that_participant_cares_enough_to_vote_on.items():
+                stake_across_all_supported_proposals_input.append(
+                    (affinity, proposal_idx))
+            stakes = participant.stake_across_all_supported_proposals(
+                stake_across_all_supported_proposals_input)
+
+            participants_stakes[participant_idx] = stakes
+
+            if params[0].get("debug"):
+                print("Participant {} was given Proposals with corresponding affinities {} and he decided to vote on {}, distributing his tokens thusly {}".format(
+                    participant_idx, proposal_idx_affinity, proposals_that_participant_cares_enough_to_vote_on, stakes))
+
+        return {"participants_stake_on_proposals": participants_stakes}

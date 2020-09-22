@@ -167,7 +167,7 @@ class Participant:
 
         candidate dict format:
         {
-            "proposalUUID": affinity,
+            proposal_idx: affinity,
             ...
         }
 
@@ -201,12 +201,15 @@ class Participant:
 
         return new_voted_proposals
 
-    def stake_across_all_supported_proposals(self, supported_proposals: List[Tuple[float, Proposal]]) -> dict:
+    def stake_across_all_supported_proposals(self, supported_proposals: List[Tuple[float, int]]) -> dict:
         """
         Rebalances the Participant's tokens across the (possibly updated) list of Proposals
         supported by this Participant.
 
         These tokens can come from a Participant's vesting and nonvesting TokenBatches.
+
+        supported_proposals format:
+        [(affinity, proposal_idx)...]
         """
         tokens_per_supported_proposal = {}
         supported_proposals = sorted(
@@ -218,9 +221,9 @@ class Participant:
         if self.holdings_nonvesting:
             total_tokens += self.holdings_nonvesting.value
 
-        affinity_total = sum([a for a, p in supported_proposals])
-        for affinity, proposal in supported_proposals:
-            tokens_per_supported_proposal[proposal.uuid] = total_tokens * (
+        affinity_total = sum([a for a, idx in supported_proposals])
+        for affinity, proposal_idx in supported_proposals:
+            tokens_per_supported_proposal[proposal_idx] = total_tokens * (
                 affinity/affinity_total)
 
         return tokens_per_supported_proposal
