@@ -2,11 +2,13 @@ import unittest
 from unittest.mock import patch
 
 import networkx as nx
+from wheel.pep425tags import get_supported
 
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch, VestingOptions
-from network_utils import (add_proposal, bootstrap_network, calc_median_affinity,
-                           calc_total_funds_requested, calc_total_conviction, get_edges_by_type,
+from network_utils import (add_proposal, bootstrap_network,
+                           calc_median_affinity, calc_total_conviction,
+                           calc_total_funds_requested, get_edges_by_type, get_edges_by_participant_and_type,
                            get_participants, get_proposals,
                            setup_conflict_edges, setup_influence_edges_bulk,
                            setup_influence_edges_single, setup_support_edges)
@@ -42,6 +44,16 @@ class TestNetworkUtils(unittest.TestCase):
         self.network.add_edge(0, 1, type="support")
         res = get_edges_by_type(self.network, "support")
         self.assertEqual(len(res), 1)
+
+    def test_get_edges_by_participant_and_type(self):
+        self.network = setup_support_edges(self.network)
+        res = get_edges_by_participant_and_type(self.network, 0, "support")
+
+        # Assert that Participant 0 has support edges to all other Proposals
+        # (1,3,5,7,9)
+        for i in [1, 3, 5, 7, 9]:
+            self.assertIn(i, res)
+            self.assertEqual(res[i]["type"], "support")
 
     def test_setup_influence_edges_bulk(self):
         """

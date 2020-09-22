@@ -19,6 +19,15 @@ def get_edges_by_type(network, edge_type_selection):
     return view.edges()
 
 
+def get_edges_by_participant_and_type(network, participant_idx, edge_type_selection) -> Dict:
+    edges_view = network.adj[participant_idx]
+    answer = {}
+    for key in edges_view:
+        if edges_view[key]["type"] == "support":
+            answer[key] = edges_view[key]
+    return answer
+
+
 def get_proposals(network, status: ProposalStatus = None):
     def filter_proposal(n):
         if isinstance(network.nodes[n]["item"], Proposal):
