@@ -71,7 +71,7 @@ class CommonsTest(unittest.TestCase):
         # 100,000 DAI invested for 1,000,000 tokens.
         self.desired_token_price = 0.1
         self.hatcher_contributions = [25000, 25000, 50000]
-        self.token_batches, self.token_supply_initial = contributions_to_token_batches(
+        self.token_batches, self.token_supply_initial = create_token_batches(
             self.hatcher_contributions, self.desired_token_price, 90)
 
         # Because of hatch_tribute, the collateral_pool is 0.7e6. This causes the token's post-hatch price to be 0.14.
