@@ -196,7 +196,7 @@ class ProposalFunding:
         network = s["network"]
 
         for idx in _input["proposal_idxs_with_enough_conviction"]:
-            network[idx]["item"].status = ProposalStatus.ACTIVE
+            network.nodes[idx]["item"].status = ProposalStatus.ACTIVE
 
         return "network", network
 

@@ -186,6 +186,19 @@ class TestProposalFunding(unittest.TestCase):
         ProposalFunding.p_compare_conviction_and_threshold(
             [{"max_proposal_request": 0.2}], 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
 
+    def test_su_compare_conviction_and_threshold_make_proposal_active(self):
+        """
+        Simply test that the code runs.
+        """
+        _input = {
+            "proposal_idxs_with_enough_conviction": [4, 5]
+        }
+        _, n_new = ProposalFunding.su_compare_conviction_and_threshold_make_proposal_active(
+            [{}], 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, _input)
+        for i in [4, 5]:
+            self.assertEqual(
+                n_new.nodes[i]["item"].status, ProposalStatus.ACTIVE)
+
     def test_su_update_gathered_conviction(self):
         """
         Ensure that the edge attributes "conviction" and "tokens" were updated.
