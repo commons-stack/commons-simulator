@@ -2,12 +2,11 @@ import unittest
 from unittest.mock import patch
 
 import networkx as nx
-from wheel.pep425tags import get_supported
 
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch, VestingOptions
 from network_utils import (add_proposal, bootstrap_network,
-                           calc_median_affinity, calc_total_conviction,
+                           calc_median_affinity, calc_total_affinity, calc_total_conviction,
                            calc_total_funds_requested, get_edges_by_type, get_edges_by_participant_and_type,
                            get_participants, get_proposals,
                            setup_conflict_edges, setup_influence_edges_bulk,
@@ -265,3 +264,12 @@ class TestNetworkUtils(unittest.TestCase):
         for i in [1, 3, 5, 7, 9]:
             ans = calc_total_conviction(self.network, i)
             self.assertEqual(ans, 5)
+
+    def test_calc_total_affinity(self):
+        """
+        Ensure that the affinities in the support edges add up to >0 (since they
+        are randomly generated, they won't be 0)
+        """
+        self.network = setup_support_edges(self.network)
+        ans = calc_total_affinity(self.network)
+        self.assertNotEqual(ans, 0)

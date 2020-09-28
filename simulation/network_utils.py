@@ -259,3 +259,9 @@ def calc_total_conviction(network: nx.DiGraph, proposal_idx: int) -> float:
     convictions = [cv for _, _, cv in incoming_edges if cv]
 
     return np.sum(convictions)
+
+
+def calc_total_affinity(network: nx.DiGraph) -> float:
+    view = network.edges(data="affinity")
+    affinities = [affinity for _, _, affinity in view]
+    return np.sum(affinities)
