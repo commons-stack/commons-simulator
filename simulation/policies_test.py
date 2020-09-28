@@ -69,6 +69,7 @@ class TestGenerateNewProposal(unittest.TestCase):
     def setUp(self):
         self.network = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
                                           for _ in range(4)], 1, 3000, 4e6, 0.2)
+        self.params = [{"max_proposal_request": 0.2}]
 
     def test_p_randomly(self):
         """
@@ -99,7 +100,7 @@ class TestGenerateNewProposal(unittest.TestCase):
         state = {"network":  self.network.copy(),
                  "funding_pool": 100000, "token_supply": 10000}
         _, network = GenerateNewProposal.su_add_to_network(
-            [{"max_proposal_request": 0.2}], 0, 0, state, result_from_policy)
+            self.params, 0, 0, state, result_from_policy)
         self.assertEqual(len(network.nodes), 6)
         self.assertIsInstance(network.nodes[5]["item"], Proposal)
 
@@ -178,13 +179,17 @@ class TestProposalFunding(unittest.TestCase):
 
         self.network.nodes[4]["item"].status = ProposalStatus.CANDIDATE
         self.network.nodes[5]["item"].status = ProposalStatus.CANDIDATE
+        self.params = [{
+            "max_proposal_request": 0.2,
+            "days_to_80p_of_max_voting_weight": 10
+        }]
 
     def test_p_compare_conviction_and_threshold(self):
         """
         Simply test that the code runs.
         """
         ProposalFunding.p_compare_conviction_and_threshold(
-            [{"max_proposal_request": 0.2}], 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
+            self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
 
     def test_su_compare_conviction_and_threshold_make_proposal_active(self):
         """
@@ -194,7 +199,7 @@ class TestProposalFunding(unittest.TestCase):
             "proposal_idxs_with_enough_conviction": [4, 5]
         }
         _, n_new = ProposalFunding.su_compare_conviction_and_threshold_make_proposal_active(
-            [{}], 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, _input)
+            self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, _input)
         for i in [4, 5]:
             self.assertEqual(
                 n_new.nodes[i]["item"].status, ProposalStatus.ACTIVE)
@@ -204,7 +209,7 @@ class TestProposalFunding(unittest.TestCase):
         Ensure that the edge attributes "conviction" and "tokens" were updated.
         """
         _, n_network = ProposalFunding.su_update_gathered_conviction(
-            [{"days_to_80p_of_max_voting_weight": 10}], 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, {})
+            self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, {})
         support_edges = get_edges_by_type(n_network, "support")
 
         # Make sure the conviction actually changed
@@ -220,7 +225,10 @@ class TestParticipantVoting(unittest.TestCase):
                                           for _ in range(4)], 1, 3000, 4e6, 0.2)
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
-
+        self.params = [{
+            "debug": False,
+            "days_to_80p_of_max_voting_weight": 10
+        }]
         """
         For proper testing, we need to make sure the Proposals are CANDIDATE and
         ensure Proposal-Participant affinities are not some random value
@@ -239,7 +247,7 @@ class TestParticipantVoting(unittest.TestCase):
         with patch("entities.probability") as p:
             p.return_value = True
             ans = ParticipantVoting.p_participant_votes_on_proposal_according_to_affinity(
-                [{"debug": False}], 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
+                self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
 
             reference = {
                 'participants_stake_on_proposals': {0: {4: 500.0, 5: 500.0},
@@ -263,7 +271,7 @@ class TestParticipantVoting(unittest.TestCase):
         with patch("entities.probability") as p:
             p.return_value = True
             ans = ParticipantVoting.p_participant_votes_on_proposal_according_to_affinity(
-                [{"debug": False}], 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
+                self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
 
             reference = {
                 'participants_stake_on_proposals': {0: {4: 1000.0, 5: 1000.0},
@@ -286,7 +294,7 @@ class TestParticipantVoting(unittest.TestCase):
                                                 3: {4: 1000.0, 5: 1200.0}
                                                 }
         }
-        ans = ParticipantVoting.su_update_participants_votes_and_recalculate_conviction([{"debug": False, "days_to_80p_of_max_voting_weight": 10}], 0, 0, {
+        ans = ParticipantVoting.su_update_participants_votes_and_recalculate_conviction(self.params, 0, 0, {
             "network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, _input)
 
         n_new = ans[1]
@@ -311,7 +319,7 @@ class TestParticipantVoting(unittest.TestCase):
         for u, v in support_edges:
             self.network[u][v]["conviction"] = 100
 
-        _, n_new = ParticipantVoting.su_update_participants_votes_and_recalculate_conviction([{"debug": False, "days_to_80p_of_max_voting_weight": 10}], 0, 0, {
+        _, n_new = ParticipantVoting.su_update_participants_votes_and_recalculate_conviction(self.params, 0, 0, {
             "network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, _input)
 
         for u, v in support_edges:
