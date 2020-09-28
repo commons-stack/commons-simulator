@@ -256,6 +256,6 @@ def calc_total_conviction(network: nx.DiGraph, proposal_idx: int) -> float:
             "proposal_idx must point to a node that has a Proposal")
 
     incoming_edges = network.in_edges(proposal_idx, data="conviction")
-    convictions = [cv for _, _, cv in incoming_edges]
+    convictions = [cv for _, _, cv in incoming_edges if cv]
 
     return np.sum(convictions)
