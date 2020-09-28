@@ -289,3 +289,32 @@ class ParticipantVoting:
                     participant_idx, proposal_idx_affinity, proposals_that_participant_cares_enough_to_vote_on, stakes))
 
         return {"participants_stake_on_proposals": participants_stakes}
+
+    @staticmethod
+    def su_update_participants_votes_and_recalculate_conviction(params, step, sL, s, _input):
+        """
+        Simply update the support edges with the tokens and recalculate the
+        gathered conviction.
+
+        TODO: consolidate conviction calculation from
+        ProposalFunding.su_update_gathered_conviction()
+        """
+        network = s["network"]
+        _input = _input["participants_stake_on_proposals"]
+        alpha = params[0]["days_to_80p_of_max_voting_weight"]
+
+        for participant_idx, v in _input.items():
+            for proposal_idx, tokens_staked in v.items():
+                # I assume there is no longer a need to recalculate a la
+                # https://github.com/randomshinichi/conviction/blob/9d1bc9513475dc30d33e3232b385234d0295d361/conviction_system_logic3.py#L510
+                # because the tokens were already distributed proportionally to
+                # the affinities in
+                # p_participant_votes_on_proposal_according_to_affinity()
+                # Also, do not recalculate conviction here. Leave that to ProposalFunding.su_update_age_and_conviction_thresholds()
+                network[participant_idx][proposal_idx]["tokens"] = tokens_staked
+
+                prior_conviction = network[participant_idx][proposal_idx]["conviction"]
+                network[participant_idx][proposal_idx]['conviction'] = tokens_staked + \
+                    alpha * prior_conviction
+
+        return "network", network
