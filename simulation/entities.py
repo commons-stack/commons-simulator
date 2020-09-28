@@ -177,7 +177,7 @@ class Participant:
         participant, but I don't think it is needed.
         """
         new_voted_proposals = {}
-        engagement_rate = .3*self.sentiment
+        engagement_rate = 1.0
         if probability(engagement_rate):
             # Put your tokens on your favourite Proposals, where favourite is
             # calculated as 0.75 * (the affinity for the Proposal you like the
