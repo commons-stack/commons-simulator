@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from entities import Proposal, ProposalStatus
 from hatch import Commons, TokenBatch, VestingOptions
-from network_utils import bootstrap_network, add_proposal, get_edges_by_type, get_participants
+from network_utils import bootstrap_network, add_proposal, get_edges_by_type, get_participants, calc_total_conviction
 from policies import (GenerateNewFunding, GenerateNewParticipant,
                       GenerateNewProposal, ActiveProposals, ProposalFunding, ParticipantVoting)
 

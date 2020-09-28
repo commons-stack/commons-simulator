@@ -8,7 +8,7 @@ import convictionvoting
 from convictionvoting import trigger_threshold
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch
-from network_utils import (add_proposal, calc_median_affinity,
+from network_utils import (add_proposal, calc_median_affinity, calc_total_conviction,
                            calc_total_funds_requested, get_edges_by_type,
                            get_participants, get_proposals,
                            setup_influence_edges_single, setup_support_edges)
@@ -178,6 +178,8 @@ class ProposalFunding:
         proposals_w_enough_conviction = []
         proposals = get_proposals(network, status=ProposalStatus.CANDIDATE)
         for idx, proposal in proposals:
+            total_conviction = calc_total_conviction(network, idx)
+            proposal.conviction = total_conviction
             res = proposal.has_enough_conviction(
                 funding_pool, token_supply, params[0]["max_proposal_request"])
 
