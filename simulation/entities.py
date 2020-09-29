@@ -215,15 +215,9 @@ class Participant:
         supported_proposals = sorted(
             supported_proposals, key=lambda tup: tup[0])
 
-        total_tokens = 0
-        if self.holdings_vesting:
-            total_tokens += self.holdings_vesting.value
-        if self.holdings_nonvesting:
-            total_tokens += self.holdings_nonvesting.value
-
         affinity_total = sum([a for a, idx in supported_proposals])
         for affinity, proposal_idx in supported_proposals:
-            tokens_per_supported_proposal[proposal_idx] = total_tokens * (
+            tokens_per_supported_proposal[proposal_idx] = self.holdings * (
                 affinity/affinity_total)
 
         return tokens_per_supported_proposal
