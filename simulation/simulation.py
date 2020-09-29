@@ -22,13 +22,13 @@ def update_funding_pool(params, step, sL, s, _input):
     return "funding_pool", commons._funding_pool
 
 
-def bootstrap_simulation(hatchers, proposals, hatch_tribute, vesting_80p_unlocked, exit_tribute, kappa, days_to_80p_of_max_voting_weight, max_proposal_request):
+def bootstrap_simulation(hatchers=5, proposals=2, hatch_tribute=0.2, vesting_80p_unlocked=60, exit_tribute=0.35, kappa=2, days_to_80p_of_max_voting_weight=10, max_proposal_request=0.2):
     contributions = [np.random.rand() * 10e5 for i in range(hatchers)]
     token_batches, initial_token_supply = create_token_batches(
         contributions, 0.1, vesting_80p_unlocked)
 
     commons = Commons(sum(contributions), initial_token_supply,
-                      hatch_tribute=0.2, exit_tribute=0.35)
+                      hatch_tribute=hatch_tribute, exit_tribute=exit_tribute, kappa=kappa)
     network = bootstrap_network(
         token_batches, proposals, commons._funding_pool, commons._token_supply, max_proposal_request)
 
@@ -38,7 +38,7 @@ def bootstrap_simulation(hatchers, proposals, hatch_tribute, vesting_80p_unlocke
         "funding_pool": commons._funding_pool,
         "collateral_pool": commons._collateral_pool,
         "token_supply": commons._token_supply,
-        "sentiment": 0.5,
+        "sentiment": 0.5
     }
 
     # TODO: make it explicit that 1 timestep is 1 day
