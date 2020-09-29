@@ -1,47 +1,22 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-from simulation import bootstrap_simulation, partial_state_update_blocks
+from simulation import bootstrap_simulation, partial_state_update_blocks, CommonsSimulationConfiguration
 import json
 import argparse
-import networkx as nx
-import numpy as np
 import pandas as pd
-import datetime
-from hatch import create_token_batches, TokenBatch, Commons
-from convictionvoting import trigger_threshold
-from policies import *
-from network_utils import *
-from entities import Participant, Proposal
 from cadCAD.configuration import Configuration
 from cadCAD.engine import ExecutionMode, ExecutionContext, Executor
 
 
-def run_simulation(hatchers, proposals, hatch_tribute, vesting_80p_unlocked, exit_tribute, kappa, days_to_80p_of_max_voting_weight, proposal_max_size):
-    # For the Flask backend
-
-    # Commons/Augmented Bonding Curve parameters
-    hatchers = 6
-    proposals = 2
-    hatch_tribute = 0.2
-    vesting_80p_unlocked = 60
-    exit_tribute = 0.35
-    # kappa = 2, default option set in abcurve.py, there is no way to reach it from here for now
-
-    # Conviction Voting parameters
-    # used in ProposalFunding.su_calculate_gathered_conviction
-    days_to_80p_of_max_voting_weight = 10
-    max_proposal_request = 0.2  # will be passed to trigger_threshold()
-
-    initial_conditions, simulation_parameters = bootstrap_simulation(
-        hatchers, proposals, hatch_tribute, vesting_80p_unlocked, exit_tribute, 2, days_to_80p_of_max_voting_weight, max_proposal_request)
+def run_simulation(c: CommonsSimulationConfiguration):
+    initial_conditions, simulation_parameters = bootstrap_simulation(c)
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # The configurations above are then packaged into a `Configuration` object
-    config = Configuration(initial_state=initial_conditions,  # dict containing variable names and initial values
-                           # dict containing state update functions
+    config = Configuration(initial_state=initial_conditions,
                            partial_state_update_blocks=partial_state_update_blocks,
-                           sim_config=simulation_parameters  # dict containing simulation parameters
+                           sim_config=simulation_parameters
                            )
 
     exec_mode = ExecutionMode()
@@ -67,16 +42,25 @@ def run_simulation(hatchers, proposals, hatch_tribute, vesting_80p_unlocked, exi
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("hatchers")
-parser.add_argument("proposals")
-parser.add_argument("hatch_tribute")
-parser.add_argument("vesting_80p_unlocked")
-parser.add_argument("exit_tribute")
-parser.add_argument("kappa")
-parser.add_argument("days_to_80p_of_max_voting_weight")
-parser.add_argument("proposal_max_size")
+parser.add_argument("hatchers", type=int)
+parser.add_argument("proposals", type=int)
+parser.add_argument("hatch_tribute", type=float)
+parser.add_argument("vesting_80p_unlocked", type=float)
+parser.add_argument("exit_tribute", type=float)
+parser.add_argument("kappa", type=int)
+parser.add_argument("days_to_80p_of_max_voting_weight", type=int)
+parser.add_argument("proposal_max_size", type=float)
 args = parser.parse_args()
 
-o = run_simulation(args.hatchers, args.proposals, args.hatch_tribute, args.vesting_80p_unlocked,
-                   args.exit_tribute, args.kappa, args.days_to_80p_of_max_voting_weight, args.proposal_max_size)
+c = CommonsSimulationConfiguration()
+c.hatchers = args.hatchers
+c.proposals = args.proposals
+c.hatch_tribute = args.hatch_tribute
+c.vesting_80p_unlocked, = args.vesting_80p_unlocked,
+c.exit_tribute = args.exit_tribute
+c.kappa = args.kappa
+c.days_to_80p_of_max_voting_weight = args.days_to_80p_of_max_voting_weight
+c.proposal_max_size = args.proposal_max_size
+
+o = run_simulation(c)
 print(json.dumps(o))
