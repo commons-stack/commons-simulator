@@ -1,4 +1,3 @@
-import ipdb
 import random
 
 import numpy as np
@@ -248,6 +247,9 @@ class ProposalFunding:
 
             edge['conviction'] = current_tokens + \
                 days_to_80p_of_max_voting_weight*prior_conviction
+            if params[0].get("debug") and s["timestep"] == 1:
+                print("ProposalFunding: Participant {} initially has staked {} tokens on Proposal {}, which will result in {} conviction in the next timestep".format(
+                    i, current_tokens, j, edge["conviction"]))
 
         return "network", network
 
