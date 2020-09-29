@@ -38,7 +38,6 @@ export const HomePage = () => {
   const handleSubmit = e => {
     e.preventDefault()
     const data = new FormData(ref.current)
-    console.log(new URLSearchParams(data).toString())
     cadCADAction(setResults, dispatch)(data)
   }
   return (
@@ -53,15 +52,15 @@ export const HomePage = () => {
          primary={
           <Params onSubmit={cadCADAction(setResults, useDispatch())}>
             <SliderField
-              label="Number of participants"
-              name="participants"
+              label="Hatchers : How many Hatchers you will include when initiating the first RadicalxChange Commons"
+              name="hatchers"
               defaultValue={30}
               step={5}
               min={5}
               max={150}
             />
             <SliderField
-              label="Number of proposals"
+              label="Proposals Initial : How many proposals do you expect your band of Hatchers to be able to gather within the first month?"
               name="proposals"
               icon={BallotIcon}
               defaultValue={3}
@@ -70,36 +69,52 @@ export const HomePage = () => {
               max={10}
             />
             <SliderField
-              label="Theta"
-              name="theta"
+              label="Hatch Tribute : What % of our Hatchers contributions will be allocated to the Community Funding Pool, as opposed to collateralizing our local economy? (between 0.05 and 0.95)"
+              name="hatch_tribute"
               defaultValue={0.4}
               step={0.01}
-              min={0}
-              max={1}
+              min={0.05}
+              max={0.95}
             />
             <SliderField
-              label="Exit tribute"
+              label="Cliff + Vesting Curve 1/2 life : How many days will pass before 80% of the Hatcher’s tokens are unlocked?"
+              name="vesting_80p_unlocked"
+              defaultValue={60}
+              step={1}
+              min={0}
+              max={100}
+            />
+            <SliderField
+              label="Exit Tribute : What percent of the released Reserve will go to the Funding Pool when tokens are sold?"
               name="exit_tribute"
-              defaultValue={0.2}
+              defaultValue={0.25}
               step={0.05}
               min={0}
-              max={1}
+              max={0.5}
             />
             <SliderField
-              label="Alpha (in the future: Time to reach 80% voting power)"
-              name="alpha"
-              defaultValue={0.9}
+              label="What shape of the curve will the RxC Community choose for their economy?"
+              name="kappa"
+              defaultValue={3}
               step={0.05}
-              min={0.5}
-              max={1}
+              min={2}
+              max={4}
             />
             <SliderField
-              label="Max Proposal Amount that can be spent in one proposal"
-              name="beta"
-              defaultValue={0.2}
+              label="Alpha : How many days/weeks? does it take to reach 80% of a voter’s max voting weight?"
+              name="days_to_80p_of_max_voting_weight"
+              defaultValue={120}
+              step={1}
+              min={1}
+              max={1000}
+            />
+            <SliderField
+              label="Beta : What is the max percentage of the Funding Pool that can be spent in one proposal? (0.01 to 0.90)"
+              name="proposal_max_size"
+              defaultValue={0.5}
               step={0.05}
-              min={0.1}
-              max={1}
+              min={0.01}
+              max={0.9}
             />
           </Params>
          }
