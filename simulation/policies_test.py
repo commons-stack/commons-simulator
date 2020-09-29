@@ -204,11 +204,11 @@ class TestProposalFunding(unittest.TestCase):
             self.assertEqual(
                 n_new.nodes[i]["item"].status, ProposalStatus.ACTIVE)
 
-    def test_su_update_gathered_conviction(self):
+    def test_su_calculate_conviction(self):
         """
         Ensure that the edge attributes "conviction" and "tokens" were updated.
         """
-        _, n_network = ProposalFunding.su_update_gathered_conviction(
+        _, n_network = ProposalFunding.su_calculate_conviction(
             self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, {})
         support_edges = get_edges_by_type(n_network, "support")
 
@@ -281,49 +281,3 @@ class TestParticipantVoting(unittest.TestCase):
                                                     }
             }
             self.assertEqual(ans, reference)
-
-    def test_su_update_participants_votes_and_recalculate_conviction(self):
-        """
-        Ensure that a Proposal with 4 Participants, each staking 1000 tokens on
-        it, and no prior conviction, will have a total conviction of 4000.
-        """
-        _input = {
-            'participants_stake_on_proposals': {0: {4: 1000.0, 5: 1200.0},
-                                                1: {4: 1000.0, 5: 1200.0},
-                                                2: {4: 1000.0, 5: 1200.0},
-                                                3: {4: 1000.0, 5: 1200.0}
-                                                }
-        }
-        ans = ParticipantVoting.su_update_participants_votes_and_recalculate_conviction(self.params, 0, 0, {
-            "network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, _input)
-
-        n_new = ans[1]
-
-        self.assertEqual(calc_total_conviction(n_new, 4), 1000*4)
-        self.assertEqual(calc_total_conviction(n_new, 5), 1200*4)
-
-    def test_su_update_participants_votes_and_recalculate_conviction_prior_conviction(self):
-        """
-        Ensure that a support edge to a Proposal, with a stake of 1000 tokens
-        and 100 prior conviction, will have a conviction of 1000+(100 *
-        days_to_80p_of_max_voting_weight).
-        """
-        _input = {
-            'participants_stake_on_proposals': {0: {4: 1000.0, 5: 1200.0},
-                                                1: {4: 1000.0, 5: 1200.0},
-                                                2: {4: 1000.0, 5: 1200.0},
-                                                3: {4: 1000.0, 5: 1200.0}
-                                                }
-        }
-        support_edges = get_edges_by_type(self.network, "support")
-        for u, v in support_edges:
-            self.network[u][v]["conviction"] = 100
-
-        _, n_new = ParticipantVoting.su_update_participants_votes_and_recalculate_conviction(self.params, 0, 0, {
-            "network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, _input)
-
-        for u, v in support_edges:
-            if v == 4:
-                self.assertEqual(n_new[u][v]["conviction"], 2000)
-            if v == 5:
-                self.assertEqual(n_new[u][v]["conviction"], 2200)
