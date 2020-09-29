@@ -61,7 +61,9 @@ class GenerateNewParticipant:
         if _input["new_participant"]:
             tokens, realized_price = commons.deposit(
                 _input["new_participant_investment"])
-            # print(tokens, realized_price, _input['new_participant_tokens'])
+            if params[0].get("debug"):
+                print("GenerateNewParticipant: A new Participant invested {}DAI for {} tokens at a realized price of {}".format(
+                    _input['new_participant_investment'], tokens, realized_price))
 
         return "commons", commons
 
