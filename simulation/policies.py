@@ -16,7 +16,7 @@ from utils import probability
 
 class GenerateNewParticipant:
     @staticmethod
-    def p_randomly(params, step, sL, s):
+    def p_randomly(params, step, sL, s, **kwargs):
         commons = s["commons"]
         sentiment = s["sentiment"]
         ans = {
@@ -45,7 +45,7 @@ class GenerateNewParticipant:
         return ans
 
     @staticmethod
-    def su_add_to_network(params, step, sL, s, _input):
+    def su_add_to_network(params, step, sL, s, _input, **kwargs):
         network = s["network"]
         if _input["new_participant"]:
             i = len(network.nodes)
@@ -56,7 +56,7 @@ class GenerateNewParticipant:
         return "network", network
 
     @staticmethod
-    def su_add_investment_to_commons(params, step, sL, s, _input):
+    def su_add_investment_to_commons(params, step, sL, s, _input, **kwargs):
         commons = s["commons"]
         if _input["new_participant"]:
             tokens, realized_price = commons.deposit(
@@ -68,7 +68,7 @@ class GenerateNewParticipant:
 
 class GenerateNewProposal:
     @staticmethod
-    def p_randomly(params, step, sL, s):
+    def p_randomly(params, step, sL, s, **kwargs):
         """
         Randomly picks a Participant from the network and asks him if he wants
         to create a Proposal.
@@ -85,7 +85,7 @@ class GenerateNewProposal:
         return {"new_proposal": wants_to_create_proposal, "proposed_by_participant": i}
 
     @staticmethod
-    def su_add_to_network(params, step, sL, s, _input):
+    def su_add_to_network(params, step, sL, s, _input, **kwargs):
         network = s["network"]
         funding_pool = s["funding_pool"]
         token_supply = s["token_supply"]
@@ -110,7 +110,7 @@ class GenerateNewProposal:
 
 class GenerateNewFunding:
     @staticmethod
-    def p_exit_tribute_of_average_speculator_position_size(params, step, sL, s):
+    def p_exit_tribute_of_average_speculator_position_size(params, step, sL, s, **kwargs):
         """
         This policy needs Commons.exit_tribute to NOT be 0!
 
@@ -127,7 +127,7 @@ class GenerateNewFunding:
         return {"funding": funding}
 
     @staticmethod
-    def su_add_funding(params, step, sL, s, _input):
+    def su_add_funding(params, step, sL, s, _input, **kwargs):
         commons = s["commons"]
         if _input["funding"]:
             commons._funding_pool += _input["funding"]
@@ -136,7 +136,7 @@ class GenerateNewFunding:
 
 class ActiveProposals:
     @staticmethod
-    def p_influenced_by_grant_size(params, step, sL, s):
+    def p_influenced_by_grant_size(params, step, sL, s, **kwargs):
         base_failure_rate = 0.15
         base_success_rate = 0.30
 
@@ -158,7 +158,7 @@ class ActiveProposals:
         return {"failed": proposals_that_will_fail, "succeeded": proposals_that_will_succeed}
 
     @ staticmethod
-    def su_set_proposal_status(params, step, sL, s, _input):
+    def su_set_proposal_status(params, step, sL, s, _input, **kwargs):
         network = s["network"]
         for idx in _input["failed"]:
             network.nodes[idx]["item"].status = ProposalStatus.FAILED
@@ -168,7 +168,7 @@ class ActiveProposals:
 
 class ProposalFunding:
     @staticmethod
-    def p_compare_conviction_and_threshold(params, step, sL, s):
+    def p_compare_conviction_and_threshold(params, step, sL, s, **kwargs):
         """
         This policy simply goes through the Proposals to see if their thresholds
         are smaller than their gathered conviction
@@ -194,7 +194,7 @@ class ProposalFunding:
         return {"proposal_idxs_with_enough_conviction": proposals_w_enough_conviction}
 
     @staticmethod
-    def su_compare_conviction_and_threshold_make_proposal_active(params, step, sL, s, _input):
+    def su_compare_conviction_and_threshold_make_proposal_active(params, step, sL, s, _input, **kwargs):
         network = s["network"]
 
         for idx in _input["proposal_idxs_with_enough_conviction"]:
@@ -203,7 +203,7 @@ class ProposalFunding:
         return "network", network
 
     @staticmethod
-    def su_compare_conviction_and_threshold_deduct_funds_from_funding_pool(params, step, sL, s, _input):
+    def su_compare_conviction_and_threshold_deduct_funds_from_funding_pool(params, step, sL, s, _input, **kwargs):
         commons = s["commons"]
         network = s["network"]
         for idx in _input["proposal_idxs_with_enough_conviction"]:
@@ -215,7 +215,7 @@ class ProposalFunding:
         return "commons", commons
 
     @staticmethod
-    def su_update_age_and_conviction_thresholds(params, step, sL, s, _input):
+    def su_update_age_and_conviction_thresholds(params, step, sL, s, _input, **kwargs):
         network = s["network"]
         funding_pool = s["funding_pool"]
         token_supply = s["token_supply"]
@@ -230,7 +230,7 @@ class ProposalFunding:
         return "network", network
 
     @staticmethod
-    def su_calculate_conviction(params, step, sL, s, _input):
+    def su_calculate_conviction(params, step, sL, s, _input, **kwargs):
         network = s["network"]
         days_to_80p_of_max_voting_weight = params[0]["days_to_80p_of_max_voting_weight"]
 
@@ -251,7 +251,7 @@ class ProposalFunding:
 
 class ParticipantVoting:
     @staticmethod
-    def p_participant_votes_on_proposal_according_to_affinity(params, step, sL, s):
+    def p_participant_votes_on_proposal_according_to_affinity(params, step, sL, s, **kwargs):
         """
         This policy collects data from the DiGraph to tell the Participant class
         which candidate proposals it supports, and
@@ -291,7 +291,7 @@ class ParticipantVoting:
         return {"participants_stake_on_proposals": participants_stakes}
 
     @staticmethod
-    def su_update_participants_votes(params, step, sL, s, _input):
+    def su_update_participants_votes(params, step, sL, s, _input, **kwargs):
         """
         Simply update the support edges with the new amount of tokens the
         Participant has staked on the Proposal. Leave the conviction calculation
@@ -299,7 +299,6 @@ class ParticipantVoting:
         """
         network = s["network"]
         _input = _input["participants_stake_on_proposals"]
-        alpha = params[0]["days_to_80p_of_max_voting_weight"]
 
         for participant_idx, v in _input.items():
             for proposal_idx, tokens_staked in v.items():
