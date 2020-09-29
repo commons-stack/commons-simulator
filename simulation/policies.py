@@ -102,6 +102,9 @@ class GenerateNewProposal:
             # to this Proposal. If the Participant is the one who created this
             # Proposal, change his affinity for the Proposal to 1 (maximum).
             network.edges[_input["proposed_by_participant"], j]["affinity"] = 1
+            if params[0].get("debug"):
+                print("GenerateNewProposal: Participant {} created Proposal {}".format(
+                    _input["proposed_by_participant"], j))
         return "network", network
 
 
@@ -206,7 +209,7 @@ class ProposalFunding:
         for idx in _input["proposal_idxs_with_enough_conviction"]:
             funds = network.nodes[idx]["item"].funds_requested
             if params[0].get("debug"):
-                print("ProposalFunding: Proposal {} requested {} funds, deducting from Commons funding pool".format(
+                print("ProposalFunding: Proposal {} passed! deducting {} from Commons funding pool".format(
                     idx, funds))
             commons.spend(funds)
         return "commons", commons
@@ -289,8 +292,9 @@ class ParticipantVoting:
             participants_stakes[participant_idx] = stakes
 
             if params[0].get("debug"):
-                print("Participant {} was given Proposals with corresponding affinities {} and he decided to vote on {}, distributing his tokens thusly {}".format(
-                    participant_idx, proposal_idx_affinity, proposals_that_participant_cares_enough_to_vote_on, stakes))
+                if proposals_that_participant_cares_enough_to_vote_on:
+                    print("ParticipantVoting: Participant {} was given Proposals with corresponding affinities {} and he decided to vote on {}, distributing his tokens thusly {}".format(
+                        participant_idx, proposal_idx_affinity, proposals_that_participant_cares_enough_to_vote_on, stakes))
 
         return {"participants_stake_on_proposals": participants_stakes}
 
