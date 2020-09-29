@@ -1,35 +1,37 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-from simulation import bootstrap_simulation, partial_state_update_blocks, CommonsSimulationConfiguration
-import json
 import argparse
+import json
+
 import pandas as pd
-from cadCAD.configuration import Configuration
-from cadCAD.engine import ExecutionMode, ExecutionContext, Executor
+from cadCAD.configuration import Experiment
+from cadCAD.configuration.utils import config_sim
+from cadCAD.engine import ExecutionContext, ExecutionMode, Executor
+from cadCAD import configs
+
+from simulation import (CommonsSimulationConfiguration, bootstrap_simulation,
+                        partial_state_update_blocks)
 
 
 def run_simulation(c: CommonsSimulationConfiguration):
     initial_conditions, simulation_parameters = bootstrap_simulation(c)
 
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-    # The configurations above are then packaged into a `Configuration` object
-    config = Configuration(initial_state=initial_conditions,
-                           partial_state_update_blocks=partial_state_update_blocks,
-                           sim_config=simulation_parameters
-                           )
+    exp = Experiment()
+    exp.append_configs(
+        initial_state=initial_conditions,
+        partial_state_update_blocks=partial_state_update_blocks,
+        sim_configs=simulation_parameters
+    )
 
-    exec_mode = ExecutionMode()
     # Do not use multi_proc, breaks ipdb.set_trace()
-    exec_context = ExecutionContext(exec_mode.single_proc)
-    # Pass the configuration object inside an array
-    executor = Executor(exec_context, [config])
-    # The `execute()` method returns a tuple; its first elements contains the raw results
-    raw_result, tensor = executor.execute()
+    exec_mode = ExecutionMode()
+    single_proc_context = ExecutionContext(exec_mode.single_proc)
+    executor = Executor(single_proc_context, configs)
 
-    # In[6]:
+    raw_system_events, tensor_field, sessions = executor.execute()
 
-    df = pd.DataFrame(raw_result)
+    df = pd.DataFrame(raw_system_events)
     df_final = df[df.substep.eq(2)]
 
     result = {
