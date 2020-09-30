@@ -22,6 +22,8 @@ import Fab from '@material-ui/core/Fab'
 import ExpandLess from '@material-ui/icons/ExpandLess'
 import ExpandMore from '@material-ui/icons/ExpandMore'
 
+import { Line } from 'react-chartjs-2';
+
 import { communityAction, hatchAction, abcAction, convictionAction, cadCADAction } from './actions'
 import ForceGraph from './graphs'
 import { serverURI } from './config'
@@ -512,13 +514,27 @@ const NetworkGraph = ({ results, next }) => {
     )
 }
 
-const Results = ({ results, next }) =>
-   results &&
+const Results = ({ results, next }) => {
+  const dataWrapper = (label, timestep, data) => ({
+    labels: timestep,
+    datasets: [{
+      label,
+      data
+    }]
+  })
+
+  return results &&
     <div css={`margin-top: 20px`}>
       <Typography variant="h4" gutterBottom>Results</Typography>
-      {results.results && results.results.map((uri, i) => <img key={i} src={`${serverURI}/${uri}`} alt="" width="100%" />)}
+      {results && Object.keys(results).filter(key => key !== 'timestep').map( prop =>
+        <div>
+          <h3 style={{'text-transform': 'capitalize'}}>{prop.replace('_', ' ')}</h3>
+          <Line data={dataWrapper(prop, results.timestep, results[prop])}></Line>
+        </div>
+      )}
       <Next to={next} />
     </div>
+}
 
 const Next = ({ to }) => (
   <Button color="primary" variant="contained" href={`/#/step${to}`}>Next</Button>
