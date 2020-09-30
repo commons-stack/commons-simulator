@@ -53,6 +53,9 @@ class GenerateNewParticipant:
                 holdings_vesting=None, holdings_nonvesting=TokenBatch(_input["new_participant_tokens"])))
             network = setup_influence_edges_single(network, i)
             network = setup_support_edges(network, i)
+            if params[0].get("debug"):
+                print("GenerateNewParticipant: A new Participant {} invested {}DAI for {} tokens".format(
+                    i, _input['new_participant_investment'], _input['new_participant_tokens']))
         return "network", network
 
     @staticmethod
@@ -61,10 +64,6 @@ class GenerateNewParticipant:
         if _input["new_participant"]:
             tokens, realized_price = commons.deposit(
                 _input["new_participant_investment"])
-            if params[0].get("debug"):
-                print("GenerateNewParticipant: A new Participant invested {}DAI for {} tokens at a realized price of {}".format(
-                    _input['new_participant_investment'], tokens, realized_price))
-
         return "commons", commons
 
 
