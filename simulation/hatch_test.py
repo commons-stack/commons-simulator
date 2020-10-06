@@ -21,49 +21,88 @@ class HatchTest(unittest.TestCase):
 
 class TokenBatchTest(unittest.TestCase):
     def test_bool(self):
-        zero = TokenBatch(0)
-        something = TokenBatch(1)
-        self.assertTrue(bool(something))
+        zero = TokenBatch(0, 0)
+        vesting_only = TokenBatch(1, 0)
+        nonvesting_only = TokenBatch(0, 1)
+        both = TokenBatch(1, 1)
         self.assertFalse(bool(zero))
+        self.assertTrue(bool(vesting_only))
+        self.assertTrue(bool(nonvesting_only))
+        self.assertTrue(bool(both))
+
+        vesting_all_spent = TokenBatch(1, 1)
+        vesting_all_spent.vesting_spent = 1
+        vesting_all_spent.nonvesting = 0
+        self.assertFalse(bool(vesting_all_spent))
 
     def test_add_(self):
-        two = TokenBatch(2)
-        three = TokenBatch(3)
-        self.assertEqual(two+three, 5)
+        two = TokenBatch(2, 1)
+        three = TokenBatch(3, 5)
+        answer = two+three
+
+        self.assertEqual(answer, (5, 6))
 
     def test_sub_(self):
-        five = TokenBatch(5)
-        four = TokenBatch(4)
-        self.assertEqual(five-four, 1)
+        five = TokenBatch(1, 5)
+        four = TokenBatch(1, 4)
+        self.assertEqual(five-four, (0, 1))
 
     def test_unlocked_fraction(self):
-        tbh = TokenBatch(10000, vesting_options=VestingOptions(3, 3))
-        tb = TokenBatch(10000)
+        tbh = TokenBatch(10000, 0, vesting_options=VestingOptions(3, 3))
+        tb = TokenBatch(10000, 0)
 
         self. assertEqual(tbh.unlocked_fraction(), 0)
-        tbh.current_date = datetime.datetime.today() + datetime.timedelta(days=3)
+        tbh.update_age(3)
         self.assertEqual(tbh.unlocked_fraction(), 0)
-        tbh.current_date = datetime.datetime.today() + datetime.timedelta(days=6)
+        tbh.update_age(3)
         self.assertEqual(tbh.unlocked_fraction(), 0.5)
 
         self.assertEqual(tb.unlocked_fraction(), 1.0)
 
-    def test_spend(self):
-        tbh = TokenBatch(10000, vesting_options=VestingOptions(3, 3))
-
+    def test_spend_vesting_only(self):
+        tbh = TokenBatch(10000, 0, vesting_options=VestingOptions(3, 3))
         with self.assertRaises(Exception):
             tbh.spend(100)
 
-        tb = TokenBatch(10000)
+        # Now that enough time has passed, spending the vested tokens should work.
+        tbh.update_age(6)
+        a = tbh.spend(5000)
+        self.assertEqual(a, (10000, 5000, 0))
+
+        tbh.update_age(3)
+        with self.assertRaises(Exception):
+            tbh.spend(6000)
+
+    def test_spend_nonvesting_only(self):
+        tb = TokenBatch(0, 10000)
         tb.spend(100)
-        self.assertEqual(tb.value, 9900)
-        self.assertEqual(tb.spent, 100)
-        tb.spend(1000)
-        self.assertEqual(tb.value, 8900)
-        self.assertEqual(tb.spent, 1100)
+        self.assertEqual(tb.total, 9900)
+
+        tb.spend(2000)
+        self.assertEqual(tb.total, 7900)
 
         with self.assertRaises(Exception):
-            tb.spend(10000)
+            tb.spend(8000)
+
+    def test_spend_vesting_and_nonvesting(self):
+        # If I have 500 vesting and 500 nonvesting tokens, I should be able to
+        # spend 750 after some vesting time.
+        tb = TokenBatch(500, 500, vesting_options=VestingOptions(1, 1))
+        tb.update_age(3)
+        self.assertEqual(tb.spendable(), 875.0)
+
+        a = tb.spend(750)
+        self.assertEqual(a, (500, 250, 0))
+        self.assertEqual(tb.spendable(), 125)
+
+        # Long after the vesting period ends, I should be able to spend all my
+        # tokens and not more.
+        tb.update_age(100)
+        with self.assertRaises(Exception):
+            tb.spend(300)
+
+        b = tb.spend(250)
+        self.assertEqual(b, (500, 500, 0))
 
 
 class CommonsTest(unittest.TestCase):

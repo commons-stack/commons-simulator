@@ -2,6 +2,7 @@ from typing import List, Tuple
 from abcurve import AugmentedBondingCurve
 from datetime import datetime
 from collections import namedtuple
+from utils import attrs
 
 
 def vesting_curve(day: int, cliff_days: int, halflife_days: float) -> float:
@@ -55,65 +56,80 @@ VestingOptions = namedtuple("VestingOptions", "cliff_days halflife_days")
 
 
 class TokenBatch:
-    def __init__(self, value: float, vesting_options=None):
-        self.value = value
-        self.creation_date = datetime.today()
-        # to be set externally before each spend check
-        self.current_date = datetime.today()
+    def __init__(self, vesting: float, nonvesting: float, vesting_options=None):
+        self.vesting = vesting
+        self.nonvesting = nonvesting
+        self.vesting_spent = 0
 
-        self.hatch_tokens = False if not vesting_options else True
+        self.age_days = 0
+
         self.cliff_days = 0 if not vesting_options else vesting_options.cliff_days
         self.halflife_days = 0 if not vesting_options else vesting_options.halflife_days
 
-        self.spent = 0
-
     def __repr__(self):
-        o = "TokenBatch {} {}, Unlocked: {}".format(
-            "Hatch" if self.hatch_tokens else "", self.value, self.unlocked_fraction())
-        return o
+        return "<{} {}>".format(self.__class__.__name__, attrs(self))
+
+    @property
+    def total(self):
+        return (self.vesting - self.vesting_spent) + self.nonvesting
 
     def __bool__(self):
-        if self.value > 0:
+        if self.total > 0:
             return True
         return False
 
     def __add__(self, other):
-        return self.value + other.value
+        total_vesting = self.vesting + other.vesting
+        total_nonvesting = self.nonvesting + other.nonvesting
+        return total_vesting, total_nonvesting
 
     def __sub__(self, other):
-        return self.value - other.value
+        total_vesting = self.vesting - other.vesting
+        total_nonvesting = self.nonvesting - other.nonvesting
+        return total_vesting, total_nonvesting
+
+    def update_age(self, iterations: int = 1):
+        """
+        Adds the number of iterations to TokenBatch.age_days
+        """
+        self.age_days += iterations
+        return self.age_days
 
     def unlocked_fraction(self) -> float:
         """
         returns what fraction of the TokenBatch is unlocked to date
         """
-        if self.hatch_tokens:
-            days_delta = self.current_date - self.creation_date
-            u = vesting_curve(
-                days_delta.days, self.cliff_days, self.halflife_days)
+        if self.cliff_days and self.halflife_days:
+            u = vesting_curve(self.age_days,
+                              self.cliff_days, self.halflife_days)
             return u if u > 0 else 0
         else:
             return 1.0
 
     def spend(self, x: float):
         """
-        checks if you can spend so many tokens, then decreases this TokenBatch instance's value accordingly
-        returns the argument if successful for your convenience
+        checks if you can spend so many tokens, then decreases this TokenBatch
+        instance's value accordingly
         """
         if x > self.spendable():
             raise Exception("Not so many tokens are available for you to spend yet ({})".format(
-                self.current_date))
+                self.age_days))
 
-        self.value -= x
-        self.spent += x
-        return x
+        y = x - self.nonvesting
+        if y > 0:
+            self.vesting_spent += y
+            self.nonvesting = 0
+        else:
+            self.nonvesting = abs(y)
+
+        return self.vesting, self.vesting_spent, self.nonvesting
 
     def spendable(self) -> float:
         """
-        spendable() = self.unlocked_fraction * self.value - self.spent
+        spendable() = (self.unlocked_fraction * self.vesting - self.vesting_spent) + self.nonvesting
         Needed in case some Tokens were burnt before.
         """
-        return (self.unlocked_fraction() * self.value) - self.spent
+        return ((self.unlocked_fraction() * self.vesting) - self.vesting_spent) + self.nonvesting
 
 
 class Commons:
