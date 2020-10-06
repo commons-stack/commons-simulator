@@ -1,6 +1,5 @@
 from typing import List, Tuple
 from abcurve import AugmentedBondingCurve
-from datetime import datetime
 from collections import namedtuple
 from utils import attrs
 
@@ -32,26 +31,6 @@ def hatch_raise_split_pools(total_hatch_raise, hatch_tribute) -> Tuple[float, fl
     return funding_pool, collateral_pool
 
 
-def create_token_batches(hatcher_contributions: List[int], desired_token_price: float, vesting_80p_unlocked: int) -> Tuple[List[float], float]:
-    """
-    hatcher_contributions: a list of hatcher contributions in DAI/ETH/whatever
-    desired_token_price: used to determine the initial token supply
-    vesting_80p_unlocked: vesting parameter - the number of days after which 80% of tokens will be unlocked, including the cliff period
-    """
-    total_hatch_raise = sum(hatcher_contributions)
-    initial_token_supply = total_hatch_raise / desired_token_price
-
-    # In the hatch, everyone buys in at the same time, with the same price. So just split the token supply amongst the hatchers proportionally to their contributions
-    tokens_per_hatcher = [(x / total_hatch_raise) *
-                          initial_token_supply for x in hatcher_contributions]
-
-    cliff_days, halflife_days = convert_80p_to_cliff_and_halflife(
-        vesting_80p_unlocked)
-    token_batches = [TokenBatch(
-        x, VestingOptions(cliff_days, halflife_days)) for x in tokens_per_hatcher]
-    return token_batches, initial_token_supply
-
-
 VestingOptions = namedtuple("VestingOptions", "cliff_days halflife_days")
 
 
@@ -59,7 +38,7 @@ class TokenBatch:
     def __init__(self, vesting: float, nonvesting: float, vesting_options=None):
         self.vesting = vesting
         self.nonvesting = nonvesting
-        self.vesting_spent = 0
+        self.vesting_spent = 0.0
 
         self.age_days = 0
 
@@ -118,7 +97,7 @@ class TokenBatch:
         y = x - self.nonvesting
         if y > 0:
             self.vesting_spent += y
-            self.nonvesting = 0
+            self.nonvesting = 0.0
         else:
             self.nonvesting = abs(y)
 
@@ -130,6 +109,26 @@ class TokenBatch:
         Needed in case some Tokens were burnt before.
         """
         return ((self.unlocked_fraction() * self.vesting) - self.vesting_spent) + self.nonvesting
+
+
+def create_token_batches(hatcher_contributions: List[int], desired_token_price: float, vesting_80p_unlocked: int) -> Tuple[List[TokenBatch], float]:
+    """
+    hatcher_contributions: a list of hatcher contributions in DAI/ETH/whatever
+    desired_token_price: used to determine the initial token supply
+    vesting_80p_unlocked: vesting parameter - the number of days after which 80% of tokens will be unlocked, including the cliff period
+    """
+    total_hatch_raise = sum(hatcher_contributions)
+    initial_token_supply = total_hatch_raise / desired_token_price
+
+    # In the hatch, everyone buys in at the same time, with the same price. So just split the token supply amongst the hatchers proportionally to their contributions
+    tokens_per_hatcher = [(x / total_hatch_raise) *
+                          initial_token_supply for x in hatcher_contributions]
+
+    cliff_days, halflife_days = convert_80p_to_cliff_and_halflife(
+        vesting_80p_unlocked)
+    token_batches = [TokenBatch(
+        x, 0, vesting_options=VestingOptions(cliff_days, halflife_days)) for x in tokens_per_hatcher]
+    return token_batches, initial_token_supply
 
 
 class Commons:

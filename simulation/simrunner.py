@@ -51,7 +51,7 @@ parser.add_argument("vesting_80p_unlocked", type=float)
 parser.add_argument("exit_tribute", type=float)
 parser.add_argument("kappa", type=int)
 parser.add_argument("days_to_80p_of_max_voting_weight", type=int)
-parser.add_argument("proposal_max_size", type=float)
+parser.add_argument("max_proposal_request", type=float)
 args = parser.parse_args()
 
 c = CommonsSimulationConfiguration()
@@ -62,7 +62,7 @@ c.vesting_80p_unlocked, = args.vesting_80p_unlocked,
 c.exit_tribute = args.exit_tribute
 c.kappa = args.kappa
 c.days_to_80p_of_max_voting_weight = args.days_to_80p_of_max_voting_weight
-c.proposal_max_size = args.proposal_max_size
+c.max_proposal_request = args.max_proposal_request
 
 o = run_simulation(c)
 print(json.dumps(o))

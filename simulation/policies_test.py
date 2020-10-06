@@ -7,14 +7,14 @@ from entities import Proposal, ProposalStatus
 from hatch import Commons, TokenBatch, VestingOptions
 from network_utils import bootstrap_network, add_proposal, get_edges_by_type, get_participants, calc_total_conviction
 from policies import (GenerateNewFunding, GenerateNewParticipant,
-                      GenerateNewProposal, ActiveProposals, ProposalFunding, ParticipantVoting)
+                      GenerateNewProposal, ActiveProposals, ProposalFunding, ParticipantVoting, ParticipantChangesHoldings)
 
 
 class TestGenerateNewParticipant(unittest.TestCase):
     def setUp(self):
         self.commons = Commons(10000, 1000)
         self.sentiment = 0.5
-        self.network = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
+        self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
                                           for _ in range(4)], 1, 3000, 4e6, 0.2)
 
         self.params = [{
@@ -59,7 +59,7 @@ class TestGenerateNewParticipant(unittest.TestCase):
             self.assertEqual(n_old_len, 5)
             self.assertEqual(network_len, 6)
             self.assertEqual(network.nodes(data="item")[
-                             5].holdings_nonvesting.value, 1.0545093367677052)
+                             5].holdings.total, 1.0545093367677052)
 
             # There are 4 Participants in the network, all of them should have
             # influence edges to the newly added Participant.
@@ -71,7 +71,7 @@ class TestGenerateNewParticipant(unittest.TestCase):
 
 class TestGenerateNewProposal(unittest.TestCase):
     def setUp(self):
-        self.network = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
+        self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
                                           for _ in range(4)], 1, 3000, 4e6, 0.2)
         self.params = [{"max_proposal_request": 0.2}]
 
@@ -143,7 +143,7 @@ class TestGenerateNewFunding(unittest.TestCase):
 
 class TestActiveProposals(unittest.TestCase):
     def setUp(self):
-        self.network = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
+        self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
                                           for _ in range(4)], 1, 3000, 4e6, 0.2)
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
@@ -176,7 +176,7 @@ class TestActiveProposals(unittest.TestCase):
 
 class TestProposalFunding(unittest.TestCase):
     def setUp(self):
-        self.network = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
+        self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
                                           for _ in range(4)], 1, 3000, 4e6, 0.2)
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
@@ -241,7 +241,7 @@ class TestProposalFunding(unittest.TestCase):
 
 class TestParticipantVoting(unittest.TestCase):
     def setUp(self):
-        self.network = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
+        self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
                                           for _ in range(4)], 1, 3000, 4e6, 0.2)
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
@@ -286,7 +286,7 @@ class TestParticipantVoting(unittest.TestCase):
         """
         participants = get_participants(self.network)
         for _, participant in participants:
-            participant.holdings_nonvesting = TokenBatch(1000)
+            participant.holdings = TokenBatch(1000, 1000)
 
         with patch("entities.probability") as p:
             p.return_value = True

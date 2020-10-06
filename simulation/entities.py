@@ -61,20 +61,12 @@ class Proposal:
 
 
 class Participant:
-    def __init__(self, holdings_vesting: TokenBatch = None, holdings_nonvesting: TokenBatch = None):
-        self.name = "Somebody"
+    def __init__(self, holdings: TokenBatch):
         self.sentiment = np.random.rand()
-        self.holdings_vesting = holdings_vesting
-        self.holdings_nonvesting = holdings_nonvesting
+        self.holdings = holdings
 
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, attrs(self))
-
-    @property
-    def holdings(self) -> float:
-        if self.holdings_vesting:
-            return self.holdings_vesting + self.holdings_nonvesting
-        return float(self.holdings_nonvesting.value)
 
     def buy(self) -> float:
         """
@@ -88,7 +80,7 @@ class Participant:
         engagement_rate = 0.3 * self.sentiment
         force = self.sentiment - config.sentiment_sensitivity
         if probability(engagement_rate) and force > 0:
-            delta_holdings = np.random.rand() * force
+            delta_holdings = np.random.rand() * force * config.delta_holdings_scale
             return delta_holdings
         return 0
 
@@ -105,9 +97,15 @@ class Participant:
         engagement_rate = 0.3 * self.sentiment
         force = self.sentiment - config.sentiment_sensitivity
         if probability(engagement_rate) and force < 0:
-            delta_holdings = np.random.rand() * force
+            delta_holdings = np.random.rand() * force * self.holdings.spendable()
             return delta_holdings
         return 0
+
+    def spend(self, x: float) -> Tuple[float, float, float]:
+        """
+        Participant.spend() is simply a front to TokenBatch.spend().
+        """
+        return self.holdings.spend(x)
 
     def create_proposal(self, total_funds_requested, median_affinity, funding_pool) -> bool:
         """
@@ -195,7 +193,7 @@ class Participant:
 
         affinity_total = sum([a for a, idx in supported_proposals])
         for affinity, proposal_idx in supported_proposals:
-            tokens_per_supported_proposal[proposal_idx] = self.holdings * (
+            tokens_per_supported_proposal[proposal_idx] = self.holdings.total * (
                 affinity/affinity_total)
 
         return tokens_per_supported_proposal

@@ -1,6 +1,5 @@
 from hatch import *
 import unittest
-import datetime
 
 
 class HatchTest(unittest.TestCase):

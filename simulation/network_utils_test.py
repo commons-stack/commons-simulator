@@ -18,7 +18,7 @@ class TestNetworkUtils(unittest.TestCase):
         self.network = nx.DiGraph()
 
         for i in range(0, 10, 2):
-            self.network.add_node(i, item=Participant())
+            self.network.add_node(i, item=Participant(TokenBatch(0, 0)))
             self.network.add_node(i+1, item=Proposal(10, 5))
 
     def test_get_participants(self):

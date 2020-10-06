@@ -50,7 +50,7 @@ class GenerateNewParticipant:
         if _input["new_participant"]:
             i = len(network.nodes)
             network.add_node(i, item=Participant(
-                holdings_vesting=None, holdings_nonvesting=TokenBatch(_input["new_participant_tokens"])))
+                TokenBatch(0, _input["new_participant_tokens"])))
             network = setup_influence_edges_single(network, i)
             network = setup_support_edges(network, i)
             if params[0].get("debug"):

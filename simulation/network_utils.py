@@ -56,15 +56,14 @@ def add_proposal(network: nx.DiGraph, p: Proposal) -> Tuple[nx.DiGraph, int]:
     return network, j
 
 
-def create_network(participants: List[TokenBatch]) -> nx.DiGraph:
+def create_network(token_batches: List[TokenBatch]) -> nx.DiGraph:
     """
     Creates a new DiGraph with Participants corresponding to the input
     TokenBatches.
     """
     network = nx.DiGraph()
-    for i, p in enumerate(participants):
-        p_instance = Participant(
-            holdings_vesting=p, holdings_nonvesting=TokenBatch(0))
+    for i, tb in enumerate(token_batches):
+        p_instance = Participant(tb)
         network.add_node(i, item=p_instance)
     return network
 

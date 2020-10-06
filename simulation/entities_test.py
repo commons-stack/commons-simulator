@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import utils
 from entities import Participant, Proposal, ProposalStatus
-from hatch import TokenBatch
+from hatch import TokenBatch, VestingOptions
 
 
 class TestProposal(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestProposal(unittest.TestCase):
 
 class TestParticipant(unittest.TestCase):
     def setUp(self):
-        self.p = Participant()
+        self.p = Participant(TokenBatch(100, 100))
 
     def test_buy(self):
         """
@@ -127,7 +127,6 @@ class TestParticipant(unittest.TestCase):
 
         The calculation should also include vesting and nonvesting TokenBatches.
         """
-        p = [Proposal(0, 0) for _ in range(4)]
         supported_proposals = [
             (0.9, 0),
             (0.9, 1),
@@ -135,8 +134,7 @@ class TestParticipant(unittest.TestCase):
             (0.6, 3),
         ]
 
-        self.p.holdings_vesting = TokenBatch(500)
-        self.p.holdings_nonvesting = TokenBatch(500)
+        self.p.holdings = TokenBatch(500, 500)
 
         ans = self.p.stake_across_all_supported_proposals(supported_proposals)
         reference = {
