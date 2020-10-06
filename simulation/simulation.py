@@ -1,8 +1,9 @@
+import numpy as np
 from hatch import create_token_batches, TokenBatch, Commons
 
 from entities import attrs
 from policies import GenerateNewParticipant, GenerateNewProposal, GenerateNewFunding, ActiveProposals, ProposalFunding, ParticipantVoting
-from network_utils import *
+from network_utils import bootstrap_network
 
 
 def update_collateral_pool(params, step, sL, s, _input):

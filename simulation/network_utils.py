@@ -9,7 +9,7 @@ from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch
 
 
-def get_edges_by_type(network, edge_type_selection):
+def get_edges_by_type(network: nx.DiGraph, edge_type_selection: str):
     def filter_by_type(n1, n2):
         if network.edges[(n1, n2)]["type"] == edge_type_selection:
             return True
@@ -19,7 +19,7 @@ def get_edges_by_type(network, edge_type_selection):
     return view.edges()
 
 
-def get_edges_by_participant_and_type(network, participant_idx, edge_type_selection) -> Dict:
+def get_edges_by_participant_and_type(network: nx.DiGraph, participant_idx: int, edge_type_selection: str) -> Dict:
     edges_view = network.adj[participant_idx]
     answer = {}
     for key in edges_view:
@@ -28,7 +28,7 @@ def get_edges_by_participant_and_type(network, participant_idx, edge_type_select
     return answer
 
 
-def get_proposals(network, status: ProposalStatus = None):
+def get_proposals(network: nx.DiGraph, status: ProposalStatus = None):
     def filter_proposal(n):
         if isinstance(network.nodes[n]["item"], Proposal):
             if status:
@@ -40,7 +40,7 @@ def get_proposals(network, status: ProposalStatus = None):
     return view.nodes(data="item")
 
 
-def get_participants(network) -> Dict[int, Participant]:
+def get_participants(network: nx.DiGraph) -> Dict[int, Participant]:
     def filter_participant(n):
         if isinstance(network.nodes[n]["item"], Participant):
             return True
@@ -232,14 +232,14 @@ def bootstrap_network(n_participants: List[TokenBatch], n_proposals: int, fundin
     return n
 
 
-def calc_total_funds_requested(network):
+def calc_total_funds_requested(network: nx.DiGraph):
     candidates = get_proposals(network, status=ProposalStatus.CANDIDATE)
     fund_requests = [j[1].funds_requested for j in candidates]
     total_funds_requested = np.sum(fund_requests)
     return total_funds_requested
 
 
-def calc_median_affinity(network):
+def calc_median_affinity(network: nx.DiGraph):
     supporters = get_edges_by_type(network, 'support')
     if len(supporters) == 0:
         raise Exception("The network has 0 support edges!")
