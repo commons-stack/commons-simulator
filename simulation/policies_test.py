@@ -17,6 +17,10 @@ class TestGenerateNewParticipant(unittest.TestCase):
         self.network = bootstrap_network([TokenBatch(1000, VestingOptions(10, 30))
                                           for _ in range(4)], 1, 3000, 4e6, 0.2)
 
+        self.params = [{
+            "debug": False,
+        }]
+
     def test_p_randomly(self):
         """
         Simply test that the code runs.
@@ -27,7 +31,7 @@ class TestGenerateNewParticipant(unittest.TestCase):
         }
         with patch("policies.probability") as p:
             p.return_value = True
-            ans = GenerateNewParticipant.p_randomly(None, 0, 0, state)
+            ans = GenerateNewParticipant.p_randomly(self.params, 0, 0, state)
             self.assertEqual(ans["new_participant"], True)
             self.assertIsNotNone(ans["new_participant_investment"])
             self.assertIsNotNone(ans["new_participant_tokens"])
@@ -49,7 +53,7 @@ class TestGenerateNewParticipant(unittest.TestCase):
                 "new_participant_tokens": 1.0545093367677052
             }
             _, network = GenerateNewParticipant.su_add_to_network(
-                None, 0, 0, {"network": self.network.copy()}, _input)
+                self.params, 0, 0, {"network": self.network.copy()}, _input)
             network_len = len(network.nodes)
 
             self.assertEqual(n_old_len, 5)
