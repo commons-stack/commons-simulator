@@ -1,0 +1,11 @@
+cadCAD==0.4.23
+jupyter
+jupyterthemes
+networkx
+pytest
+pytest-cov
+pandas
+numpy
+coverage
+autopep8
+scipy
