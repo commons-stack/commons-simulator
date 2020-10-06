@@ -117,7 +117,7 @@ class TokenBatch:
 
 
 class Commons:
-    def __init__(self, total_hatch_raise, token_supply, hatch_tribute=0.2, exit_tribute=0, kappa=0.2):
+    def __init__(self, total_hatch_raise, token_supply, hatch_tribute=0.2, exit_tribute=0, kappa=2):
         # a fledgling commons starts out in the hatching phase. After the hatch phase ends, money from new investors will only go into the collateral pool.
         # Essentials
         self.hatch_tribute = hatch_tribute

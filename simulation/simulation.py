@@ -1,7 +1,7 @@
 from hatch import create_token_batches, TokenBatch, Commons
 
 from entities import attrs
-from policies import *
+from policies import GenerateNewParticipant, GenerateNewProposal, GenerateNewFunding, ActiveProposals, ProposalFunding, ParticipantVoting
 from network_utils import *
 
 
