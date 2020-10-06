@@ -1,9 +1,7 @@
 import random
 import uuid
 from enum import Enum
-from inspect import getmembers
 from os.path import abspath
-from types import FunctionType
 from typing import List, Tuple
 
 import numpy as np
@@ -11,27 +9,7 @@ import numpy as np
 import config
 from convictionvoting import trigger_threshold
 from hatch import TokenBatch
-from utils import probability
-
-
-"""
-Helper functions from
-https://stackoverflow.com/questions/192109/is-there-a-built-in-function-to-print-all-the-current-properties-and-values-of-a
-to print all attributes of a class without me explicitly coding it out.
-"""
-
-
-def api(obj):
-    return [name for name in dir(obj) if name[0] != '_']
-
-
-def attrs(obj):
-    disallowed_properties = {
-        name for name, value in getmembers(type(obj))
-        if isinstance(value, (property, FunctionType))}
-    return {
-        name: getattr(obj, name) for name in api(obj)
-        if name not in disallowed_properties and hasattr(obj, name)}
+from utils import probability, attrs
 
 
 ProposalStatus = Enum("ProposalStatus", "CANDIDATE ACTIVE COMPLETED FAILED")
