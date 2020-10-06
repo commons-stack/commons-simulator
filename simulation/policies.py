@@ -232,6 +232,10 @@ class ProposalFunding:
 
     @staticmethod
     def su_calculate_conviction(params, step, sL, s, _input, **kwargs):
+        """
+        Actually calculates the conviction. This function should only run ONCE
+        per timestep/iteration!
+        """
         network = s["network"]
         days_to_80p_of_max_voting_weight = params[0]["days_to_80p_of_max_voting_weight"]
 

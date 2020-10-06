@@ -210,17 +210,33 @@ class TestProposalFunding(unittest.TestCase):
 
     def test_su_calculate_conviction(self):
         """
-        Ensure that the edge attributes "conviction" and "tokens" were updated.
-        """
-        _, n_network = ProposalFunding.su_calculate_conviction(
-            self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, {})
-        support_edges = get_edges_by_type(n_network, "support")
+        Ensure that conviction was calculated correctly
 
+        After the 1st iteration, 100 tokens staked becomes 100 conviction
+
+        On the 2nd iteration, 100 current tokens + 10
+        days_to_80p_of_max_voting_weight * 100 prior conviction = 1100
+        conviction
+        """
+        support_edges = get_edges_by_type(self.network, "support")
+        for i, j in support_edges:
+            self.network.edges[i, j]["tokens"] = 100
+
+        n_0 = copy.copy(self.network)
+        _, n_1 = ProposalFunding.su_calculate_conviction(
+            self.params, 0, 0, {"network": n_0, "funding_pool": 1000, "token_supply": 1000}, {})
         # Make sure the conviction actually changed
         for i, j in support_edges:
-            edge = n_network.edges[i, j]
-            self.assertNotEqual(edge["tokens"], 0)
-            self.assertNotEqual(edge["conviction"], 0)
+            edge = n_1.edges[i, j]
+            self.assertEqual(edge["tokens"], 100)
+            self.assertEqual(edge["conviction"], 100)
+
+        _, n_2 = ProposalFunding.su_calculate_conviction(
+            self.params, 0, 0, {"network": copy.copy(n_1), "funding_pool": 1000, "token_supply": 1000}, {})
+        for i, j in support_edges:
+            edge = n_2.edges[i, j]
+            self.assertEqual(edge["tokens"], 100)
+            self.assertEqual(edge["conviction"], 1100)
 
 
 class TestParticipantVoting(unittest.TestCase):
