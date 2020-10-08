@@ -101,6 +101,14 @@ class Participant:
             return delta_holdings
         return 0
 
+    def increase_holdings(self, x: float):
+        """
+        increase_holdings() is the opposite of spend() and adds to the
+        nonvesting part of the TokenBatch.
+        """
+        self.holdings.nonvesting += x
+        return self.holdings.vesting, self.holdings.vesting_spent, self.holdings.nonvesting
+
     def spend(self, x: float) -> Tuple[float, float, float]:
         """
         Participant.spend() is simply a front to TokenBatch.spend().
