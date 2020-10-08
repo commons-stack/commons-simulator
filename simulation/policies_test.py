@@ -301,3 +301,61 @@ class TestParticipantVoting(unittest.TestCase):
                                                     }
             }
             self.assertEqual(ans, reference)
+
+
+class TestParticipantChangesHoldings(unittest.TestCase):
+    def setUp(self):
+        self.network = bootstrap_network([TokenBatch(1000, 1000, vesting_options=VestingOptions(10, 30))
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
+        self.commons = Commons(1000, 1000000)
+
+        self.network, _ = add_proposal(self.network, Proposal(100, 1))
+        self.params = [{
+            "debug": True,
+        }]
+
+    def test_p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage(self):
+        with patch("entities.probability") as p:
+            p.return_value = True
+            a = ParticipantChangesHoldings.p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage(
+                self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
+            decisions = a["p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage"]
+            for participant_idx, decision in decisions.items():
+                self.assertNotEqual(decision[0], 0)
+
+    def test_su_update_participants_tokens(self):
+        # Negative numbers mean selling. Selling nonvested tokens should work
+        decisions_should_work = {
+            "p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage": {
+                0: (1000, "dai"),
+                1: (-1000, "tokens"),
+            }
+        }
+        ParticipantChangesHoldings.su_update_participants_tokens(self.params, 0, 0, {
+                                                                 "network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, decisions_should_work)
+        # Since the TokenBatch's age is 0, the following should fail
+        decisions_should_fail = {
+            "p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage": {
+                2: (-1200, "tokens"),
+                3: (-2000, "tokens"),
+            }
+        }
+        with self.assertRaises(Exception):
+            ParticipantChangesHoldings.su_update_participants_tokens(self.params, 0, 0, {
+                "network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, decisions_should_fail)
+
+    def test_su_buy_or_sell_participants_tokens(self):
+        decisions_should_work = {
+            "p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage": {
+                0: (1000, "dai"),
+                1: (-1000, "tokens"),
+            }
+        }
+        decisions_should_fail = {
+            "p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage": {
+                2: (-1200, "tokens"),
+                3: (-2000, "tokens"),
+            }
+        }
+        _, commons = ParticipantChangesHoldings.su_buy_or_sell_participants_tokens(self.params, 0, 0, {
+            "network": copy.copy(self.network), "commons": self.commons, "funding_pool": 1000, "token_supply": 1000}, decisions_should_work)

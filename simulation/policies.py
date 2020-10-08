@@ -316,3 +316,84 @@ class ParticipantVoting:
                 network[participant_idx][proposal_idx]["tokens"] = tokens_staked
 
         return "network", network
+
+
+class ParticipantChangesHoldings:
+    """
+    When implementing buying tokens, Participants may either buy in bulk with no
+    slippage, or endure slippage while buying. Neither is realistic but I'd say
+    no slippage is closer to what Participants will experience in real life.
+
+    When implementing selling tokens, slippage is more likely to change the
+    decision. In any case, let us implement no slippage first since it is easier
+    to reason with.
+
+    Also, buying in bulk is easier to implement in cadCAD because if the state
+    update function changes the Commons object each time a Participant buys
+    in/sells out, then it would have to update the network and commons object in
+    the same function, which is not allowed in cadCAD.
+    """
+    @staticmethod
+    def p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage(params, step, sL, s, **kwargs):
+        network = s["network"]
+        participants = get_participants(network)
+        ans = {}
+        for i, participant in participants:
+            # If a participant decides to buy, it will be specified in units of DAI.
+            # If a participant decides to sell, it will be specified in units of tokens.
+            x = participant.buy()
+            if not x:
+                x = participant.sell()
+
+            if x > 0:
+                decision = (x, "dai")
+            else:
+                decision = (x, "tokens")
+            ans[i] = decision
+        return {"p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage": ans}
+
+    @staticmethod
+    def su_update_participants_tokens(params, step, sL, s, _input, **kwargs):
+        network = s["network"]
+        decisions = _input["p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage"]
+
+        for participant_idx, delta_holdings in decisions.items():
+            if delta_holdings[0] > 0:
+                network.nodes[participant_idx]["item"].increase_holdings(
+                    float(delta_holdings[0]))
+            else:
+                network.nodes[participant_idx]["item"].spend(
+                    float(abs(delta_holdings[0])))
+
+        return "network", network
+
+    def su_buy_or_sell_participants_tokens(params, step, sL, s, _input, **kwargs):
+        """
+        If 2 Participants wish to sell 300 tokens and 2 Participants wish to buy
+        500 tokens, this function will execute Commons.deposit(200).
+        """
+        commons = s["commons"]
+        decisions = _input["p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage"]
+
+        dai_sum = 0
+        token_sum = 0
+        for _, delta_holdings in decisions.items():
+            if delta_holdings[1] == "dai":
+                dai_sum += delta_holdings[0]
+            else:
+                token_sum += abs(delta_holdings[0])
+
+        tokens, realized_price_deposit = commons.deposit(dai_sum)
+        money_returned, realized_price_burn = commons.burn(token_sum)
+
+        if params[0].get("debug"):
+            print("ParticipantChangesHoldings: commons.deposit({}) DAI resulted in {} tokens at a price of {}".format(
+                dai_sum, tokens, realized_price_deposit))
+            print("ParticipantChangesHoldings: commons.burn({}) tokens resulted in {} DAI at a price of {}".format(
+                token_sum, money_returned, realized_price_burn))
+
+        return "commons", commons
+
+
+class ParticipantExits:
+    pass
