@@ -1,13 +1,18 @@
 import copy
 import unittest
 from collections import namedtuple
+from os.path import commonpath
 from unittest.mock import patch
 
 from entities import Proposal, ProposalStatus
 from hatch import Commons, TokenBatch, VestingOptions
-from network_utils import bootstrap_network, add_proposal, get_edges_by_type, get_participants, calc_total_conviction
-from policies import (GenerateNewFunding, GenerateNewParticipant,
-                      GenerateNewProposal, ActiveProposals, ProposalFunding, ParticipantVoting, ParticipantChangesHoldings)
+from network_utils import (add_proposal, bootstrap_network,
+                           calc_total_conviction, get_edges_by_type,
+                           get_participants)
+from policies import (ActiveProposals, GenerateNewFunding,
+                      GenerateNewParticipant, GenerateNewProposal,
+                      ParticipantBuysTokens, ParticipantVoting,
+                      ProposalFunding)
 
 
 class TestGenerateNewParticipant(unittest.TestCase):
@@ -303,59 +308,62 @@ class TestParticipantVoting(unittest.TestCase):
             self.assertEqual(ans, reference)
 
 
-class TestParticipantChangesHoldings(unittest.TestCase):
+class TestParticipantBuysTokens(unittest.TestCase):
     def setUp(self):
         self.network = bootstrap_network([TokenBatch(1000, 1000, vesting_options=VestingOptions(10, 30))
                                           for _ in range(4)], 1, 3000, 4e6, 0.2)
-        self.commons = Commons(1000, 1000000)
+        self.commons = Commons(1000, 1000)
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
         self.params = [{
             "debug": True,
         }]
+        self.default_state = {"network": self.network, "commons": self.commons,
+                              "funding_pool": 1000, "token_supply": 1000}
 
-    def test_p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage(self):
-        with patch("entities.probability") as p:
-            p.return_value = True
-            a = ParticipantChangesHoldings.p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage(
-                self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
-            decisions = a["p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage"]
+    def test_p_decide_to_buy_tokens_bulk(self):
+        with patch("entities.Participant.buy") as p:
+            p.return_value = 1000.0
+            a = ParticipantBuysTokens.p_decide_to_buy_tokens_bulk(
+                self.params, 0, 0, self.default_state)
+            decisions = a["participant_decisions"]
+            final_token_distribution = a["final_token_distribution"]
             for participant_idx, decision in decisions.items():
-                self.assertNotEqual(decision[0], 0)
+                self.assertNotEqual(decision, 0)
+                self.assertEqual(
+                    final_token_distribution[participant_idx], 0.25)
+
+    def test_su_buy_participants_tokens(self):
+        policy_result = {
+            'participant_decisions': {0: 1000.0, 1: 1000.0, 2: 1000.0,
+                                      3: 1000.0},
+            'total_dai': 4000.0,
+            'tokens': 1449.489742783178,
+            'token_price': 2.7595917942265427,
+            "final_token_distribution": {0: 0.25, 1: 0.25, 2: 0.25, 3: 0.25}
+        }
+        old_token_supply = self.commons._token_supply
+        old_funding_pool = self.commons._funding_pool
+
+        _, commons = ParticipantBuysTokens.su_buy_participants_tokens(
+            self.params, 0, 0, self.default_state, policy_result)
+
+        self.assertEqual(commons._token_supply, 2449.489742783178)
+        self.assertEqual(commons._funding_pool, old_funding_pool)  # 200
 
     def test_su_update_participants_tokens(self):
-        # Negative numbers mean selling. Selling nonvested tokens should work
-        decisions_should_work = {
-            "p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage": {
-                0: (1000, "dai"),
-                1: (-1000, "tokens"),
-            }
+        policy_result = {
+            'participant_decisions': {0: 1000.0, 1: 1000.0, 2: 1000.0,
+                                      3: 1000.0},
+            'total_dai': 4000.0,
+            'tokens': 1449.489742783178,
+            'token_price': 2.7595917942265427,
+            "final_token_distribution": {0: 0.25, 1: 0.25, 2: 0.25, 3: 0.25}
         }
-        ParticipantChangesHoldings.su_update_participants_tokens(self.params, 0, 0, {
-                                                                 "network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, decisions_should_work)
-        # Since the TokenBatch's age is 0, the following should fail
-        decisions_should_fail = {
-            "p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage": {
-                2: (-1200, "tokens"),
-                3: (-2000, "tokens"),
-            }
-        }
-        with self.assertRaises(Exception):
-            ParticipantChangesHoldings.su_update_participants_tokens(self.params, 0, 0, {
-                "network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, decisions_should_fail)
+        print(self.network.nodes[0]["item"].holdings)
+        _, network = ParticipantBuysTokens.su_update_participants_tokens(
+            self.params, 0, 0, self.default_state, policy_result)
 
-    def test_su_buy_or_sell_participants_tokens(self):
-        decisions_should_work = {
-            "p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage": {
-                0: (1000, "dai"),
-                1: (-1000, "tokens"),
-            }
-        }
-        decisions_should_fail = {
-            "p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage": {
-                2: (-1200, "tokens"),
-                3: (-2000, "tokens"),
-            }
-        }
-        _, commons = ParticipantChangesHoldings.su_buy_or_sell_participants_tokens(self.params, 0, 0, {
-            "network": copy.copy(self.network), "commons": self.commons, "funding_pool": 1000, "token_supply": 1000}, decisions_should_work)
+        for i in [0, 1, 2, 3]:
+            self.assertEqual(
+                network.nodes[i]["item"].holdings.nonvesting, 1362.3724356957946)

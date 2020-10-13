@@ -1,5 +1,5 @@
 import random
-
+import copy
 import numpy as np
 from scipy.stats import expon, gamma
 
@@ -318,7 +318,7 @@ class ParticipantVoting:
         return "network", network
 
 
-class ParticipantChangesHoldings:
+class ParticipantBuysTokens:
     """
     When implementing buying tokens, Participants may either buy in bulk with no
     slippage, or endure slippage while buying. Neither is realistic but I'd say
@@ -334,39 +334,64 @@ class ParticipantChangesHoldings:
     the same function, which is not allowed in cadCAD.
     """
     @staticmethod
-    def p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage(params, step, sL, s, **kwargs):
+    def p_decide_to_buy_tokens_bulk(params, step, sL, s, **kwargs):
         network = s["network"]
+        commons = s["commons"]
         participants = get_participants(network)
         ans = {}
+        total_dai = 0
         for i, participant in participants:
             # If a participant decides to buy, it will be specified in units of DAI.
             # If a participant decides to sell, it will be specified in units of tokens.
             x = participant.buy()
-            if not x:
-                x = participant.sell()
-
             if x > 0:
-                decision = (x, "dai")
-            else:
-                decision = (x, "tokens")
-            ans[i] = decision
-        return {"p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage": ans}
+                total_dai += x
+                ans[i] = x
+
+        # Now that we have the sum of DAI, ask the Commons object how many
+        # tokens this would be minted as a result. This will be inaccurate due
+        # to slippage, and we need the result of this policy to be final to
+        # avoid chaining 2 state update functions, so we run the deposit on a
+        # throwaway copy of Commons
+        commons2 = copy.copy(commons)
+        tokens, token_price = commons2.deposit(total_dai)
+
+        final_token_distribution = {}
+        for i, participant in participants:
+            final_token_distribution[i] = ans[i] / total_dai
+
+        if params[0].get("debug"):
+            print("ParticipantBuysTokens: These Participants have decided to buy tokens with this amount of DAI: {}".format(ans))
+            print("ParticipantBuysTokens: A total of {} DAI will be deposited. {} tokens should be minted as a result at a price of {} DAI/token".format(
+                total_dai, tokens, token_price))
+        return {"participant_decisions": ans, "total_dai": total_dai, "tokens": tokens, "token_price": token_price, "final_token_distribution": final_token_distribution}
 
     @staticmethod
+    def su_buy_participants_tokens(params, step, sL, s, _input, **kwargs):
+        commons = s["commons"]
+        tokens, realized_price = commons.deposit(_input["total_dai"])
+        if _input["tokens"] != tokens or _input["token_price"] != realized_price:
+            raise Exception("ParticipantBuysTokens: {} tokens were minted at a price of {} (expected: {} with price {})".format(
+                tokens, realized_price, _input["tokens"], _input["token_price"]))
+
+        return "commons", commons
+
+    @ staticmethod
     def su_update_participants_tokens(params, step, sL, s, _input, **kwargs):
         network = s["network"]
-        decisions = _input["p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage"]
+        decisions = _input["participant_decisions"]
+        final_token_distribution = _input["final_token_distribution"]
+        tokens = _input["tokens"]
 
-        for participant_idx, delta_holdings in decisions.items():
-            if delta_holdings[0] > 0:
-                network.nodes[participant_idx]["item"].increase_holdings(
-                    float(delta_holdings[0]))
-            else:
-                network.nodes[participant_idx]["item"].spend(
-                    float(abs(delta_holdings[0])))
+        for participant_idx, decision in decisions.items():
+            network.nodes[participant_idx]["item"].increase_holdings(
+                final_token_distribution[participant_idx] * tokens)
 
         return "network", network
 
+
+class ParticipantSellsTokens:
+    @ staticmethod
     def su_buy_or_sell_participants_tokens(params, step, sL, s, _input, **kwargs):
         """
         If 2 Participants wish to sell 300 tokens and 2 Participants wish to buy
