@@ -47,8 +47,8 @@ class AugmentedBondingCurve:
     def __init__(self, reserve_initial, token_supply_initial, kappa=2):
         """Create a stateless bonding curve.
 
-        reserve_initial (millions of DAI)
-        token_supply_initial (millions)
+        reserve_initial (DAI)
+        token_supply_initial (DAI)
         kappa (the exponent part of the curve, default is 2)
         """
         self.kappa = kappa
@@ -58,17 +58,17 @@ class AugmentedBondingCurve:
     def __repr__(self):
         return "ABC Kappa: {}, Invariant: {}".format(self.kappa, self.invariant)
 
-    def deposit(self, dai_millions, current_reserve, current_token_supply):
+    def deposit(self, dai, current_reserve, current_token_supply):
         # Returns number of new tokens minted, and their realized price
         tokens, realized_price = mint(
-            dai_millions, current_reserve, current_token_supply, self.kappa, self.invariant)
+            dai, current_reserve, current_token_supply, self.kappa, self.invariant)
         return tokens, realized_price
 
     def burn(self, tokens_millions, current_reserve, current_token_supply):
         # Returns number of DAI that will be returned (excluding exit tribute) when the user burns their tokens, with their realized price
-        dai_millions, realized_price = withdraw(
+        dai, realized_price = withdraw(
             tokens_millions, current_reserve, current_token_supply, self.kappa, self.invariant)
-        return dai_millions, realized_price
+        return dai, realized_price
 
     def get_token_price(self, current_reserve):
         return spot_price(current_reserve, self.kappa, self.invariant)
