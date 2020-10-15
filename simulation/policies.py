@@ -391,33 +391,60 @@ class ParticipantBuysTokens:
 
 
 class ParticipantSellsTokens:
-    @ staticmethod
-    def su_buy_or_sell_participants_tokens(params, step, sL, s, _input, **kwargs):
-        """
-        If 2 Participants wish to sell 300 tokens and 2 Participants wish to buy
-        500 tokens, this function will execute Commons.deposit(200).
-        """
+    @staticmethod
+    def p_decide_to_sell_tokens_bulk(params, step, sL, s, **kwargs):
+        network = s["network"]
         commons = s["commons"]
-        decisions = _input["p_decide_to_buy_or_sell_tokens_bulk_buy_no_slippage"]
+        participants = get_participants(network)
+        ans = {}
+        total_tokens = 0
+        for i, participant in participants:
+            # If a participant decides to buy, it will be specified in units of DAI.
+            # If a participant decides to sell, it will be specified in units of tokens.
+            x = participant.sell()
+            if x > 0:
+                total_tokens += x
+                ans[i] = x
 
-        dai_sum = 0
-        token_sum = 0
-        for _, delta_holdings in decisions.items():
-            if delta_holdings[1] == "dai":
-                dai_sum += delta_holdings[0]
-            else:
-                token_sum += abs(delta_holdings[0])
+        # Now that we have the sum of tokens, ask the Commons object how many
+        # DAI would be redeemed as a result. This will be inaccurate due
+        # to slippage, and we need the result of this policy to be final to
+        # avoid chaining 2 state update functions, so we run the operation on a
+        # throwaway copy of Commons
+        commons2 = copy.copy(commons)
+        dai_returned, realized_price = commons2.burn(total_tokens)
 
-        tokens, realized_price_deposit = commons.deposit(dai_sum)
-        money_returned, realized_price_burn = commons.burn(token_sum)
+        final_dai_distribution = {}
+        for i, participant in participants:
+            final_dai_distribution[i] = ans[i] / total_tokens
 
         if params[0].get("debug"):
-            print("ParticipantChangesHoldings: commons.deposit({}) DAI resulted in {} tokens at a price of {}".format(
-                dai_sum, tokens, realized_price_deposit))
-            print("ParticipantChangesHoldings: commons.burn({}) tokens resulted in {} DAI at a price of {}".format(
-                token_sum, money_returned, realized_price_burn))
+            print(
+                "ParticipantSellsTokens: These Participants have decided to sell this many  tokens: {}".format(ans))
+            print("ParticipantSellsTokens: A total of {} tokens will be burned. {} DAI should be returned as a result, at a price of {} DAI/token".format(
+                total_tokens, dai_returned, realized_price))
+        return {"participant_decisions": ans, "total_tokens": total_tokens, "dai_returned": dai_returned, "realized_price": realized_price}
+
+    @staticmethod
+    def su_burn_participants_tokens(params, step, sL, s, _input, **kwargs):
+        commons = s["commons"]
+        dai_returned, realized_price = commons.burn(_input["total_tokens"])
+        if _input["dai_returned"] != dai_returned or _input["realized_price"] != realized_price:
+            raise Exception("ParticipantSellsTokens: {} DAI was returned at a price of {} (expected: {} with price {})".format(
+                dai_returned, realized_price, _input["dai_returned"], _input["realized_price"]))
 
         return "commons", commons
+
+    @ staticmethod
+    def su_update_participants_tokens(params, step, sL, s, _input, **kwargs):
+        network = s["network"]
+        decisions = _input["participant_decisions"]
+        dai_returned = _input["dai_returned"]
+
+        for participant_idx, decision in decisions.items():
+            network.nodes[participant_idx]["item"].spend(decision)
+
+        return "network", network
 
 
 class ParticipantExits:

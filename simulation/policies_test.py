@@ -11,7 +11,7 @@ from network_utils import (add_proposal, bootstrap_network,
                            get_participants)
 from policies import (ActiveProposals, GenerateNewFunding,
                       GenerateNewParticipant, GenerateNewProposal,
-                      ParticipantBuysTokens, ParticipantVoting,
+                      ParticipantBuysTokens, ParticipantSellsTokens, ParticipantVoting,
                       ProposalFunding)
 
 
@@ -360,10 +360,68 @@ class TestParticipantBuysTokens(unittest.TestCase):
             'token_price': 2.7595917942265427,
             "final_token_distribution": {0: 0.25, 1: 0.25, 2: 0.25, 3: 0.25}
         }
-        print(self.network.nodes[0]["item"].holdings)
         _, network = ParticipantBuysTokens.su_update_participants_tokens(
             self.params, 0, 0, self.default_state, policy_result)
 
         for i in [0, 1, 2, 3]:
             self.assertEqual(
                 network.nodes[i]["item"].holdings.nonvesting, 1362.3724356957946)
+
+
+class TestParticipantSellsTokens(unittest.TestCase):
+    def setUp(self):
+        self.network = bootstrap_network([TokenBatch(1000, 1000, vesting_options=VestingOptions(10, 30))
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
+        self.commons = Commons(1000, 1000)
+
+        self.network, _ = add_proposal(self.network, Proposal(100, 1))
+        self.params = [{
+            "debug": True,
+        }]
+        self.default_state = {"network": self.network, "commons": self.commons,
+                              "funding_pool": 1000, "token_supply": 1000}
+
+    def test_p_decide_to_sell_tokens_bulk(self):
+        with patch("entities.Participant.sell") as p:
+            p.return_value = 20.0
+            a = ParticipantSellsTokens.p_decide_to_sell_tokens_bulk(
+                self.params, 0, 0, self.default_state)
+
+            expected_a = {
+                'participant_decisions': {0: 20.0, 1: 20.0, 2: 20.0, 3: 20.0},
+                'total_tokens': 80.0,
+                'dai_returned': 122.88,
+                'realized_price': 1.536,
+            }
+
+            self.assertEqual(a, expected_a)
+
+    def test_su_burn_participants_tokens(self):
+        policy_result = {
+            'participant_decisions': {0: 20.0, 1: 20.0, 2: 20.0, 3: 20.0},
+            'total_tokens': 80.0,
+            'dai_returned': 122.88,
+            'realized_price': 1.536,
+        }
+        old_token_supply = self.commons._token_supply
+        old_funding_pool = self.commons._funding_pool
+
+        _, commons = ParticipantSellsTokens.su_burn_participants_tokens(
+            self.params, 0, 0, self.default_state, policy_result)
+
+        self.assertEqual(commons._token_supply, 920.0)
+        self.assertEqual(commons._funding_pool, old_funding_pool)  # 200
+
+    def test_su_update_participants_tokens(self):
+        policy_result = {
+            'participant_decisions': {0: 20.0, 1: 20.0, 2: 20.0, 3: 20.0},
+            'total_tokens': 80.0,
+            'dai_returned': 122.88,
+            'realized_price': 1.536,
+        }
+        _, network = ParticipantSellsTokens.su_update_participants_tokens(
+            self.params, 0, 0, self.default_state, policy_result)
+
+        for i in [0, 1, 2, 3]:
+            self.assertEqual(
+                network.nodes[i]["item"].holdings.nonvesting, 980.0)
