@@ -1,3 +1,4 @@
+import config
 import random
 import copy
 import numpy as np
@@ -195,7 +196,7 @@ class ProposalFunding:
         return {"proposal_idxs_with_enough_conviction": proposals_w_enough_conviction}
 
     @staticmethod
-    def su_compare_conviction_and_threshold_make_proposal_active(params, step, sL, s, _input, **kwargs):
+    def su_make_proposal_active(params, step, sL, s, _input, **kwargs):
         network = s["network"]
 
         for idx in _input["proposal_idxs_with_enough_conviction"]:
@@ -204,7 +205,7 @@ class ProposalFunding:
         return "network", network
 
     @staticmethod
-    def su_compare_conviction_and_threshold_deduct_funds_from_funding_pool(params, step, sL, s, _input, **kwargs):
+    def su_deduct_funds_from_funding_pool(params, step, sL, s, _input, **kwargs):
         commons = s["commons"]
         network = s["network"]
         for idx in _input["proposal_idxs_with_enough_conviction"]:
@@ -448,4 +449,58 @@ class ParticipantSellsTokens:
 
 
 class ParticipantExits:
-    pass
+    @staticmethod
+    def p_participant_decides_if_he_wants_to_exit(params, step, sL, s, **kwargs):
+        network = s["network"]
+        participants = get_participants(network)
+        defectors = {}
+        for i, participant in participants:
+            e = participant.wants_to_exit()
+            if e:
+                defectors[i] = {
+                    "sentiment": participant.sentiment,
+                    "holdings": participant.holdings.total,
+                }
+
+        if params[0].get("debug"):
+            print("ParticipantExits: Participants {} (2nd number is their sentiment) want to exit".format(
+                defectors))
+        return {"defectors": defectors}
+
+    @staticmethod
+    def su_remove_participants_from_network(params, step, sL, s, _input, **kwargs):
+        network = s["network"]
+        defectors = _input["defectors"]
+
+        for i, _ in defectors.items():
+            network.remove_node(i)
+
+        return "network", network
+
+    @staticmethod
+    def su_burn_exiters_tokens(params, step, sL, s, _input, **kwargs):
+        commons = s["commons"]
+        network = s["network"]
+        defectors = _input["defectors"]
+
+        burnt_token_results = {}
+        for i, v in defectors.items():
+            dai_returned, realized_price = commons.burn(v["holdings"])
+            burnt_token_results[i] = {
+                "dai_returned": dai_returned, "realized_price": realized_price}
+
+        return "commons", commons
+
+    @staticmethod
+    def su_update_sentiment_when_proposal_becomes_active(params, step, sL, s, _input, **kwargs):
+        network = s["network"]
+
+        for idx in _input["proposal_idxs_with_enough_conviction"]:
+            for participant_idx, proposal_idx in network.in_edges(idx):
+                edge = network.edges[participant_idx, proposal_idx]
+                if edge["affinity"] == 1:
+                    sentiment_new = network.nodes[participant_idx]["item"].sentiment + \
+                        config.sentiment_bonus_proposal_becomes_active
+                    sentiment_new = 1 if sentiment_new > 1 else sentiment_new
+                    network.nodes[participant_idx]["item"].sentiment = sentiment_new
+        return "network", network

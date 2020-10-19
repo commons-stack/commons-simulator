@@ -3,6 +3,7 @@ import unittest
 from collections import namedtuple
 from os.path import commonpath
 from unittest.mock import patch
+import networkx as nx
 
 from entities import Proposal, ProposalStatus
 from hatch import Commons, TokenBatch, VestingOptions
@@ -12,7 +13,7 @@ from network_utils import (add_proposal, bootstrap_network,
 from policies import (ActiveProposals, GenerateNewFunding,
                       GenerateNewParticipant, GenerateNewProposal,
                       ParticipantBuysTokens, ParticipantSellsTokens, ParticipantVoting,
-                      ProposalFunding)
+                      ProposalFunding, ParticipantExits)
 
 
 class TestGenerateNewParticipant(unittest.TestCase):
@@ -200,14 +201,14 @@ class TestProposalFunding(unittest.TestCase):
         ProposalFunding.p_compare_conviction_and_threshold(
             self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
 
-    def test_su_compare_conviction_and_threshold_make_proposal_active(self):
+    def test_su_make_proposal_active(self):
         """
         Simply test that the code runs.
         """
         _input = {
             "proposal_idxs_with_enough_conviction": [4, 5]
         }
-        _, n_new = ProposalFunding.su_compare_conviction_and_threshold_make_proposal_active(
+        _, n_new = ProposalFunding.su_make_proposal_active(
             self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, _input)
         for i in [4, 5]:
             self.assertEqual(
@@ -316,7 +317,7 @@ class TestParticipantBuysTokens(unittest.TestCase):
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
         self.params = [{
-            "debug": True,
+            "debug": False,
         }]
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
@@ -376,7 +377,7 @@ class TestParticipantSellsTokens(unittest.TestCase):
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
         self.params = [{
-            "debug": True,
+            "debug": False,
         }]
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
@@ -425,3 +426,88 @@ class TestParticipantSellsTokens(unittest.TestCase):
         for i in [0, 1, 2, 3]:
             self.assertEqual(
                 network.nodes[i]["item"].holdings.nonvesting, 980.0)
+
+
+class TestParticipantExits(unittest.TestCase):
+    def setUp(self):
+        self.network = bootstrap_network([TokenBatch(1000, 1000, vesting_options=VestingOptions(10, 30))
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
+        self.commons = Commons(1000, 1000)
+
+        self.network, _ = add_proposal(self.network, Proposal(100, 1))
+        self.params = [{
+            "debug": True,
+        }]
+        self.default_state = {"network": self.network, "commons": self.commons,
+                              "funding_pool": 1000, "token_supply": 1000}
+
+    def test_p_participant_decides_if_he_wants_to_exit(self):
+        participants = get_participants(self.network)
+        for i, participant in participants:
+            participant.sentiment = 0.1
+
+        with patch("entities.probability") as p:
+            p.return_value = True
+            ans = ParticipantExits.p_participant_decides_if_he_wants_to_exit(
+                self.params, 0, 0, self.default_state)
+
+            self.assertEqual(len(ans["defectors"]), 4)
+
+    def test_su_remove_participants_from_network(self):
+        policy_output = {
+            "defectors": {
+                1: {
+                    "sentiment": 0.1,
+                    "holdings": 10000,
+                },
+                2: {
+                    "sentiment": 0.1,
+                    "holdings": 10000,
+                }
+            }
+        }
+
+        _, n_network = ParticipantExits.su_remove_participants_from_network(
+            self.params, 0, 0, self.default_state, policy_output)
+
+        with self.assertRaises(nx.NetworkXError):
+            n_network.remove_node(1)
+            n_network.remove_node(2)
+
+    def test_su_burn_exiters_tokens(self):
+        policy_output = {
+            "defectors": {
+                1: {
+                    "sentiment": 0.1,
+                    "holdings": 10000,
+                },
+                2: {
+                    "sentiment": 0.1,
+                    "holdings": 10000,
+                }
+            }
+        }
+        old_collateral_pool = self.commons._collateral_pool
+        old_token_supply = self.commons._token_supply
+        _, n_commons = ParticipantExits.su_burn_exiters_tokens(
+            self.params, 0, 0, self.default_state, policy_output)
+
+        self.assertNotEqual(old_collateral_pool, n_commons._collateral_pool)
+        self.assertNotEqual(old_token_supply, n_commons._token_supply)
+
+    def test_su_update_sentiment_when_proposal_becomes_active(self):
+        _input = {
+            "proposal_idxs_with_enough_conviction": [4, 5]
+        }
+
+        # Let's say Participant 2 owns Proposal 4, Participant 3 owns Proposal 5
+        self.network.nodes[2]["item"].sentiment = 0.4
+        self.network.nodes[3]["item"].sentiment = 0.6
+        self.network.edges[2, 4]["affinity"] = 1
+        self.network.edges[3, 5]["affinity"] = 1
+
+        _, n_network = ParticipantExits.su_update_sentiment_when_proposal_becomes_active(
+            self.params, 0, 0, self.default_state, _input)
+
+        self.assertEqual(n_network.nodes[2]["item"].sentiment, 0.9)
+        self.assertEqual(n_network.nodes[3]["item"].sentiment, 1)
