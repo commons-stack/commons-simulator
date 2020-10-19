@@ -5,7 +5,7 @@ import networkx as nx
 
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch, VestingOptions
-from network_utils import (add_proposal, bootstrap_network,
+from network_utils import (add_proposal, bootstrap_network, calc_avg_sentiment,
                            calc_median_affinity, calc_total_affinity, calc_total_conviction,
                            calc_total_funds_requested, get_edges_by_type, get_edges_by_participant_and_type,
                            get_participants, get_proposals,
@@ -273,3 +273,22 @@ class TestNetworkUtils(unittest.TestCase):
         self.network = setup_support_edges(self.network)
         ans = calc_total_affinity(self.network)
         self.assertNotEqual(ans, 0)
+
+    def test_calc_avg_sentiment(self):
+        """
+        Ensure that the average sentiment was calculated correctly
+        """
+        participants = get_participants(self.network)
+
+        for _, p in participants:
+            p.sentiment = 0.5
+        self.assertEqual(0.5, calc_avg_sentiment(self.network))
+
+        for _, p in participants:
+            p.sentiment = 1
+        self.assertEqual(1, calc_avg_sentiment(self.network))
+
+        for _, p in participants:
+            p.sentiment = 1
+        self.network.nodes[8]["item"].sentiment = 0.5
+        self.assertEqual(0.9, calc_avg_sentiment(self.network))

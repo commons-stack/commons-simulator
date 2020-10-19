@@ -2,6 +2,7 @@ from typing import Dict, List, Tuple
 
 import networkx as nx
 import numpy as np
+from networkx.classes.reportviews import NodeDataView
 from scipy.stats import expon, gamma
 
 from convictionvoting import trigger_threshold
@@ -40,7 +41,7 @@ def get_proposals(network: nx.DiGraph, status: ProposalStatus = None):
     return view.nodes(data="item")
 
 
-def get_participants(network: nx.DiGraph) -> Dict[int, Participant]:
+def get_participants(network: nx.DiGraph) -> NodeDataView:
     def filter_participant(n):
         if isinstance(network.nodes[n]["item"], Participant):
             return True
@@ -264,3 +265,13 @@ def calc_total_affinity(network: nx.DiGraph) -> float:
     view = network.edges(data="affinity")
     affinities = [affinity for _, _, affinity in view]
     return np.sum(affinities)
+
+
+def calc_avg_sentiment(network: nx.DiGraph) -> float:
+    participants = get_participants(network)
+    sentiment_total = 0.0
+    for _, participant in participants:
+        sentiment_total += participant.sentiment
+
+    sentiment_avg = sentiment_total / len(participants)
+    return sentiment_avg
