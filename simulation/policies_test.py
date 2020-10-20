@@ -317,7 +317,7 @@ class TestParticipantBuysTokens(unittest.TestCase):
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
         self.params = [{
-            "debug": False,
+            "debug": True,
         }]
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
@@ -333,6 +333,16 @@ class TestParticipantBuysTokens(unittest.TestCase):
                 self.assertNotEqual(decision, 0)
                 self.assertEqual(
                     final_token_distribution[participant_idx], 0.25)
+
+    def test_p_decide_to_buy_tokens_bulk_no_tokens_bought(self):
+        with patch("entities.Participant.buy") as p:
+            p.return_value = 0.0
+            a = ParticipantBuysTokens.p_decide_to_buy_tokens_bulk(
+                self.params, 0, 0, self.default_state)
+
+            expected = {"participant_decisions": {}, "total_dai": 0,
+                        "tokens": 0, "token_price": 0, "final_token_distribution": {}}
+            self.assertEqual(expected, a)
 
     def test_su_buy_participants_tokens(self):
         policy_result = {
@@ -351,6 +361,23 @@ class TestParticipantBuysTokens(unittest.TestCase):
 
         self.assertEqual(commons._token_supply, 2449.489742783178)
         self.assertEqual(commons._funding_pool, old_funding_pool)  # 200
+
+    def test_su_buy_participants_tokens_zero(self):
+        policy_result = {
+            'participant_decisions': {},
+            'total_dai': 0.0,
+            'tokens': 0,
+            'token_price': 0,
+            "final_token_distribution": {}
+        }
+        old_token_supply = self.commons._token_supply
+        old_funding_pool = self.commons._funding_pool
+
+        _, commons = ParticipantBuysTokens.su_buy_participants_tokens(
+            self.params, 0, 0, self.default_state, policy_result)
+
+        self.assertEqual(commons._token_supply, old_token_supply)
+        self.assertEqual(commons._funding_pool, old_funding_pool)
 
     def test_su_update_participants_tokens(self):
         policy_result = {
@@ -397,6 +424,16 @@ class TestParticipantSellsTokens(unittest.TestCase):
 
             self.assertEqual(a, expected_a)
 
+    def test_p_decide_to_sell_tokens_bulk_no_tokens_sold(self):
+        with patch("entities.Participant.sell") as p:
+            p.return_value = 0.0
+            a = ParticipantSellsTokens.p_decide_to_sell_tokens_bulk(
+                self.params, 0, 0, self.default_state)
+
+            expected = {"participant_decisions": {},
+                        "total_tokens": 0, "dai_returned": 0, "realized_price": 0}
+            self.assertEqual(expected, a)
+
     def test_su_burn_participants_tokens(self):
         policy_result = {
             'participant_decisions': {0: 20.0, 1: 20.0, 2: 20.0, 3: 20.0},
@@ -412,6 +449,22 @@ class TestParticipantSellsTokens(unittest.TestCase):
 
         self.assertEqual(commons._token_supply, 920.0)
         self.assertEqual(commons._funding_pool, old_funding_pool)  # 200
+
+    def test_su_sell_participants_tokens_zero(self):
+        policy_result = {
+            'participant_decisions': {},
+            'total_tokens': 0.0,
+            'dai_returned': 0,
+            'realized_price': 0,
+        }
+        old_token_supply = self.commons._token_supply
+        old_funding_pool = self.commons._funding_pool
+
+        _, commons = ParticipantSellsTokens.su_burn_participants_tokens(
+            self.params, 0, 0, self.default_state, policy_result)
+
+        self.assertEqual(commons._token_supply, old_token_supply)
+        self.assertEqual(commons._funding_pool, old_funding_pool)
 
     def test_su_update_participants_tokens(self):
         policy_result = {
@@ -496,7 +549,12 @@ class TestParticipantExits(unittest.TestCase):
         self.assertNotEqual(old_token_supply, n_commons._token_supply)
 
     def test_su_update_sentiment_when_proposal_becomes_active(self):
-        _input = {
+        """
+        Because this policy depends on a policy passthrough from a previous
+        partial state update block, it does not use _input, but
+        s["policy_output"]
+        """
+        policy_output_passthru = {
             "proposal_idxs_with_enough_conviction": [4, 5]
         }
 
@@ -506,8 +564,9 @@ class TestParticipantExits(unittest.TestCase):
         self.network.edges[2, 4]["affinity"] = 1
         self.network.edges[3, 5]["affinity"] = 1
 
+        self.default_state["policy_output"] = policy_output_passthru
         _, n_network = ParticipantExits.su_update_sentiment_when_proposal_becomes_active(
-            self.params, 0, 0, self.default_state, _input)
+            self.params, 0, 0, self.default_state, {})
 
         self.assertEqual(n_network.nodes[2]["item"].sentiment, 0.9)
         self.assertEqual(n_network.nodes[3]["item"].sentiment, 1)

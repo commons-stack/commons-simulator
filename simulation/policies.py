@@ -354,26 +354,37 @@ class ParticipantBuysTokens:
         # to slippage, and we need the result of this policy to be final to
         # avoid chaining 2 state update functions, so we run the deposit on a
         # throwaway copy of Commons
-        commons2 = copy.copy(commons)
-        tokens, token_price = commons2.deposit(total_dai)
+        if total_dai == 0:
+            if params[0].get("debug"):
+                print(
+                    "ParticipantBuysTokens: No Participants bought tokens in timestep {}".format(step))
+            return {"participant_decisions": ans, "total_dai": 0, "tokens": 0, "token_price": 0, "final_token_distribution": {}}
 
-        final_token_distribution = {}
-        for i, participant in participants:
-            final_token_distribution[i] = ans[i] / total_dai
+        else:
+            commons2 = copy.copy(commons)
+            tokens, token_price = commons2.deposit(total_dai)
 
-        if params[0].get("debug"):
-            print("ParticipantBuysTokens: These Participants have decided to buy tokens with this amount of DAI: {}".format(ans))
-            print("ParticipantBuysTokens: A total of {} DAI will be deposited. {} tokens should be minted as a result at a price of {} DAI/token".format(
-                total_dai, tokens, token_price))
-        return {"participant_decisions": ans, "total_dai": total_dai, "tokens": tokens, "token_price": token_price, "final_token_distribution": final_token_distribution}
+            final_token_distribution = {}
+            for i in ans:
+                final_token_distribution[i] = ans[i] / total_dai
+
+            if params[0].get("debug"):
+                print(
+                    "ParticipantBuysTokens: These Participants have decided to buy tokens with this amount of DAI: {}".format(ans))
+                print("ParticipantBuysTokens: A total of {} DAI will be deposited. {} tokens should be minted as a result at a price of {} DAI/token".format(
+                    total_dai, tokens, token_price))
+
+            return {"participant_decisions": ans, "total_dai": total_dai, "tokens": tokens, "token_price": token_price, "final_token_distribution": final_token_distribution}
 
     @staticmethod
     def su_buy_participants_tokens(params, step, sL, s, _input, **kwargs):
         commons = s["commons"]
-        tokens, realized_price = commons.deposit(_input["total_dai"])
-        if _input["tokens"] != tokens or _input["token_price"] != realized_price:
-            raise Exception("ParticipantBuysTokens: {} tokens were minted at a price of {} (expected: {} with price {})".format(
-                tokens, realized_price, _input["tokens"], _input["token_price"]))
+
+        if _input["total_dai"] > 0:
+            tokens, realized_price = commons.deposit(_input["total_dai"])
+            if _input["tokens"] != tokens or _input["token_price"] != realized_price:
+                raise Exception("ParticipantBuysTokens: {} tokens were minted at a price of {} (expected: {} with price {})".format(
+                    tokens, realized_price, _input["tokens"], _input["token_price"]))
 
         return "commons", commons
 
@@ -412,27 +423,35 @@ class ParticipantSellsTokens:
         # to slippage, and we need the result of this policy to be final to
         # avoid chaining 2 state update functions, so we run the operation on a
         # throwaway copy of Commons
-        commons2 = copy.copy(commons)
-        dai_returned, realized_price = commons2.burn(total_tokens)
+        if total_tokens == 0:
+            if params[0].get("debug"):
+                print(
+                    "ParticipantSellsTokens: No Participants sold tokens in timestep {}".format(step))
+            return {"participant_decisions": ans, "total_tokens": 0, "dai_returned": 0, "realized_price": 0}
+        else:
+            commons2 = copy.copy(commons)
+            dai_returned, realized_price = commons2.burn(total_tokens)
 
-        final_dai_distribution = {}
-        for i, participant in participants:
-            final_dai_distribution[i] = ans[i] / total_tokens
+            final_dai_distribution = {}
+            for i, participant in participants:
+                final_dai_distribution[i] = ans[i] / total_tokens
 
-        if params[0].get("debug"):
-            print(
-                "ParticipantSellsTokens: These Participants have decided to sell this many  tokens: {}".format(ans))
-            print("ParticipantSellsTokens: A total of {} tokens will be burned. {} DAI should be returned as a result, at a price of {} DAI/token".format(
-                total_tokens, dai_returned, realized_price))
-        return {"participant_decisions": ans, "total_tokens": total_tokens, "dai_returned": dai_returned, "realized_price": realized_price}
+            if params[0].get("debug"):
+                print(
+                    "ParticipantSellsTokens: These Participants have decided to sell this many  tokens: {}".format(ans))
+                print("ParticipantSellsTokens: A total of {} tokens will be burned. {} DAI should be returned as a result, at a price of {} DAI/token".format(
+                    total_tokens, dai_returned, realized_price))
+            return {"participant_decisions": ans, "total_tokens": total_tokens, "dai_returned": dai_returned, "realized_price": realized_price}
 
     @staticmethod
     def su_burn_participants_tokens(params, step, sL, s, _input, **kwargs):
         commons = s["commons"]
-        dai_returned, realized_price = commons.burn(_input["total_tokens"])
-        if _input["dai_returned"] != dai_returned or _input["realized_price"] != realized_price:
-            raise Exception("ParticipantSellsTokens: {} DAI was returned at a price of {} (expected: {} with price {})".format(
-                dai_returned, realized_price, _input["dai_returned"], _input["realized_price"]))
+
+        if _input["total_tokens"] > 0:
+            dai_returned, realized_price = commons.burn(_input["total_tokens"])
+            if _input["dai_returned"] != dai_returned or _input["realized_price"] != realized_price:
+                raise Exception("ParticipantSellsTokens: {} DAI was returned at a price of {} (expected: {} with price {})".format(
+                    dai_returned, realized_price, _input["dai_returned"], _input["realized_price"]))
 
         return "commons", commons
 
@@ -494,13 +513,26 @@ class ParticipantExits:
     @staticmethod
     def su_update_sentiment_when_proposal_becomes_active(params, step, sL, s, _input, **kwargs):
         network = s["network"]
+        policy_output_passthru = s["policy_output"]
 
-        for idx in _input["proposal_idxs_with_enough_conviction"]:
+        report = {}
+        for idx in policy_output_passthru["proposal_idxs_with_enough_conviction"]:
             for participant_idx, proposal_idx in network.in_edges(idx):
                 edge = network.edges[participant_idx, proposal_idx]
                 if edge["affinity"] == 1:
-                    sentiment_new = network.nodes[participant_idx]["item"].sentiment + \
-                        config.sentiment_bonus_proposal_becomes_active
+                    sentiment_old = network.nodes[participant_idx]["item"].sentiment
+                    sentiment_new = sentiment_old + config.sentiment_bonus_proposal_becomes_active
                     sentiment_new = 1 if sentiment_new > 1 else sentiment_new
                     network.nodes[participant_idx]["item"].sentiment = sentiment_new
+
+                    report[participant_idx] = {
+                        "proposal_idx": proposal_idx,
+                        "sentiment_old": sentiment_old,
+                        "sentiment_new": sentiment_new
+                    }
+
+        if params[0].get("debug"):
+            for i in report:
+                print(
+                    "ParticipantExits: Participant {} changed his sentiment from {} to {} because Proposal {} became active".format(i, report[i]["sentiment_old"], report[i]["sentiment_new"], report[i]["proposal_idx"]))
         return "network", network
