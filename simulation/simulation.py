@@ -2,8 +2,8 @@ import numpy as np
 from hatch import create_token_batches, TokenBatch, Commons
 
 from entities import attrs
-from policies import GenerateNewParticipant, GenerateNewProposal, GenerateNewFunding, ActiveProposals, ProposalFunding, ParticipantVoting
-from network_utils import bootstrap_network
+from policies import GenerateNewParticipant, GenerateNewProposal, GenerateNewFunding, ActiveProposals, ProposalFunding, ParticipantVoting, ParticipantSellsTokens, ParticipantBuysTokens, ParticipantExits
+from network_utils import bootstrap_network, calc_avg_sentiment
 
 
 def update_collateral_pool(params, step, sL, s, _input):
@@ -24,6 +24,28 @@ def update_funding_pool(params, step, sL, s, _input):
     return "funding_pool", commons._funding_pool
 
 
+def update_avg_sentiment(params, step, sL, s, _input):
+    network = s["network"]
+    s = calc_avg_sentiment(network)
+    return "sentiment", s
+
+
+def save_policy_output(params, step, sL, s, _input):
+    return "policy_output", _input
+
+
+# This sub-policy block should be run every time the Commons object is updated.
+sync_state_variables = {
+    "policies": {},
+    "variables": {
+        "funding_pool": update_funding_pool,
+        "collateral_pool": update_collateral_pool,
+        "token_supply": update_token_supply,
+        "sentiment": update_avg_sentiment,
+    }
+}
+
+
 class CommonsSimulationConfiguration:
     """
     There are just so many options that passing them via kwargs has become
@@ -31,17 +53,27 @@ class CommonsSimulationConfiguration:
     parameter.
     """
 
-    def __init__(self):
-        self.hatchers = 5
-        self.proposals = 2
-        self.hatch_tribute = 0.2
-        self.vesting_80p_unlocked = 60  # 60 is 2 months until 80% of tokens are unlocked
-        self.exit_tribute = 0.35
-        self.kappa = 2  # This is the shape of the bonding curve
-        self.days_to_80p_of_max_voting_weight = 10
+    def __init__(self,
+                 hatchers=5,
+                 proposals=2,
+                 hatch_tribute=0.2,
+                 vesting_80p_unlocked=60,
+                 exit_tribute=0.35,
+                 kappa=2,
+                 days_to_80p_of_max_voting_weight=10,
+                 max_proposal_request=0.2):
+        self.hatchers = hatchers
+        self.proposals = proposals
+        self.hatch_tribute = hatch_tribute
+
+        # 60 is 2 months until 80% of tokens are unlocked
+        self.vesting_80p_unlocked = vesting_80p_unlocked
+        self.exit_tribute = exit_tribute
+        self.kappa = kappa  # This is the shape of the bonding curve
+        self.days_to_80p_of_max_voting_weight = days_to_80p_of_max_voting_weight
 
         # Proposal may only request up to 20% of the funding pool
-        self.max_proposal_request = 0.2
+        self.max_proposal_request = max_proposal_request
 
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, attrs(self))
@@ -63,6 +95,7 @@ def bootstrap_simulation(c: CommonsSimulationConfiguration):
         "funding_pool": commons._funding_pool,
         "collateral_pool": commons._collateral_pool,
         "token_supply": commons._token_supply,
+        "policy_output": None,
         "sentiment": 0.5
     }
 
@@ -94,14 +127,7 @@ partial_state_update_blocks = [
             'commons': GenerateNewParticipant.su_add_investment_to_commons,
         }
     },
-    {
-        "policies": {},
-        "variables": {
-            "funding_pool": update_funding_pool,
-            "collateral_pool": update_collateral_pool,
-            "token_supply": update_token_supply,
-        }
-    },
+    sync_state_variables,
     {
         "policies": {
             "generate_new_proposals": GenerateNewProposal.p_randomly,
@@ -126,21 +152,21 @@ partial_state_update_blocks = [
     },
     {
         "policies": {
-            "decide_which_proposals_should_be_funded": ProposalFunding.p_compare_conviction_and_threshold
+            "which_proposals_should_be_funded": ProposalFunding.p_compare_conviction_and_threshold
         },
         "variables": {
-            "network": ProposalFunding.su_compare_conviction_and_threshold_make_proposal_active,
-            "commons": ProposalFunding.su_compare_conviction_and_threshold_deduct_funds_from_funding_pool,
+            "network": ProposalFunding.su_make_proposal_active,
+            "commons": ProposalFunding.su_deduct_funds_from_funding_pool,
+            "policy_output": save_policy_output,
         }
     },
     {
         "policies": {},
         "variables": {
-            "funding_pool": update_funding_pool,
-            "collateral_pool": update_collateral_pool,
-            "token_supply": update_token_supply,
+            "network": ParticipantExits.su_update_sentiment_when_proposal_becomes_active,
         }
     },
+    sync_state_variables,
     {
         "policies": {
             "participants_stake_tokens_on_proposals": ParticipantVoting.p_participant_votes_on_proposal_according_to_affinity
@@ -155,4 +181,33 @@ partial_state_update_blocks = [
             "network": ProposalFunding.su_calculate_conviction,
         }
     },
+    {
+        "policies": {
+            "participants_decide_to_buy_tokens": ParticipantBuysTokens.p_decide_to_buy_tokens_bulk,
+        },
+        "variables": {
+            "commons": ParticipantBuysTokens.su_buy_participants_tokens,
+            "network": ParticipantBuysTokens.su_update_participants_tokens,
+        }
+    },
+    sync_state_variables,
+    {
+        "policies": {
+            "participants_decide_to_sell_tokens": ParticipantSellsTokens.p_decide_to_sell_tokens_bulk,
+        },
+        "variables": {
+            "commons": ParticipantSellsTokens.su_burn_participants_tokens,
+            "network": ParticipantSellsTokens.su_update_participants_tokens,
+        }
+    },
+    {
+        "policies": {
+            "participants_may_exit": ParticipantExits.p_participant_decides_if_he_wants_to_exit,
+        },
+        "variables": {
+            "commons": ParticipantExits.su_burn_exiters_tokens,
+            "network": ParticipantExits.su_remove_participants_from_network,
+        }
+    },
+    sync_state_variables
 ]
