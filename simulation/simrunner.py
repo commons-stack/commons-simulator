@@ -26,7 +26,7 @@ def run_simulation(c: CommonsSimulationConfiguration):
 
     # Do not use multi_proc, breaks ipdb.set_trace()
     exec_mode = ExecutionMode()
-    single_proc_context = ExecutionContext(exec_mode.single_proc)
+    single_proc_context = ExecutionContext(exec_mode.local_mode)
     executor = Executor(single_proc_context, configs)
 
     raw_system_events, tensor_field, sessions = executor.execute()
