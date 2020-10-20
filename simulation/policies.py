@@ -54,7 +54,7 @@ class GenerateNewParticipant:
                 TokenBatch(0, _input["new_participant_tokens"])))
             network = setup_influence_edges_single(network, i)
             network = setup_support_edges(network, i)
-            if params[0].get("debug"):
+            if params.get("debug"):
                 print("GenerateNewParticipant: A new Participant {} invested {}DAI for {} tokens".format(
                     i, _input['new_participant_investment'], _input['new_participant_tokens']))
         return "network", network
@@ -97,14 +97,14 @@ class GenerateNewProposal:
             rescale = funding_pool * scale_factor
             r_rv = gamma.rvs(3, loc=0.001, scale=rescale)
             proposal = Proposal(funds_requested=r_rv,
-                                trigger=convictionvoting.trigger_threshold(r_rv, funding_pool, token_supply, params[0]["max_proposal_request"]))
+                                trigger=convictionvoting.trigger_threshold(r_rv, funding_pool, token_supply, params["max_proposal_request"]))
             network, j = add_proposal(network, proposal)
 
             # add_proposal() has created support edges from other Participants
             # to this Proposal. If the Participant is the one who created this
             # Proposal, change his affinity for the Proposal to 1 (maximum).
             network.edges[_input["proposed_by_participant"], j]["affinity"] = 1
-            if params[0].get("debug"):
+            if params.get("debug"):
                 print("GenerateNewProposal: Participant {} created Proposal {}".format(
                     _input["proposed_by_participant"], j))
         return "network", network
@@ -185,9 +185,9 @@ class ProposalFunding:
             total_conviction = calc_total_conviction(network, idx)
             proposal.conviction = total_conviction
             res = proposal.has_enough_conviction(
-                funding_pool, token_supply, params[0]["max_proposal_request"])
+                funding_pool, token_supply, params["max_proposal_request"])
 
-            if params[0].get("debug"):
+            if params.get("debug"):
                 print("ProposalFunding: Proposal {} has {} conviction, and needs {} to pass".format(idx,
                                                                                                     proposal.conviction, proposal.trigger))
             if res:
@@ -210,7 +210,7 @@ class ProposalFunding:
         network = s["network"]
         for idx in _input["proposal_idxs_with_enough_conviction"]:
             funds = network.nodes[idx]["item"].funds_requested
-            if params[0].get("debug"):
+            if params.get("debug"):
                 print("ProposalFunding: Proposal {} passed! deducting {} from Commons funding pool".format(
                     idx, funds))
             commons.spend(funds)
@@ -227,7 +227,7 @@ class ProposalFunding:
         for _, proposal in proposals:
             proposal.update_age()
             proposal.update_threshold(
-                funding_pool, token_supply, max_proposal_request=params[0]["max_proposal_request"])
+                funding_pool, token_supply, max_proposal_request=params["max_proposal_request"])
 
         return "network", network
 
@@ -238,7 +238,7 @@ class ProposalFunding:
         per timestep/iteration!
         """
         network = s["network"]
-        days_to_80p_of_max_voting_weight = params[0]["days_to_80p_of_max_voting_weight"]
+        days_to_80p_of_max_voting_weight = params["days_to_80p_of_max_voting_weight"]
 
         support_edges = get_edges_by_type(network, "support")
         for i, j in support_edges:
@@ -248,7 +248,7 @@ class ProposalFunding:
 
             edge['conviction'] = current_tokens + \
                 days_to_80p_of_max_voting_weight*prior_conviction
-            if params[0].get("debug") and s["timestep"] == 1:
+            if params.get("debug") and s["timestep"] == 1:
                 print("ProposalFunding: Participant {} initially has staked {} tokens on Proposal {}, which will result in {} conviction in the next timestep".format(
                     i, current_tokens, j, edge["conviction"]))
 
@@ -289,7 +289,7 @@ class ParticipantVoting:
 
             participants_stakes[participant_idx] = stakes
 
-            if params[0].get("debug"):
+            if params.get("debug"):
                 if proposals_that_participant_cares_enough_to_vote_on:
                     print("ParticipantVoting: Participant {} was given Proposals with corresponding affinities {} and he decided to vote on {}, distributing his tokens thusly {}".format(
                         participant_idx, proposal_idx_affinity, proposals_that_participant_cares_enough_to_vote_on, stakes))
@@ -355,7 +355,7 @@ class ParticipantBuysTokens:
         # avoid chaining 2 state update functions, so we run the deposit on a
         # throwaway copy of Commons
         if total_dai == 0:
-            if params[0].get("debug"):
+            if params.get("debug"):
                 print(
                     "ParticipantBuysTokens: No Participants bought tokens in timestep {}".format(step))
             return {"participant_decisions": ans, "total_dai": 0, "tokens": 0, "token_price": 0, "final_token_distribution": {}}
@@ -368,7 +368,7 @@ class ParticipantBuysTokens:
             for i in ans:
                 final_token_distribution[i] = ans[i] / total_dai
 
-            if params[0].get("debug"):
+            if params.get("debug"):
                 print(
                     "ParticipantBuysTokens: These Participants have decided to buy tokens with this amount of DAI: {}".format(ans))
                 print("ParticipantBuysTokens: A total of {} DAI will be deposited. {} tokens should be minted as a result at a price of {} DAI/token".format(
@@ -424,7 +424,7 @@ class ParticipantSellsTokens:
         # avoid chaining 2 state update functions, so we run the operation on a
         # throwaway copy of Commons
         if total_tokens == 0:
-            if params[0].get("debug"):
+            if params.get("debug"):
                 print(
                     "ParticipantSellsTokens: No Participants sold tokens in timestep {}".format(step))
             return {"participant_decisions": ans, "total_tokens": 0, "dai_returned": 0, "realized_price": 0}
@@ -436,7 +436,7 @@ class ParticipantSellsTokens:
             for i, participant in participants:
                 final_dai_distribution[i] = ans[i] / total_tokens
 
-            if params[0].get("debug"):
+            if params.get("debug"):
                 print(
                     "ParticipantSellsTokens: These Participants have decided to sell this many  tokens: {}".format(ans))
                 print("ParticipantSellsTokens: A total of {} tokens will be burned. {} DAI should be returned as a result, at a price of {} DAI/token".format(
@@ -481,7 +481,7 @@ class ParticipantExits:
                     "holdings": participant.holdings.total,
                 }
 
-        if params[0].get("debug"):
+        if params.get("debug"):
             print("ParticipantExits: Participants {} (2nd number is their sentiment) want to exit".format(
                 defectors))
         return {"defectors": defectors}
@@ -531,7 +531,7 @@ class ParticipantExits:
                         "sentiment_new": sentiment_new
                     }
 
-        if params[0].get("debug"):
+        if params.get("debug"):
             for i in report:
                 print(
                     "ParticipantExits: Participant {} changed his sentiment from {} to {} because Proposal {} became active".format(i, report[i]["sentiment_old"], report[i]["sentiment_new"], report[i]["proposal_idx"]))
