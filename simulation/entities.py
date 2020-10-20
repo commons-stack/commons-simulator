@@ -205,3 +205,13 @@ class Participant:
                 affinity/affinity_total)
 
         return tokens_per_supported_proposal
+
+    def wants_to_exit(self):
+        """
+        Returns True if the Participant wants to exit (if sentiment < 0.5,
+        random chance of exiting), otherwise False
+        """
+        if self.sentiment < 0.5:
+            engagement_rate = 0.3 * self.sentiment
+            return probability(1-engagement_rate)
+        return False
