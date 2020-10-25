@@ -112,7 +112,7 @@ export const HomePage = () => {
             />
             <SliderField
               label="Beta : What is the max percentage of the Funding Pool that can be spent in one proposal? (0.01 to 0.90)"
-              name="proposal_max_size"
+              name="max_proposal_request"
               defaultValue={0.5}
               step={0.05}
               min={0.01}
