@@ -5,7 +5,7 @@ import networkx as nx
 
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch, VestingOptions
-from network_utils import (add_proposal, bootstrap_network, calc_avg_sentiment,
+from network_utils import (add_proposal, add_participant, bootstrap_network, calc_avg_sentiment,
                            calc_median_affinity, calc_total_affinity, calc_total_conviction,
                            calc_total_funds_requested, get_edges_by_type, get_edges_by_participant_and_type,
                            get_participants, get_proposals,
@@ -243,6 +243,21 @@ class TestNetworkUtils(unittest.TestCase):
             self.assertEqual(v, 10)
             self.assertEqual(t, "support")
             self.assertIn(u, [0, 2, 4, 6, 8])
+
+    def test_add_participant(self):
+        """
+        This test ensures that the Participant was added and that
+        setup_influence_edges and setup_support_edges was executed for that
+        particular node.
+        """
+        n1, j = add_participant(self.network, Participant(TokenBatch(0, 0)))
+        self.assertIsInstance(n1.nodes[j]["item"], Participant)
+
+        self.assertEqual(len(n1.edges), 5)
+        for u, v, t in n1.edges(data="type"):
+            self.assertEqual(u, 10)
+            self.assertIn(v, [1, 3, 5, 7, 9])
+            self.assertEqual(t, "support")
 
     def test_calc_total_conviction(self):
         """

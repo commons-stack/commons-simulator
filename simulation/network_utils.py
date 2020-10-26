@@ -51,8 +51,16 @@ def get_participants(network: nx.DiGraph) -> NodeDataView:
 
 
 def add_proposal(network: nx.DiGraph, p: Proposal) -> Tuple[nx.DiGraph, int]:
-    j = len(network.nodes)
+    j = max(network.nodes) + 1
     network.add_node(j, item=p)
+    network = setup_support_edges(network, j)
+    return network, j
+
+
+def add_participant(network: nx.DiGraph, p: Participant) -> Tuple[nx.DiGraph, int]:
+    j = max(network.nodes) + 1
+    network.add_node(j, item=p)
+    network = setup_influence_edges_single(network, j)
     network = setup_support_edges(network, j)
     return network, j
 
