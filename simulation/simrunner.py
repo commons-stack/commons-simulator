@@ -41,7 +41,7 @@ def run_simulation(c: CommonsSimulationConfiguration):
         "collateral": list(df_final["collateral_pool"]),
         "sentiment": list(df_final["sentiment"])
     }
-    return result
+    return result, df_final
 
 
 parser = argparse.ArgumentParser()
@@ -63,5 +63,5 @@ args = parser.parse_args()
 
 c = CommonsSimulationConfiguration(**vars(args))
 print("Running sim config", c)
-o = run_simulation(c)
+o, _ = run_simulation(c)
 print(json.dumps(o))
