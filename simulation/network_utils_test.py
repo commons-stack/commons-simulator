@@ -7,7 +7,7 @@ from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch, VestingOptions
 from network_utils import (add_proposal, add_participant, bootstrap_network, calc_avg_sentiment,
                            calc_median_affinity, calc_total_affinity, calc_total_conviction,
-                           calc_total_funds_requested, get_edges_by_type, get_edges_by_participant_and_type,
+                           calc_total_funds_requested, find_in_edges_of_type_for_proposal, get_edges_by_type, get_edges_by_participant_and_type,
                            get_participants, get_proposals,
                            setup_conflict_edges, setup_influence_edges_bulk,
                            setup_influence_edges_single, setup_support_edges)
@@ -307,3 +307,22 @@ class TestNetworkUtils(unittest.TestCase):
             p.sentiment = 1
         self.network.nodes[8]["item"].sentiment = 0.5
         self.assertEqual(0.9, calc_avg_sentiment(self.network))
+
+    def test_find_in_edges_of_type_for_proposal(self):
+        """
+        Ensure that only edges of the specified type are included in the answer
+        """
+        self.network = setup_support_edges(self.network)
+        self.network = setup_conflict_edges(self.network, rate=1)
+
+        s_edges = find_in_edges_of_type_for_proposal(
+            self.network, 9, "support")
+        s_edges_expected = [(0, 9, 'support'), (2, 9, 'support'),
+                            (4, 9, 'support'), (6, 9, 'support'), (8, 9, 'support')]
+        self.assertEqual(s_edges, s_edges_expected)
+
+        c_edges = find_in_edges_of_type_for_proposal(
+            self.network, 9, "conflict")
+        c_edges_expected = [(1, 9, 'conflict'), (3, 9, 'conflict'),
+                            (5, 9, 'conflict'), (7, 9, 'conflict')]
+        self.assertEqual(c_edges, c_edges_expected)

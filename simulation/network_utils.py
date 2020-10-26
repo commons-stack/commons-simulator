@@ -283,3 +283,12 @@ def calc_avg_sentiment(network: nx.DiGraph) -> float:
 
     sentiment_avg = sentiment_total / len(participants)
     return sentiment_avg
+
+
+def find_in_edges_of_type_for_proposal(network: nx.DiGraph, proposal_idx: int, edge_type: str) -> List[Tuple[int, int, str]]:
+    ans = []
+    for participant_idx, proposal_idx, t in network.in_edges(proposal_idx, data="type"):
+        if t == edge_type:
+            ans.append((participant_idx, proposal_idx, edge_type))
+
+    return ans

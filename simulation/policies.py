@@ -8,7 +8,7 @@ from convictionvoting import trigger_threshold
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch
 from network_utils import (add_proposal, add_participant, calc_median_affinity, calc_total_conviction,
-                           calc_total_funds_requested, get_edges_by_type,
+                           calc_total_funds_requested, find_in_edges_of_type_for_proposal, get_edges_by_type,
                            get_participants, get_proposals,
                            setup_influence_edges_single, setup_support_edges)
 from utils import probability
@@ -515,7 +515,7 @@ class ParticipantExits:
 
         report = {}
         for idx in policy_output_passthru["proposal_idxs_with_enough_conviction"]:
-            for participant_idx, proposal_idx in network.in_edges(idx):
+            for participant_idx, proposal_idx, _ in find_in_edges_of_type_for_proposal(network, idx, "support"):
                 edge = network.edges[participant_idx, proposal_idx]
                 if edge["affinity"] == 1:
                     sentiment_old = network.nodes[participant_idx]["item"].sentiment
