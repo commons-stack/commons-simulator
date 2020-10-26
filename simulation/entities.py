@@ -21,7 +21,6 @@ ProposalStatus = Enum("ProposalStatus", "CANDIDATE ACTIVE COMPLETED FAILED")
 
 class Proposal:
     def __init__(self, funds_requested: int, trigger: float):
-        self.uuid = uuid.uuid4()
         self.conviction = 0
         self.status = ProposalStatus.CANDIDATE
         self.age = 0
@@ -57,7 +56,7 @@ class Proposal:
             return True
         else:
             raise(Exception(
-                "Proposal {} is not a Candidate Proposal and so asking it if it will pass is inappropriate".format(str(self.uuid))))
+                "Proposal is not a Candidate Proposal and so asking it if it will pass is inappropriate"))
 
 
 class Participant:
