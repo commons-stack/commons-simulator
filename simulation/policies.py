@@ -4,11 +4,10 @@ import copy
 import numpy as np
 from scipy.stats import expon, gamma
 
-import convictionvoting
 from convictionvoting import trigger_threshold
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch
-from network_utils import (add_proposal, calc_median_affinity, calc_total_conviction,
+from network_utils import (add_proposal, add_participant, calc_median_affinity, calc_total_conviction,
                            calc_total_funds_requested, get_edges_by_type,
                            get_participants, get_proposals,
                            setup_influence_edges_single, setup_support_edges)
@@ -49,11 +48,9 @@ class GenerateNewParticipant:
     def su_add_to_network(params, step, sL, s, _input, **kwargs):
         network = s["network"]
         if _input["new_participant"]:
-            i = len(network.nodes)
-            network.add_node(i, item=Participant(
-                TokenBatch(0, _input["new_participant_tokens"])))
-            network = setup_influence_edges_single(network, i)
-            network = setup_support_edges(network, i)
+            network, i = add_participant(network, Participant(TokenBatch(
+                0, _input["new_participant_tokens"])))
+
             if params.get("debug"):
                 print("GenerateNewParticipant: A new Participant {} invested {}DAI for {} tokens".format(
                     i, _input['new_participant_investment'], _input['new_participant_tokens']))
@@ -97,16 +94,17 @@ class GenerateNewProposal:
             rescale = funding_pool * scale_factor
             r_rv = gamma.rvs(3, loc=0.001, scale=rescale)
             proposal = Proposal(funds_requested=r_rv,
-                                trigger=convictionvoting.trigger_threshold(r_rv, funding_pool, token_supply, params["max_proposal_request"]))
-            network, j = add_proposal(network, proposal)
+                                trigger=trigger_threshold(r_rv, funding_pool, token_supply, params["max_proposal_request"]))
+            network, proposal_idx = add_proposal(network, proposal)
 
             # add_proposal() has created support edges from other Participants
             # to this Proposal. If the Participant is the one who created this
             # Proposal, change his affinity for the Proposal to 1 (maximum).
-            network.edges[_input["proposed_by_participant"], j]["affinity"] = 1
+            network.edges[_input["proposed_by_participant"],
+                          proposal_idx]["affinity"] = 1
             if params.get("debug"):
                 print("GenerateNewProposal: Participant {} created Proposal {}".format(
-                    _input["proposed_by_participant"], j))
+                    _input["proposed_by_participant"], proposal_idx))
         return "network", network
 
 
@@ -159,7 +157,7 @@ class ActiveProposals:
                 proposals_that_will_succeed.append(idx)
         return {"failed": proposals_that_will_fail, "succeeded": proposals_that_will_succeed}
 
-    @ staticmethod
+    @staticmethod
     def su_set_proposal_status(params, step, sL, s, _input, **kwargs):
         network = s["network"]
         for idx in _input["failed"]:
@@ -388,7 +386,7 @@ class ParticipantBuysTokens:
 
         return "commons", commons
 
-    @ staticmethod
+    @staticmethod
     def su_update_participants_tokens(params, step, sL, s, _input, **kwargs):
         network = s["network"]
         decisions = _input["participant_decisions"]
@@ -455,7 +453,7 @@ class ParticipantSellsTokens:
 
         return "commons", commons
 
-    @ staticmethod
+    @staticmethod
     def su_update_participants_tokens(params, step, sL, s, _input, **kwargs):
         network = s["network"]
         decisions = _input["participant_decisions"]
