@@ -3,17 +3,19 @@ import unittest
 from collections import namedtuple
 from os.path import commonpath
 from unittest.mock import patch
+
 import networkx as nx
 
 from entities import Proposal, ProposalStatus
 from hatch import Commons, TokenBatch, VestingOptions
 from network_utils import (add_proposal, bootstrap_network,
                            calc_total_conviction, get_edges_by_type,
-                           get_participants)
+                           get_participants, setup_conflict_edges)
 from policies import (ActiveProposals, GenerateNewFunding,
                       GenerateNewParticipant, GenerateNewProposal,
-                      ParticipantBuysTokens, ParticipantSellsTokens, ParticipantVoting,
-                      ProposalFunding, ParticipantExits)
+                      ParticipantBuysTokens, ParticipantExits,
+                      ParticipantSellsTokens, ParticipantVoting,
+                      ProposalFunding)
 
 
 class TestGenerateNewParticipant(unittest.TestCase):
@@ -23,9 +25,7 @@ class TestGenerateNewParticipant(unittest.TestCase):
         self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
                                           for _ in range(4)], 1, 3000, 4e6, 0.2)
 
-        self.params = [{
-            "debug": False,
-        }]
+        self.params = {"debug": False}
 
     def test_p_randomly(self):
         """
@@ -79,7 +79,7 @@ class TestGenerateNewProposal(unittest.TestCase):
     def setUp(self):
         self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
                                           for _ in range(4)], 1, 3000, 4e6, 0.2)
-        self.params = [{"max_proposal_request": 0.2}]
+        self.params = {"max_proposal_request": 0.2}
 
     def test_p_randomly(self):
         """
@@ -189,10 +189,10 @@ class TestProposalFunding(unittest.TestCase):
 
         self.network.nodes[4]["item"].status = ProposalStatus.CANDIDATE
         self.network.nodes[5]["item"].status = ProposalStatus.CANDIDATE
-        self.params = [{
+        self.params = {
             "max_proposal_request": 0.2,
             "days_to_80p_of_max_voting_weight": 10
-        }]
+        }
 
     def test_p_compare_conviction_and_threshold(self):
         """
@@ -251,10 +251,10 @@ class TestParticipantVoting(unittest.TestCase):
                                           for _ in range(4)], 1, 3000, 4e6, 0.2)
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
-        self.params = [{
+        self.params = {
             "debug": False,
             "days_to_80p_of_max_voting_weight": 10
-        }]
+        }
         """
         For proper testing, we need to make sure the Proposals are CANDIDATE and
         ensure Proposal-Participant affinities are not some random value
@@ -316,9 +316,7 @@ class TestParticipantBuysTokens(unittest.TestCase):
         self.commons = Commons(1000, 1000)
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
-        self.params = [{
-            "debug": True,
-        }]
+        self.params = {"debug": True}
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
 
@@ -403,9 +401,9 @@ class TestParticipantSellsTokens(unittest.TestCase):
         self.commons = Commons(1000, 1000)
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
-        self.params = [{
+        self.params = {
             "debug": False,
-        }]
+        }
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
 
@@ -488,9 +486,7 @@ class TestParticipantExits(unittest.TestCase):
         self.commons = Commons(1000, 1000)
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1))
-        self.params = [{
-            "debug": True,
-        }]
+        self.params = {"debug": True}
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
 
