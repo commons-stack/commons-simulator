@@ -191,7 +191,7 @@ class TestProposalFunding(unittest.TestCase):
         self.network.nodes[5]["item"].status = ProposalStatus.CANDIDATE
         self.params = {
             "max_proposal_request": 0.2,
-            "days_to_80p_of_max_voting_weight": 10
+            "alpha_days_to_80p_of_max_voting_weight": 10
         }
 
     def test_p_compare_conviction_and_threshold(self):

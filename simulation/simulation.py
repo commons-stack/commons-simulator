@@ -78,6 +78,12 @@ class CommonsSimulationConfiguration:
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, attrs(self))
 
+    def alpha(self) -> float:
+        """
+        Converts days_to_80p_of_max_voting_weight to alpha.
+        alpha = 0.8 ^ (1/t)
+        """
+        return 0.8 ** (1/self.days_to_80p_of_max_voting_weight)
 
 def bootstrap_simulation(c: CommonsSimulationConfiguration):
     contributions = [np.random.rand() * 10e5 for i in range(c.hatchers)]
@@ -109,7 +115,7 @@ def bootstrap_simulation(c: CommonsSimulationConfiguration):
             # "sentiment_sensitivity": 0.75,
             # 'min_supp':50, #number of tokens that must be stake for a proposal to be a candidate
             "debug": True,
-            "days_to_80p_of_max_voting_weight": c.days_to_80p_of_max_voting_weight,
+            "alpha_days_to_80p_of_max_voting_weight": c.alpha(),
             "max_proposal_request": c.max_proposal_request,
         }
     }

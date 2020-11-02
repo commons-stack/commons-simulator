@@ -236,7 +236,7 @@ class ProposalFunding:
         per timestep/iteration!
         """
         network = s["network"]
-        days_to_80p_of_max_voting_weight = params["days_to_80p_of_max_voting_weight"]
+        alpha = params["alpha_days_to_80p_of_max_voting_weight"]
 
         support_edges = get_edges_by_type(network, "support")
         for i, j in support_edges:
@@ -244,8 +244,7 @@ class ProposalFunding:
             prior_conviction = edge['conviction']
             current_tokens = edge['tokens']
 
-            edge['conviction'] = current_tokens + \
-                days_to_80p_of_max_voting_weight*prior_conviction
+            edge['conviction'] = current_tokens + alpha*prior_conviction
             if params.get("debug") and s["timestep"] == 1:
                 print("ProposalFunding: Participant {} initially has staked {} tokens on Proposal {}, which will result in {} conviction in the next timestep".format(
                     i, current_tokens, j, edge["conviction"]))
