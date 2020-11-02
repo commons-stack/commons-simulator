@@ -19,9 +19,9 @@ def convert_80p_to_cliff_and_halflife(days: int, v_ratio: int = 2) -> Tuple[floa
     2.321928094887362 is log(base0.5) 0.2, or log 0.2 / log 0.5.
     v_ratio is cliff / halflife, and its default is determined by Commons Stack
     """
-    halflife = days / (2.321928094887362 + v_ratio)
-    cliff = v_ratio * halflife
-    return cliff, halflife
+    halflife_days = days / (2.321928094887362 + v_ratio)
+    cliff_days = v_ratio * halflife_days
+    return cliff_days, halflife_days
 
 
 def hatch_raise_split_pools(total_hatch_raise, hatch_tribute) -> Tuple[float, float]:
@@ -111,7 +111,7 @@ class TokenBatch:
         return ((self.unlocked_fraction() * self.vesting) - self.vesting_spent) + self.nonvesting
 
 
-def create_token_batches(hatcher_contributions: List[int], desired_token_price: float, vesting_80p_unlocked: int) -> Tuple[List[TokenBatch], float]:
+def create_token_batches(hatcher_contributions: List[int], desired_token_price: float, cliff_days: float, halflife_days: float) -> Tuple[List[TokenBatch], float]:
     """
     hatcher_contributions: a list of hatcher contributions in DAI/ETH/whatever
     desired_token_price: used to determine the initial token supply
@@ -124,8 +124,6 @@ def create_token_batches(hatcher_contributions: List[int], desired_token_price: 
     tokens_per_hatcher = [(x / total_hatch_raise) *
                           initial_token_supply for x in hatcher_contributions]
 
-    cliff_days, halflife_days = convert_80p_to_cliff_and_halflife(
-        vesting_80p_unlocked)
     token_batches = [TokenBatch(
         x, 0, vesting_options=VestingOptions(cliff_days, halflife_days)) for x in tokens_per_hatcher]
     return token_batches, initial_token_supply

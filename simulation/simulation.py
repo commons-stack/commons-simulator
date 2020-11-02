@@ -1,5 +1,6 @@
+from typing import Tuple
 import numpy as np
-from hatch import create_token_batches, TokenBatch, Commons
+from hatch import create_token_batches, TokenBatch, Commons, convert_80p_to_cliff_and_halflife
 
 from entities import attrs
 from policies import GenerateNewParticipant, GenerateNewProposal, GenerateNewFunding, ActiveProposals, ProposalFunding, ParticipantVoting, ParticipantSellsTokens, ParticipantBuysTokens, ParticipantExits
@@ -85,10 +86,22 @@ class CommonsSimulationConfiguration:
         """
         return 0.8 ** (1/self.days_to_80p_of_max_voting_weight)
 
+    def cliff_and_halflife(self) -> Tuple[float, float]:
+        """
+        This is just a wrapper around hatch.convert_80p_to_cliff_and_halflife().
+        It is used here instead for logical consistency (having all derived
+        configuration variables come from CommonsSimulationConfiguration), but
+        defined in hatch for local consistency (having all hatch-related code in
+        one place). Time will tell if this really matters.
+        """
+        return convert_80p_to_cliff_and_halflife(self.vesting_80p_unlocked)
+
+
 def bootstrap_simulation(c: CommonsSimulationConfiguration):
     contributions = [np.random.rand() * 10e5 for i in range(c.hatchers)]
+    cliff_days, halflife_days = c.cliff_and_halflife()
     token_batches, initial_token_supply = create_token_batches(
-        contributions, 0.1, c.vesting_80p_unlocked)
+        contributions, 0.1, cliff_days, halflife_days)
 
     commons = Commons(sum(contributions), initial_token_supply,
                       hatch_tribute=c.hatch_tribute, exit_tribute=c.exit_tribute, kappa=c.kappa)
