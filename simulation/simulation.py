@@ -62,7 +62,8 @@ class CommonsSimulationConfiguration:
                  exit_tribute=0.35,
                  kappa=2,
                  days_to_80p_of_max_voting_weight=10,
-                 max_proposal_request=0.2):
+                 max_proposal_request=0.2,
+                 timesteps_days=730):
         self.hatchers = hatchers
         self.proposals = proposals
         self.hatch_tribute = hatch_tribute
@@ -75,6 +76,8 @@ class CommonsSimulationConfiguration:
 
         # Proposal may only request up to 20% of the funding pool
         self.max_proposal_request = max_proposal_request
+
+        self.timesteps_days = timesteps_days  # Simulate 2*365=730 days
 
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, attrs(self))
@@ -118,9 +121,8 @@ def bootstrap_simulation(c: CommonsSimulationConfiguration):
         "sentiment": 0.5
     }
 
-    # TODO: make it explicit that 1 timestep is 1 day
     simulation_parameters = {
-        'T': range(30),
+        'T': range(c.timesteps_days),
         'N': 1,
         'M': {
             # "sentiment_decay": 0.01, #termed mu in the state update function

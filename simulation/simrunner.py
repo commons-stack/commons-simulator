@@ -59,6 +59,8 @@ parser.add_argument("--days_to_80p_of_max_voting_weight",
                     type=int, default=c_default.days_to_80p_of_max_voting_weight)
 parser.add_argument("--max_proposal_request", type=float,
                     default=c_default.max_proposal_request)
+parser.add_argument("-T", "--timesteps_days", type=int,
+                    default=c_default.timesteps_days)
 args = parser.parse_args()
 
 c = CommonsSimulationConfiguration(**vars(args))
