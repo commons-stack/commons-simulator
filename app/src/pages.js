@@ -85,6 +85,8 @@ export const HomePage = () => {
               step={1}
               min={0}
               max={100}
+              advanced="true"
+              type="hidden"
             />
             <SliderField
               label="Exit Tribute : What percent of the released Reserve will go to the Funding Pool when tokens are sold?"
@@ -101,6 +103,8 @@ export const HomePage = () => {
               step={0.05}
               min={2}
               max={4}
+              advanced="true"
+              type="hidden"
             />
             <SliderField
               label="Alpha : How many days/weeks? does it take to reach 80% of a voter’s max voting weight?"
@@ -527,8 +531,8 @@ const Results = ({ results, next }) => {
     <div css={`margin-top: 20px`}>
       <Typography variant="h4" gutterBottom>Results</Typography>
       {results && Object.keys(results).filter(key => key !== 'timestep').map( prop =>
-        <div>
-          <h3 style={{'text-transform': 'capitalize'}}>{prop.replace('_', ' ')}</h3>
+        <div key={prop}>
+          <h3 style={{'textTransform': 'capitalize'}}>{prop.replace('_', ' ')}</h3>
           <Line data={dataWrapper(prop, results.timestep, results[prop])}></Line>
         </div>
       )}
