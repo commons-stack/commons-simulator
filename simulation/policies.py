@@ -39,7 +39,8 @@ class GenerateNewParticipant:
             # scale is the standard deviation, so if scale=2, investments will
             # be around 0-12 DAI or even 15, if scale=100, the investments will be
             # around 0-600 DAI.
-            ans["new_participant_investment"] = expon.rvs(loc=0.0, scale=100)
+            ans["new_participant_investment"] = expon.rvs(loc=config.investment_new_participant_min,
+                                                          scale=config.investment_new_participant_stdev)
             ans["new_participant_tokens"] = commons.dai_to_tokens(
                 ans["new_participant_investment"])
         return ans
@@ -88,11 +89,10 @@ class GenerateNewProposal:
         network = s["network"]
         funding_pool = s["funding_pool"]
         token_supply = s["token_supply"]
-        scale_factor = 0.01
         if _input["new_proposal"]:
             # Create the Proposal and add it to the network.
-            rescale = funding_pool * scale_factor
-            r_rv = gamma.rvs(3, loc=0.001, scale=rescale)
+            rescale = funding_pool * config.scale_factor
+            r_rv = gamma.rvs(config.funds_requested_alpha, loc=config.funds_requested_min, scale=rescale)
             proposal = Proposal(funds_requested=r_rv,
                                 trigger=trigger_threshold(r_rv, funding_pool, token_supply, params["max_proposal_request"]))
             network, proposal_idx = add_proposal(network, proposal)
@@ -117,11 +117,8 @@ class GenerateNewFunding:
         TODO: buy tokens and sell them immediately within the same simulation
         step, assuming a certain position size.
         """
-        speculator_position_size_min = 200  # DAI
-        speculator_position_size_stdev = 200
-        speculators = 5
-        exits = [expon.rvs(loc=speculator_position_size_min,
-                           scale=speculator_position_size_stdev) for i in range(speculators)]
+        exits = [expon.rvs(loc=config.speculator_position_size_min,
+                           scale=config.speculator_position_size_stdev) for i in range(config.speculators)]
         commons = s["commons"]
         funding = sum(exits) * commons.exit_tribute
         return {"funding": funding}
@@ -137,9 +134,6 @@ class GenerateNewFunding:
 class ActiveProposals:
     @staticmethod
     def p_influenced_by_grant_size(params, step, sL, s, **kwargs):
-        base_failure_rate = 0.15
-        base_success_rate = 0.30
-
         network = s["network"]
 
         active_proposals = get_proposals(network, status=ProposalStatus.ACTIVE)
@@ -147,9 +141,9 @@ class ActiveProposals:
         proposals_that_will_succeed = []
 
         for idx, proposal in active_proposals:
-            r_failure = 1/(base_failure_rate +
+            r_failure = 1/(config.base_failure_rate +
                            np.log(proposal.funds_requested))
-            r_success = 1/(base_success_rate +
+            r_success = 1/(config.base_success_rate +
                            np.log(proposal.funds_requested))
             if probability(r_failure):
                 proposals_that_will_fail.append(idx)
