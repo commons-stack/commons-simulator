@@ -203,7 +203,6 @@ partial_state_update_blocks = [
             "network": ParticipantExits.su_update_sentiment_when_proposal_becomes_failed_or_completed,
         }
     },
-    sync_state_variables,
     {
         "policies": {
             "participants_stake_tokens_on_proposals": ParticipantVoting.p_participant_votes_on_proposal_according_to_affinity

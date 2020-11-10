@@ -154,7 +154,7 @@ class ActiveProposals:
             if probability(r_failure):
                 proposals_that_will_fail.append(idx)
             elif probability(r_success):
-                proposals_that_will_succeed.append(idx)                
+                proposals_that_will_succeed.append(idx)
         return {"failed": proposals_that_will_fail, "succeeded": proposals_that_will_succeed}
 
     @staticmethod
