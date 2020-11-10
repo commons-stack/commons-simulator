@@ -173,11 +173,11 @@ class TestActiveProposals(unittest.TestCase):
         Simply test that the code works.
         """
         _, network1 = ActiveProposals.su_set_proposal_status(
-            None, 0, 0, {"network": copy.copy(self.network)}, {"failed": [4, 5]})
+            None, 0, 0, {"network": copy.copy(self.network)}, {"failed": [4], "succeeded": [5]})
         self.assertEqual(network1.nodes[4]
                          ["item"].status, ProposalStatus.FAILED)
         self.assertEqual(network1.nodes[5]
-                         ["item"].status, ProposalStatus.FAILED)
+                         ["item"].status, ProposalStatus.COMPLETED)
 
 
 class TestProposalFunding(unittest.TestCase):
@@ -565,4 +565,28 @@ class TestParticipantExits(unittest.TestCase):
             self.params, 0, 0, self.default_state, {})
 
         self.assertEqual(n_network.nodes[2]["item"].sentiment, 0.9)
+        self.assertEqual(n_network.nodes[3]["item"].sentiment, 1)
+
+    def test_su_update_sentiment_when_proposal_becomes_failed_or_completed(self):
+        """
+        Because this policy depends on a policy passthrough from a previous
+        partial state update block, it does not use _input, but
+        s["policy_output"]
+        """
+        policy_output_passthru = {
+            "failed": [4],
+            "succeeded": [5]
+        }
+
+        # Let's say Participant 2 owns Proposal 4, Participant 3 owns Proposal 5
+        self.network.nodes[2]["item"].sentiment = 0.5
+        self.network.nodes[3]["item"].sentiment = 0.7
+        self.network.edges[2, 4]["affinity"] = 1
+        self.network.edges[3, 5]["affinity"] = 1
+
+        self.default_state["policy_output"] = policy_output_passthru
+        _, n_network = ParticipantExits.su_update_sentiment_when_proposal_becomes_failed_or_completed(
+            self.params, 0, 0, self.default_state, {})
+
+        self.assertEqual(n_network.nodes[2]["item"].sentiment, 0.4)
         self.assertEqual(n_network.nodes[3]["item"].sentiment, 1)
