@@ -118,6 +118,14 @@ export const HomePage = () => {
               min={0.01}
               max={0.9}
             />
+            <SliderField
+              label="Days : How many days you want to simulate the RadicalxChange Commons? (30 to 180)"
+              name="timesteps_days"
+              defaultValue={60}
+              step={5}
+              min={30}
+              max={180}
+            />
           </Params>
          }
          secondary={<Results results={results} />}
