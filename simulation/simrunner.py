@@ -37,8 +37,7 @@ def run_simulation(c: CommonsSimulationConfiguration):
     result = {
         "timestep": list(df_final["timestep"]),
         "funding_pool": list(df_final["funding_pool"]),
-        "token_supply": list(df_final["token_supply"]),
-        "collateral": list(df_final["collateral_pool"]),
+        "token_price": list(df_final["token_price"]),
         "sentiment": list(df_final["sentiment"])
     }
     return result, df_final

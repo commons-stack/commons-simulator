@@ -19,6 +19,12 @@ def update_token_supply(params, step, sL, s, _input):
     return "token_supply", commons._token_supply
 
 
+def update_token_price(params, step, sL, s, _input):
+    commons = s["commons"]
+    s["token_price"] = commons.token_price()
+    return "token_price", commons.token_price()
+
+
 def update_funding_pool(params, step, sL, s, _input):
     commons = s["commons"]
     s["funding_pool"] = commons._funding_pool
@@ -42,6 +48,7 @@ sync_state_variables = {
         "funding_pool": update_funding_pool,
         "collateral_pool": update_collateral_pool,
         "token_supply": update_token_supply,
+        "token_price": update_token_price,
         "sentiment": update_avg_sentiment,
     }
 }
@@ -117,6 +124,7 @@ def bootstrap_simulation(c: CommonsSimulationConfiguration):
         "funding_pool": commons._funding_pool,
         "collateral_pool": commons._collateral_pool,
         "token_supply": commons._token_supply,
+        "token_price": commons.token_price(),
         "policy_output": None,
         "sentiment": 0.5
     }
