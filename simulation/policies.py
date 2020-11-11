@@ -157,6 +157,9 @@ class ActiveProposals:
         for idx in _input["failed"]:
             network.nodes[idx]["item"].status = ProposalStatus.FAILED
 
+        for idx in _input["succeeded"]:
+            network.nodes[idx]["item"].status = ProposalStatus.COMPLETED
+
         return "network", network
 
 
@@ -526,4 +529,48 @@ class ParticipantExits:
             for i in report:
                 print(
                     "ParticipantExits: Participant {} changed his sentiment from {} to {} because Proposal {} became active".format(i, report[i]["sentiment_old"], report[i]["sentiment_new"], report[i]["proposal_idx"]))
+        return "network", network
+
+    @staticmethod
+    def su_update_sentiment_when_proposal_becomes_failed_or_completed(params, step, sL, s, _input, **kwargs):
+        network = s["network"]
+        policy_output_passthru = s["policy_output"]
+
+        report = {}
+        for idx in policy_output_passthru["failed"]:
+            for participant_idx, proposal_idx, _ in find_in_edges_of_type_for_proposal(network, idx, "support"):
+                edge = network.edges[participant_idx, proposal_idx]
+                if edge["affinity"] == 1:
+                    sentiment_old = network.nodes[participant_idx]["item"].sentiment
+                    sentiment_new = sentiment_old + config.sentiment_bonus_proposal_becomes_failed
+                    sentiment_new = 0 if sentiment_new < 0 else sentiment_new
+                    network.nodes[participant_idx]["item"].sentiment = sentiment_new
+
+                    report[participant_idx] = {
+                        "proposal_idx": proposal_idx,
+                        "sentiment_old": sentiment_old,
+                        "sentiment_new": sentiment_new,
+                        "status": "failed"
+                    }
+        
+        for idx in policy_output_passthru["succeeded"]:
+            for participant_idx, proposal_idx, _ in find_in_edges_of_type_for_proposal(network, idx, "support"):
+                edge = network.edges[participant_idx, proposal_idx]
+                if edge["affinity"] == 1:
+                    sentiment_old = network.nodes[participant_idx]["item"].sentiment
+                    sentiment_new = sentiment_old + config.sentiment_bonus_proposal_becomes_completed
+                    sentiment_new = 1 if sentiment_new > 1 else sentiment_new
+                    network.nodes[participant_idx]["item"].sentiment = sentiment_new
+
+                    report[participant_idx] = {
+                        "proposal_idx": proposal_idx,
+                        "sentiment_old": sentiment_old,
+                        "sentiment_new": sentiment_new,
+                        "status": "completed"
+                    }
+        
+        if params.get("debug"):
+            for i in report:
+                print(
+                    "ParticipantExits: Participant {} changed his sentiment from {} to {} because Proposal {} became {}".format(i, report[i]["sentiment_old"], report[i]["sentiment_new"], report[i]["proposal_idx"], report[i]["status"]))
         return "network", network

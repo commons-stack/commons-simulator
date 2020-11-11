@@ -198,6 +198,21 @@ partial_state_update_blocks = [
     sync_state_variables,
     {
         "policies": {
+            "which_proposals_are_failed_or_completed": ActiveProposals.p_influenced_by_grant_size
+        },
+        "variables": {
+            "network": ActiveProposals.su_set_proposal_status,
+            "policy_output": save_policy_output,
+        }
+    },
+    {
+        "policies": {},
+        "variables": {
+            "network": ParticipantExits.su_update_sentiment_when_proposal_becomes_failed_or_completed,
+        }
+    },
+    {
+        "policies": {
             "participants_stake_tokens_on_proposals": ParticipantVoting.p_participant_votes_on_proposal_according_to_affinity
         },
         "variables": {
