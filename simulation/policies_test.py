@@ -3,6 +3,7 @@ import unittest
 from collections import namedtuple
 from os.path import commonpath
 from unittest.mock import patch
+import numpy as np
 
 import networkx as nx
 
@@ -22,10 +23,9 @@ class TestGenerateNewParticipant(unittest.TestCase):
     def setUp(self):
         self.commons = Commons(10000, 1000)
         self.sentiment = 0.5
+        self.params = {"debug": False, "random_state": np.random.RandomState(None)}
         self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
-
-        self.params = {"debug": False}
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["random_state"])
 
     def test_p_randomly(self):
         """
@@ -77,9 +77,9 @@ class TestGenerateNewParticipant(unittest.TestCase):
 
 class TestGenerateNewProposal(unittest.TestCase):
     def setUp(self):
+        self.params = {"max_proposal_request": 0.2, "random_state": np.random.RandomState(None)}
         self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
-        self.params = {"max_proposal_request": 0.2}
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["random_state"])
 
     def test_p_randomly(self):
         """
@@ -88,13 +88,13 @@ class TestGenerateNewProposal(unittest.TestCase):
         with patch("entities.probability") as p:
             p.return_value = True
             ans = GenerateNewProposal.p_randomly(
-                None, 0, 0, {"network": self.network, "funding_pool": 100000})
+                self.params, 0, 0, {"network": self.network, "funding_pool": 100000})
             self.assertTrue(ans["new_proposal"])
             self.assertIn("proposed_by_participant", ans)
 
             p.return_value = False
             ans = GenerateNewProposal.p_randomly(
-                None, 0, 0, {"network": self.network, "funding_pool": 100000})
+                self.params, 0, 0, {"network": self.network, "funding_pool": 100000})
             self.assertFalse(ans["new_proposal"])
 
     def test_su_add_to_network(self):
@@ -127,6 +127,9 @@ class TestGenerateNewProposal(unittest.TestCase):
 
 
 class TestGenerateNewFunding(unittest.TestCase):
+    def setUp(self):
+        self.params = {"random_state": np.random.RandomState(None)}
+    
     def test_p_exit_tribute_of_average_speculator_position_size(self):
         """
         Simply test that the code works.
@@ -136,7 +139,7 @@ class TestGenerateNewFunding(unittest.TestCase):
         state = {
             "commons": m_commons}
         ans = GenerateNewFunding.p_exit_tribute_of_average_speculator_position_size(
-            None, 0, 0, state)
+            self.params, 0, 0, state)
         self.assertTrue(ans["funding"] > 0)
 
     def test_su_add_funding(self):
@@ -149,10 +152,11 @@ class TestGenerateNewFunding(unittest.TestCase):
 
 class TestActiveProposals(unittest.TestCase):
     def setUp(self):
+        self.params = {"random_state": np.random.RandomState(None)}
         self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["random_state"])
 
-        self.network, _ = add_proposal(self.network, Proposal(100, 1))
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_state"])
 
         self.network.nodes[4]["item"].status = ProposalStatus.ACTIVE
         self.network.nodes[5]["item"].status = ProposalStatus.ACTIVE
@@ -164,7 +168,7 @@ class TestActiveProposals(unittest.TestCase):
         with patch("policies.probability") as p:
             p.return_value = True
             ans = ActiveProposals.p_influenced_by_grant_size(
-                None, 0, 0, {"network": copy.copy(self.network)})
+                self.params, 0, 0, {"network": copy.copy(self.network)})
 
             self.assertEqual(ans["failed"], [4, 5])
 
@@ -182,17 +186,18 @@ class TestActiveProposals(unittest.TestCase):
 
 class TestProposalFunding(unittest.TestCase):
     def setUp(self):
+        self.params = {
+            "max_proposal_request": 0.2,
+            "alpha_days_to_80p_of_max_voting_weight": 10,
+            "random_state": np.random.RandomState(None)
+        }
         self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["random_state"])
 
-        self.network, _ = add_proposal(self.network, Proposal(100, 1))
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_state"])
 
         self.network.nodes[4]["item"].status = ProposalStatus.CANDIDATE
         self.network.nodes[5]["item"].status = ProposalStatus.CANDIDATE
-        self.params = {
-            "max_proposal_request": 0.2,
-            "alpha_days_to_80p_of_max_voting_weight": 10
-        }
 
     def test_p_compare_conviction_and_threshold(self):
         """
@@ -247,14 +252,16 @@ class TestProposalFunding(unittest.TestCase):
 
 class TestParticipantVoting(unittest.TestCase):
     def setUp(self):
-        self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
-
-        self.network, _ = add_proposal(self.network, Proposal(100, 1))
         self.params = {
             "debug": False,
-            "days_to_80p_of_max_voting_weight": 10
+            "days_to_80p_of_max_voting_weight": 10,
+            "random_state": np.random.RandomState(None)
         }
+        self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["random_state"])
+
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_state"])
+
         """
         For proper testing, we need to make sure the Proposals are CANDIDATE and
         ensure Proposal-Participant affinities are not some random value
@@ -311,12 +318,12 @@ class TestParticipantVoting(unittest.TestCase):
 
 class TestParticipantBuysTokens(unittest.TestCase):
     def setUp(self):
+        self.params = {"debug": True, "random_state": np.random.RandomState(None)}
         self.network = bootstrap_network([TokenBatch(1000, 1000, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["random_state"])
         self.commons = Commons(1000, 1000)
 
-        self.network, _ = add_proposal(self.network, Proposal(100, 1))
-        self.params = {"debug": True}
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_state"])
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
 
@@ -396,14 +403,15 @@ class TestParticipantBuysTokens(unittest.TestCase):
 
 class TestParticipantSellsTokens(unittest.TestCase):
     def setUp(self):
-        self.network = bootstrap_network([TokenBatch(1000, 1000, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
-        self.commons = Commons(1000, 1000)
-
-        self.network, _ = add_proposal(self.network, Proposal(100, 1))
         self.params = {
             "debug": False,
+            "random_state": np.random.RandomState(None),
         }
+        self.network = bootstrap_network([TokenBatch(1000, 1000, vesting_options=VestingOptions(10, 30))
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["random_state"])
+        self.commons = Commons(1000, 1000)
+
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_state"])
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
 
@@ -481,12 +489,12 @@ class TestParticipantSellsTokens(unittest.TestCase):
 
 class TestParticipantExits(unittest.TestCase):
     def setUp(self):
+        self.params = {"debug": True, "random_state": np.random.RandomState(None)}
         self.network = bootstrap_network([TokenBatch(1000, 1000, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["random_state"])
         self.commons = Commons(1000, 1000)
 
-        self.network, _ = add_proposal(self.network, Proposal(100, 1))
-        self.params = {"debug": True}
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_state"])
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
 

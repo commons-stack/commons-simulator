@@ -70,7 +70,8 @@ class CommonsSimulationConfiguration:
                  kappa=2,
                  days_to_80p_of_max_voting_weight=10,
                  max_proposal_request=0.2,
-                 timesteps_days=730):
+                 timesteps_days=730,
+                 random_state=np.random.RandomState(None)):
         self.hatchers = hatchers
         self.proposals = proposals
         self.hatch_tribute = hatch_tribute
@@ -85,6 +86,8 @@ class CommonsSimulationConfiguration:
         self.max_proposal_request = max_proposal_request
 
         self.timesteps_days = timesteps_days  # Simulate 2*365=730 days
+
+        self.random_state = random_state
 
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, attrs(self))
@@ -108,7 +111,7 @@ class CommonsSimulationConfiguration:
 
 
 def bootstrap_simulation(c: CommonsSimulationConfiguration):
-    contributions = [np.random.rand() * 10e5 for i in range(c.hatchers)]
+    contributions = [c.random_state.rand() * 10e5 for i in range(c.hatchers)]
     cliff_days, halflife_days = c.cliff_and_halflife()
     token_batches, initial_token_supply = create_token_batches(
         contributions, 0.1, cliff_days, halflife_days)
@@ -116,7 +119,7 @@ def bootstrap_simulation(c: CommonsSimulationConfiguration):
     commons = Commons(sum(contributions), initial_token_supply,
                       hatch_tribute=c.hatch_tribute, exit_tribute=c.exit_tribute, kappa=c.kappa)
     network = bootstrap_network(
-        token_batches, c.proposals, commons._funding_pool, commons._token_supply, c.max_proposal_request)
+        token_batches, c.proposals, commons._funding_pool, commons._token_supply, c.max_proposal_request, c.random_state)
 
     initial_conditions = {
         "network": network,
@@ -140,6 +143,7 @@ def bootstrap_simulation(c: CommonsSimulationConfiguration):
             "debug": True,
             "alpha_days_to_80p_of_max_voting_weight": c.alpha(),
             "max_proposal_request": c.max_proposal_request,
+            "random_state": c.random_state
         }
     }
 

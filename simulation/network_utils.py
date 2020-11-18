@@ -50,34 +50,34 @@ def get_participants(network: nx.DiGraph) -> NodeDataView:
     return view.nodes(data="item")
 
 
-def add_proposal(network: nx.DiGraph, p: Proposal) -> Tuple[nx.DiGraph, int]:
+def add_proposal(network: nx.DiGraph, p: Proposal,random_state) -> Tuple[nx.DiGraph, int]:
     j = max(network.nodes) + 1
     network.add_node(j, item=p)
-    network = setup_support_edges(network, j)
+    network = setup_support_edges(network, random_state, j)
     return network, j
 
 
-def add_participant(network: nx.DiGraph, p: Participant) -> Tuple[nx.DiGraph, int]:
+def add_participant(network: nx.DiGraph, p: Participant, random_state) -> Tuple[nx.DiGraph, int]:
     j = max(network.nodes) + 1
     network.add_node(j, item=p)
-    network = setup_influence_edges_single(network, j)
-    network = setup_support_edges(network, j)
+    network = setup_influence_edges_single(network, j, random_state)
+    network = setup_support_edges(network, random_state, j)
     return network, j
 
 
-def create_network(token_batches: List[TokenBatch]) -> nx.DiGraph:
+def create_network(token_batches: List[TokenBatch], random_state) -> nx.DiGraph:
     """
     Creates a new DiGraph with Participants corresponding to the input
     TokenBatches.
     """
     network = nx.DiGraph()
     for i, tb in enumerate(token_batches):
-        p_instance = Participant(tb)
+        p_instance = Participant(tb, random_state)
         network.add_node(i, item=p_instance)
     return network
 
 
-def influence(scale=1, sigmas=3):
+def influence(random_state, scale=1, sigmas=3):
     """
     Calculates the likelihood of one node having influence over another node. If
     so, it returns an influence value, else None.
@@ -93,13 +93,13 @@ def influence(scale=1, sigmas=3):
     that adds new Participants later on can share this code.
     """
 
-    influence_rv = expon.rvs(loc=0.0, scale=scale)
+    influence_rv = expon.rvs(loc=0.0, scale=scale, random_state=random_state)
     if influence_rv > scale+sigmas*scale**2:
         return influence_rv
     return None
 
 
-def setup_influence_edges_bulk(network: nx.DiGraph) -> nx.DiGraph:
+def setup_influence_edges_bulk(network: nx.DiGraph, random_state) -> nx.DiGraph:
     """
     Calculates the chances that a Participant is influential enough to have an
     'influence' edge in the network to other Participants, and creates the
@@ -118,14 +118,14 @@ def setup_influence_edges_bulk(network: nx.DiGraph) -> nx.DiGraph:
     for i in participants:
         for other_participant in participants:
             if not(other_participant == i) and not network.has_edge(i, other_participant):
-                influence_rv = influence()
+                influence_rv = influence(random_state)
                 if influence_rv:
                     network.add_edge(i, other_participant,
                                      influence=influence_rv, type="influence")
     return network
 
 
-def setup_influence_edges_single(network: nx.DiGraph, participant: int):
+def setup_influence_edges_single(network: nx.DiGraph, participant: int, random_state):
     p = dict(get_participants(network))
     del p[participant]
     other_participants = p
@@ -134,19 +134,19 @@ def setup_influence_edges_single(network: nx.DiGraph, participant: int):
     # Participant at index 5, this creates the edges 0,5; 1,5; 2;5 etc.
     for other in other_participants:
         if not network.has_edge(other, participant):
-            influence_rv = influence()
+            influence_rv = influence(random_state)
             if influence_rv:
                 network.add_edge(other, participant,
                                  influence=influence_rv, type="influence")
         if not network.has_edge(participant, other):
-            influence_rv = influence()
+            influence_rv = influence(random_state)
             if influence_rv:
                 network.add_edge(participant, other,
                                  influence=influence_rv, type="influence")
     return network
 
 
-def setup_conflict_edges(network: nx.DiGraph, proposal=None, rate=.25) -> nx.DiGraph:
+def setup_conflict_edges(network: nx.DiGraph, random_state, proposal=None, rate=.25) -> nx.DiGraph:
     """
     Supporting one Proposal may mean going against another Proposal, in which
     case a Proposal-Proposal conflict edge is created. This function calculates
@@ -156,13 +156,13 @@ def setup_conflict_edges(network: nx.DiGraph, proposal=None, rate=.25) -> nx.DiG
     Proposal in network.nodes. If this argument is present, it will setup the
     conflict edges only for this Proposal.
     """
-    def loop_over_other_proposals(network, proposals, proposal):
+    def loop_over_other_proposals(network, proposals, proposal, random_state):
         for other_proposal in proposals:
             if not(other_proposal == proposal):
                 # (rate=0.25) means 25% of other Proposals are going to conflict
                 # with this particular Proposal. And when they do conflict, the
                 # conflict number is high (at least 1 - 0.25 = 0.75).
-                conflict_rv = np.random.rand()
+                conflict_rv = random_state.rand()
                 if conflict_rv < rate:
                     network.add_edge(proposal, other_proposal)
                     network.edges[(proposal, other_proposal)
@@ -178,12 +178,12 @@ def setup_conflict_edges(network: nx.DiGraph, proposal=None, rate=.25) -> nx.DiG
     # Do not use "if not proposal" - index number 0 will evaluate to False.
     if proposal is None:
         for i in proposals:
-            network = loop_over_other_proposals(network, proposals, i)
+            network = loop_over_other_proposals(network, proposals, i, random_state)
         return network
-    return loop_over_other_proposals(network, proposals, proposal)
+    return loop_over_other_proposals(network, proposals, proposal, random_state)
 
 
-def setup_support_edges(network: nx.DiGraph, idx=None) -> nx.DiGraph:
+def setup_support_edges(network: nx.DiGraph, random_state, idx=None) -> nx.DiGraph:
     """
     Every Participant has a 'support' edge to every Proposal, and vice versa,
     indicating how much that Participant supports that Proposal. This function
@@ -193,13 +193,13 @@ def setup_support_edges(network: nx.DiGraph, idx=None) -> nx.DiGraph:
     support edges to other Proposal nodes and vice versa if the node is a
     Proposal.
     """
-    def create_support_edge(n, i, j):
+    def create_support_edge(n, i, j, random_state):
         # Token Holder -> Proposal Relationship
         # Looks like Zargham skewed this distribution heavily towards
         # numbers smaller than 0.25 This is the affinity towards proposals.
         # Most Participants won't care about most proposals, but then there
         # will be a few Proposals that they really care about.
-        rv = np.random.rand()
+        rv = random_state.rand()
         a_rv = 1-4*(1-rv)*rv
         n.add_edge(i, j, affinity=a_rv, tokens=0, conviction=0, type="support")
         return n
@@ -209,34 +209,34 @@ def setup_support_edges(network: nx.DiGraph, idx=None) -> nx.DiGraph:
     if idx is None:
         for prop in proposals:
             for par in participants:
-                network = create_support_edge(network, par, prop)
+                network = create_support_edge(network, par, prop, random_state)
 
     else:
         if isinstance(network.nodes[idx]['item'], Proposal):
             for par in participants:
-                network = create_support_edge(network, par, idx)
+                network = create_support_edge(network, par, idx, random_state)
         elif isinstance(network.nodes[idx]['item'], Participant):
             for prop in proposals:
-                network = create_support_edge(network, idx, prop)
+                network = create_support_edge(network, idx, prop, random_state)
     return network
 
 
-def bootstrap_network(n_participants: List[TokenBatch], n_proposals: int, funding_pool: float, token_supply: float, max_proposal_request: float) -> nx.DiGraph:
+def bootstrap_network(n_participants: List[TokenBatch], n_proposals: int, funding_pool: float, token_supply: float, max_proposal_request: float, random_state) -> nx.DiGraph:
     """
     Convenience function that creates a network ready for simulation in
     the Python notebook in one line.
     """
-    n = create_network(n_participants)
+    n = create_network(n_participants, random_state)
 
     for _ in range(n_proposals):
         idx = len(n)
-        r_rv = gamma.rvs(3, loc=0.001, scale=10000)
+        r_rv = gamma.rvs(3, loc=0.001, scale=10000, random_state=random_state)
         n.add_node(idx, item=Proposal(funds_requested=r_rv, trigger=trigger_threshold(
             r_rv, funding_pool, token_supply, max_proposal_request)))
 
-    n = setup_support_edges(n)
-    n = setup_conflict_edges(n)
-    n = setup_influence_edges_bulk(n)
+    n = setup_support_edges(n, random_state)
+    n = setup_conflict_edges(n, random_state)
+    n = setup_influence_edges_bulk(n, random_state)
     return n
 
 

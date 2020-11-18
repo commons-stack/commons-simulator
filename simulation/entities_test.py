@@ -2,6 +2,8 @@ import unittest
 import uuid
 from unittest.mock import MagicMock, patch
 
+import numpy as np
+
 import utils
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch, VestingOptions
@@ -20,23 +22,26 @@ class TestProposal(unittest.TestCase):
 
 class TestParticipant(unittest.TestCase):
     def setUp(self):
-        self.p = Participant(TokenBatch(100, 100))
+        self.params = {"random_state": np.random.RandomState(None)}
+        self.p = Participant(TokenBatch(100, 100), self.params["random_state"])
 
     def test_buy(self):
         """
         Test that the function works. If we set the probability to 1, Participant should buy in.
         If we set the probability to 0, 0 will be returned.
         """
+        random_state = self.params["random_state"]
+
         with patch('entities.probability') as mock:
             mock.return_value = True
             # Must set Participant's sentiment artificially high, because of Zargham's force calculation
             self.p.sentiment = 1
-            delta_holdings = self.p.buy()
+            delta_holdings = self.p.buy(random_state)
             self.assertGreater(delta_holdings, 0)
 
         with patch('entities.probability') as mock:
             mock.return_value = False
-            delta_holdings = self.p.buy()
+            delta_holdings = self.p.buy(random_state)
             self.assertEqual(delta_holdings, 0)
 
     def test_sell(self):
@@ -44,16 +49,17 @@ class TestParticipant(unittest.TestCase):
         Test that the function works. If we set the probability to 1, Participant should buy in.
         If we set the probability to 0, 0 will be returned.
         """
+        random_state = self.params["random_state"]
 
         with patch('entities.probability') as mock:
             mock.return_value = True
             self.p.sentiment = 0.1
-            delta_holdings = self.p.sell()
+            delta_holdings = self.p.sell(random_state)
             self.assertLess(delta_holdings, 0)
 
         with patch('entities.probability') as mock:
             mock.return_value = False
-            delta_holdings = self.p.sell()
+            delta_holdings = self.p.sell(random_state)
             self.assertEqual(delta_holdings, 0)
 
     def test_create_proposal(self):
@@ -61,13 +67,15 @@ class TestParticipant(unittest.TestCase):
         Test that the function works. If we set the probability to 1, we should
         get True. If not, we should get False.
         """
+        random_state = self.params["random_state"]
+
         with patch('entities.probability') as mock:
             mock.return_value = True
-            self.assertTrue(self.p.create_proposal(10000, 0.5, 100000))
+            self.assertTrue(self.p.create_proposal(10000, 0.5, 100000, random_state))
 
         with patch('entities.probability') as mock:
             mock.return_value = False
-            self.assertFalse(self.p.create_proposal(10000, 0.5, 100000))
+            self.assertFalse(self.p.create_proposal(10000, 0.5, 100000, random_state))
 
     def test_vote_on_candidate_proposals(self):
         """
@@ -75,7 +83,8 @@ class TestParticipant(unittest.TestCase):
         get a dict of Proposal UUIDs that the Participant would vote on. If not,
         we should get an empty dict.
         """
-
+        random_state = self.params["random_state"]
+        
         candidate_proposals = {
             0: 1.0,
             1: 1.0,
@@ -83,12 +92,12 @@ class TestParticipant(unittest.TestCase):
         }
         with patch('entities.probability') as mock:
             mock.return_value = False
-            ans = self.p.vote_on_candidate_proposals(candidate_proposals)
+            ans = self.p.vote_on_candidate_proposals(candidate_proposals, random_state)
             self.assertFalse(ans)
 
         with patch('entities.probability') as mock:
             mock.return_value = True
-            ans = self.p.vote_on_candidate_proposals(candidate_proposals)
+            ans = self.p.vote_on_candidate_proposals(candidate_proposals, random_state)
             self.assertEqual(len(ans), 3)
 
     def test_vote_on_candidate_proposals_zargham_algorithm(self):
@@ -100,6 +109,7 @@ class TestParticipant(unittest.TestCase):
         for them too, otherwise if they don't meet the cutoff value you will
         only vote for your favourite Proposal.
         """
+        random_state = self.params["random_state"]
 
         candidate_proposals = {
             0: 1.0,
@@ -109,7 +119,7 @@ class TestParticipant(unittest.TestCase):
         }
         with patch('entities.probability') as mock:
             mock.return_value = True
-            ans = self.p.vote_on_candidate_proposals(candidate_proposals)
+            ans = self.p.vote_on_candidate_proposals(candidate_proposals, random_state)
             reference = {
                 0: 1.0,
                 1: 0.9,
