@@ -7,7 +7,7 @@ import numpy as np
 
 import networkx as nx
 
-from simulation import new_probability_func, new_exponential_func, new_gamma_func, new_random_number_func, new_choice_func
+from utils import new_probability_func, new_exponential_func, new_gamma_func, new_random_number_func, new_choice_func
 from entities import Proposal, ProposalStatus
 from hatch import Commons, TokenBatch, VestingOptions
 from network_utils import (add_proposal, bootstrap_network,

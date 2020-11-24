@@ -6,7 +6,7 @@ import numpy as np
 
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch, VestingOptions
-from simulation import new_probability_func, new_exponential_func, new_gamma_func, new_random_number_func
+from utils import new_probability_func, new_exponential_func, new_gamma_func, new_random_number_func
 from network_utils import (add_proposal, add_participant, bootstrap_network, calc_avg_sentiment,
                            calc_median_affinity, calc_total_affinity, calc_total_conviction,
                            calc_total_funds_requested, find_in_edges_of_type_for_proposal, get_edges_by_type, get_edges_by_participant_and_type,

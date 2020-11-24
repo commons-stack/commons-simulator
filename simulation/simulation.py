@@ -1,11 +1,11 @@
 from typing import Tuple
 import numpy as np
-from scipy.stats import expon, gamma    
 from hatch import create_token_batches, TokenBatch, Commons, convert_80p_to_cliff_and_halflife
 
 from entities import attrs
 from policies import GenerateNewParticipant, GenerateNewProposal, GenerateNewFunding, ActiveProposals, ProposalFunding, ParticipantVoting, ParticipantSellsTokens, ParticipantBuysTokens, ParticipantExits
 from network_utils import bootstrap_network, calc_avg_sentiment
+from utils import new_probability_func, new_exponential_func, new_gamma_func, new_random_number_func, new_choice_func
 
 
 def update_collateral_pool(params, step, sL, s, _input):
@@ -40,43 +40,6 @@ def update_avg_sentiment(params, step, sL, s, _input):
 
 def save_policy_output(params, step, sL, s, _input):
     return "policy_output", _input
-
-
-def new_probability_func(seed):
-    random_state = np.random.RandomState(seed)
-    def probability(rate):
-        if rate > 1.0:
-            raise Exception("Rate has a maximum value of 1.0")
-        return random_state.rand() < rate
-    return probability
-
-
-def new_exponential_func(seed):
-    random_state = np.random.RandomState(seed)
-    def exponential(loc, scale):
-        return expon.rvs(loc=loc, scale=scale, random_state=random_state)
-    return exponential
-
-
-def new_gamma_func(seed):
-    random_state = np.random.RandomState(seed)
-    def gamma_func(alpha, loc, scale):
-        return gamma.rvs(alpha, loc=loc, scale=scale, random_state=random_state)
-    return gamma_func
-
-
-def new_random_number_func(seed):
-    random_state = np.random.RandomState(seed)
-    def random_number_func():
-        return random_state.rand()
-    return random_number_func
-
-
-def new_choice_func(seed):
-    random_state = np.random.RandomState(seed)
-    def choice_func(choice_list):
-        return random_state.choice(choice_list)
-    return choice_func
 
 
 # This sub-policy block should be run every time the Commons object is updated.
