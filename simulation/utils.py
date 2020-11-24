@@ -4,15 +4,6 @@ from types import FunctionType
 from scipy.stats import expon, gamma    
 
 
-def probability(rate):
-    """
-    The higher the rate, the more likely this function will return True (up till 1.0)
-    Mock this function out to make behaviour deterministic.
-    """
-    if rate > 1.0:
-        raise Exception("Rate has a maximum value of 1.0")
-    return np.random.rand() < rate
-
 
 def new_probability_func(seed):
     random_state = np.random.RandomState(seed)
