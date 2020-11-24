@@ -1,5 +1,6 @@
 from typing import Tuple
 import numpy as np
+from scipy.stats import expon, gamma    
 from hatch import create_token_batches, TokenBatch, Commons, convert_80p_to_cliff_and_halflife
 
 from entities import attrs
@@ -41,6 +42,43 @@ def save_policy_output(params, step, sL, s, _input):
     return "policy_output", _input
 
 
+def new_probability_func(seed):
+    random_state = np.random.RandomState(seed)
+    def probability(rate):
+        if rate > 1.0:
+            raise Exception("Rate has a maximum value of 1.0")
+        return random_state.rand() < rate
+    return probability
+
+
+def new_exponential_func(seed):
+    random_state = np.random.RandomState(seed)
+    def exponential(loc, scale):
+        return expon.rvs(loc=loc, scale=scale, random_state=random_state)
+    return exponential
+
+
+def new_gamma_func(seed):
+    random_state = np.random.RandomState(seed)
+    def gamma_func(alpha, loc, scale):
+        return gamma.rvs(alpha, loc=loc, scale=scale, random_state=random_state)
+    return gamma_func
+
+
+def new_random_number_func(seed):
+    random_state = np.random.RandomState(seed)
+    def random_number_func():
+        return random_state.rand()
+    return random_number_func
+
+
+def new_choice_func(seed):
+    random_state = np.random.RandomState(seed)
+    def choice_func(choice_list):
+        return random_state.choice(choice_list)
+    return choice_func
+
+
 # This sub-policy block should be run every time the Commons object is updated.
 sync_state_variables = {
     "policies": {},
@@ -71,7 +109,7 @@ class CommonsSimulationConfiguration:
                  days_to_80p_of_max_voting_weight=10,
                  max_proposal_request=0.2,
                  timesteps_days=730,
-                 random_state=np.random.RandomState(None)):
+                 random_seed=None):
         self.hatchers = hatchers
         self.proposals = proposals
         self.hatch_tribute = hatch_tribute
@@ -87,7 +125,12 @@ class CommonsSimulationConfiguration:
 
         self.timesteps_days = timesteps_days  # Simulate 2*365=730 days
 
-        self.random_state = random_state
+        self.random_seed = random_seed
+        self.probability_func = new_probability_func(random_seed)
+        self.exponential_func = new_exponential_func(random_seed)
+        self.gamma_func = new_gamma_func(random_seed)
+        self.random_number_func = new_random_number_func(random_seed)
+        self.choice_func = new_choice_func(random_seed)
 
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, attrs(self))
@@ -111,7 +154,7 @@ class CommonsSimulationConfiguration:
 
 
 def bootstrap_simulation(c: CommonsSimulationConfiguration):
-    contributions = [c.random_state.rand() * 10e5 for i in range(c.hatchers)]
+    contributions = [c.random_number_func() * 10e5 for i in range(c.hatchers)]
     cliff_days, halflife_days = c.cliff_and_halflife()
     token_batches, initial_token_supply = create_token_batches(
         contributions, 0.1, cliff_days, halflife_days)
@@ -119,7 +162,8 @@ def bootstrap_simulation(c: CommonsSimulationConfiguration):
     commons = Commons(sum(contributions), initial_token_supply,
                       hatch_tribute=c.hatch_tribute, exit_tribute=c.exit_tribute, kappa=c.kappa)
     network = bootstrap_network(
-        token_batches, c.proposals, commons._funding_pool, commons._token_supply, c.max_proposal_request, c.random_state)
+        token_batches, c.proposals, commons._funding_pool, commons._token_supply, c.max_proposal_request,
+        c.probability_func, c.random_number_func, c.gamma_func, c.exponential_func)
 
     initial_conditions = {
         "network": network,
@@ -143,7 +187,12 @@ def bootstrap_simulation(c: CommonsSimulationConfiguration):
             "debug": True,
             "alpha_days_to_80p_of_max_voting_weight": c.alpha(),
             "max_proposal_request": c.max_proposal_request,
-            "random_state": c.random_state
+            "random_seed": c.random_seed,
+            "probability_func": c.probability_func,
+            "exponential_func": c.exponential_func,
+            "gamma_func": c.gamma_func,
+            "random_number_func": c.random_number_func,
+            "choice_func": c.choice_func
         }
     }
 

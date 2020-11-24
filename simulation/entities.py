@@ -8,7 +8,7 @@ import numpy as np
 import config
 from convictionvoting import trigger_threshold
 from hatch import TokenBatch
-from utils import probability, attrs
+from utils import attrs
 
 
 ProposalStatus = Enum("ProposalStatus", "CANDIDATE ACTIVE COMPLETED FAILED")
@@ -59,14 +59,16 @@ class Proposal:
 
 
 class Participant:
-    def __init__(self, holdings: TokenBatch, random_state):
-        self.sentiment = random_state.rand()
+    def __init__(self, holdings: TokenBatch, probability_func, random_number_func):
+        self._probability = probability_func
+        self._random_number = random_number_func
+        self.sentiment = self._random_number()
         self.holdings = holdings
 
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, attrs(self))
 
-    def buy(self, random_state) -> float:
+    def buy(self) -> float:
         """
         If the Participant decides to buy more tokens, returns the number of
         tokens. Otherwise, return 0.
@@ -77,12 +79,12 @@ class Participant:
         """
         engagement_rate = 0.3 * self.sentiment
         force = self.sentiment - config.sentiment_sensitivity
-        if probability(engagement_rate, random_state) and force > 0:
-            delta_holdings = random_state.rand() * force * config.delta_holdings_scale
+        if self._probability(engagement_rate) and force > 0:
+            delta_holdings = self._random_number() * force * config.delta_holdings_scale
             return delta_holdings
         return 0
 
-    def sell(self, random_state) -> float:
+    def sell(self) -> float:
         """
         Decides to sell some tokens, and if so how many. If the Participant
         decides to sell some tokens, returns the number of tokens. Otherwise,
@@ -94,8 +96,8 @@ class Participant:
         """
         engagement_rate = 0.3 * self.sentiment
         force = self.sentiment - config.sentiment_sensitivity
-        if probability(engagement_rate, random_state) and force < 0:
-            delta_holdings = random_state.rand() * force * self.holdings.spendable()
+        if self._probability(engagement_rate) and force < 0:
+            delta_holdings = self._random_number() * force * self.holdings.spendable()
             return delta_holdings
         return 0
 
@@ -113,7 +115,7 @@ class Participant:
         """
         return self.holdings.spend(x)
 
-    def create_proposal(self, total_funds_requested, median_affinity, funding_pool, random_state) -> bool:
+    def create_proposal(self, total_funds_requested, median_affinity, funding_pool) -> bool:
         """
         Here the Participant will decide whether or not to create a new
         Proposal.
@@ -133,10 +135,10 @@ class Participant:
         percent_of_funding_pool_being_requested = total_funds_requested/funding_pool
         proposal_rate = median_affinity / \
             (1 + percent_of_funding_pool_being_requested)
-        new_proposal = probability(proposal_rate, random_state)
+        new_proposal = self._probability(proposal_rate)
         return new_proposal
 
-    def vote_on_candidate_proposals(self, candidate_proposals: dict, random_state) -> dict:
+    def vote_on_candidate_proposals(self, candidate_proposals: dict) -> dict:
         """
         Here the Participant decides which Candidate Proposals he will stake
         tokens on. This method does not decide how many tokens he will stake
@@ -160,7 +162,7 @@ class Participant:
         """
         new_voted_proposals = {}
         engagement_rate = 1.0
-        if probability(engagement_rate, random_state):
+        if self._probability(engagement_rate):
             # Put your tokens on your favourite Proposals, where favourite is
             # calculated as 0.75 * (the affinity for the Proposal you like the
             # most) e.g. if there are 2 Proposals that you have affinity 0.8,
@@ -204,12 +206,12 @@ class Participant:
 
         return tokens_per_supported_proposal
 
-    def wants_to_exit(self, random_state):
+    def wants_to_exit(self):
         """
         Returns True if the Participant wants to exit (if sentiment < 0.5,
         random chance of exiting), otherwise False
         """
         if self.sentiment < 0.5:
             engagement_rate = 0.3 * self.sentiment
-            return probability(1-engagement_rate, random_state)
+            return self._probability(1-engagement_rate)
         return False

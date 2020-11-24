@@ -1,7 +1,6 @@
 import config
 import copy
 import numpy as np
-from scipy.stats import expon, gamma
 
 from convictionvoting import trigger_threshold
 from entities import Participant, Proposal, ProposalStatus
@@ -10,7 +9,6 @@ from network_utils import (add_proposal, add_participant, calc_median_affinity, 
                            calc_total_funds_requested, find_in_edges_of_type_for_proposal, get_edges_by_type,
                            get_participants, get_proposals,
                            setup_influence_edges_single, setup_support_edges)
-from utils import probability
 
 
 class GenerateNewParticipant:
@@ -18,7 +16,8 @@ class GenerateNewParticipant:
     def p_randomly(params, step, sL, s, **kwargs):
         commons = s["commons"]
         sentiment = s["sentiment"]
-        random_state = params["random_state"]
+        probability = params["probability_func"]
+        exponential = params["exponential_func"]
         ans = {
             "new_participant": False,
             "new_participant_investment": None,
@@ -26,7 +25,7 @@ class GenerateNewParticipant:
         }
 
         arrival_rate = (1+sentiment)/10
-        if probability(arrival_rate, random_state):
+        if probability(arrival_rate):
             ans["new_participant"] = True
             # Here we randomly generate each participant's post-Hatch
             # investment, in DAI/USD.
@@ -39,8 +38,8 @@ class GenerateNewParticipant:
             # scale is the standard deviation, so if scale=2, investments will
             # be around 0-12 DAI or even 15, if scale=100, the investments will be
             # around 0-600 DAI.
-            ans["new_participant_investment"] = expon.rvs(loc=config.investment_new_participant_min,
-                                                          scale=config.investment_new_participant_stdev, random_state=random_state)
+            ans["new_participant_investment"] = exponential(loc=config.investment_new_participant_min,
+                                                          scale=config.investment_new_participant_stdev)
             ans["new_participant_tokens"] = commons.dai_to_tokens(
                 ans["new_participant_investment"])
         return ans
@@ -48,10 +47,12 @@ class GenerateNewParticipant:
     @staticmethod
     def su_add_to_network(params, step, sL, s, _input, **kwargs):
         network = s["network"]
-        random_state = params["random_state"]
+        probability = params["probability_func"]
+        exponential = params["exponential_func"]
+        random_number = params["random_number_func"]
         if _input["new_participant"]:
             network, i = add_participant(network, Participant(TokenBatch(
-                0, _input["new_participant_tokens"]), random_state), random_state)
+                0, _input["new_participant_tokens"]), probability, random_number), exponential, random_number)
 
             if params.get("debug"):
                 print("GenerateNewParticipant: A new Participant {} invested {}DAI for {} tokens".format(
@@ -76,15 +77,15 @@ class GenerateNewProposal:
         """
         funding_pool = s["funding_pool"]
         network = s["network"]
-        random_state = params["random_state"]
+        choice = params["choice_func"]
 
         participants = get_participants(network)
         participants_dict = dict(participants)
-        i = random_state.choice(list(participants_dict))
+        i = choice(list(participants_dict))
         participant = participants_dict[i]
 
         wants_to_create_proposal = participant.create_proposal(calc_total_funds_requested(
-            network), calc_median_affinity(network), funding_pool, random_state)
+            network), calc_median_affinity(network), funding_pool)
 
         return {"new_proposal": wants_to_create_proposal, "proposed_by_participant": i}
 
@@ -93,14 +94,15 @@ class GenerateNewProposal:
         network = s["network"]
         funding_pool = s["funding_pool"]
         token_supply = s["token_supply"]
-        random_state = params["random_state"]
+        gamma = params["gamma_func"]
+        random_number = params["random_number_func"]
         if _input["new_proposal"]:
             # Create the Proposal and add it to the network.
             rescale = funding_pool * config.scale_factor
-            r_rv = gamma.rvs(config.funds_requested_alpha, loc=config.funds_requested_min, scale=rescale, random_state=random_state)
+            r_rv = gamma(config.funds_requested_alpha, loc=config.funds_requested_min, scale=rescale)
             proposal = Proposal(funds_requested=r_rv,
                                 trigger=trigger_threshold(r_rv, funding_pool, token_supply, params["max_proposal_request"]))
-            network, proposal_idx = add_proposal(network, proposal, random_state)
+            network, proposal_idx = add_proposal(network, proposal, random_number)
 
             # add_proposal() has created support edges from other Participants
             # to this Proposal. If the Participant is the one who created this
@@ -122,9 +124,9 @@ class GenerateNewFunding:
         TODO: buy tokens and sell them immediately within the same simulation
         step, assuming a certain position size.
         """
-        random_state = params["random_state"]
-        exits = [expon.rvs(loc=config.speculator_position_size_min, scale=config.speculator_position_size_stdev,
-                           random_state=random_state) for i in range(config.speculators)]
+        exponential = params["exponential_func"]
+        exits = [exponential(loc=config.speculator_position_size_min, scale=config.speculator_position_size_stdev)
+                            for i in range(config.speculators)]
         commons = s["commons"]
         funding = sum(exits) * commons.exit_tribute
         return {"funding": funding}
@@ -141,7 +143,7 @@ class ActiveProposals:
     @staticmethod
     def p_influenced_by_grant_size(params, step, sL, s, **kwargs):
         network = s["network"]
-        random_state = params["random_state"]
+        probability = params["probability_func"]
 
         active_proposals = get_proposals(network, status=ProposalStatus.ACTIVE)
         proposals_that_will_fail = []
@@ -152,9 +154,9 @@ class ActiveProposals:
                            np.log(proposal.funds_requested))
             r_success = 1/(config.base_success_rate +
                            np.log(proposal.funds_requested))
-            if probability(r_failure, random_state):
+            if probability(r_failure):
                 proposals_that_will_fail.append(idx)
-            elif probability(r_success, random_state):
+            elif probability(r_success):
                 proposals_that_will_succeed.append(idx)
         return {"failed": proposals_that_will_fail, "succeeded": proposals_that_will_succeed}
 
@@ -266,7 +268,6 @@ class ParticipantVoting:
         how much it will stake on each of them.
         """
         network = s["network"]
-        random_state = params["random_state"]
         participants = get_participants(network)
         candidate_proposals = get_proposals(
             network, status=ProposalStatus.CANDIDATE)
@@ -277,7 +278,7 @@ class ParticipantVoting:
             for proposal_idx, _ in candidate_proposals:
                 proposal_idx_affinity[proposal_idx] = network[participant_idx][proposal_idx]["affinity"]
             proposals_that_participant_cares_enough_to_vote_on = participant.vote_on_candidate_proposals(
-                proposal_idx_affinity, random_state)
+                proposal_idx_affinity)
 
             stake_across_all_supported_proposals_input = []
             for proposal_idx, affinity in proposals_that_participant_cares_enough_to_vote_on.items():
@@ -337,14 +338,13 @@ class ParticipantBuysTokens:
     def p_decide_to_buy_tokens_bulk(params, step, sL, s, **kwargs):
         network = s["network"]
         commons = s["commons"]
-        random_state = params["random_state"]
         participants = get_participants(network)
         ans = {}
         total_dai = 0
         for i, participant in participants:
             # If a participant decides to buy, it will be specified in units of DAI.
             # If a participant decides to sell, it will be specified in units of tokens.
-            x = participant.buy(random_state)
+            x = participant.buy()
             if x > 0:
                 total_dai += x
                 ans[i] = x
@@ -407,14 +407,13 @@ class ParticipantSellsTokens:
     def p_decide_to_sell_tokens_bulk(params, step, sL, s, **kwargs):
         network = s["network"]
         commons = s["commons"]
-        random_state = params["random_state"]
         participants = get_participants(network)
         ans = {}
         total_tokens = 0
         for i, participant in participants:
             # If a participant decides to buy, it will be specified in units of DAI.
             # If a participant decides to sell, it will be specified in units of tokens.
-            x = participant.sell(random_state)
+            x = participant.sell()
             if x > 0:
                 total_tokens += x
                 ans[i] = x
@@ -472,11 +471,10 @@ class ParticipantExits:
     @staticmethod
     def p_participant_decides_if_he_wants_to_exit(params, step, sL, s, **kwargs):
         network = s["network"]
-        random_state = params["random_state"]
         participants = get_participants(network)
         defectors = {}
         for i, participant in participants:
-            e = participant.wants_to_exit(random_state)
+            e = participant.wants_to_exit()
             if e:
                 defectors[i] = {
                     "sentiment": participant.sentiment,

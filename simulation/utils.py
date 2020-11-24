@@ -3,14 +3,14 @@ from inspect import getmembers
 from types import FunctionType
 
 
-def probability(rate, random_state):
+def probability(rate):
     """
     The higher the rate, the more likely this function will return True (up till 1.0)
     Mock this function out to make behaviour deterministic.
     """
     if rate > 1.0:
         raise Exception("Rate has a maximum value of 1.0")
-    return random_state.rand() < rate
+    return np.random.rand() < rate
 
 
 """

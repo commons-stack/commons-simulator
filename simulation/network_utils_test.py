@@ -6,6 +6,7 @@ import numpy as np
 
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch, VestingOptions
+from simulation import new_probability_func, new_exponential_func, new_gamma_func, new_random_number_func
 from network_utils import (add_proposal, add_participant, bootstrap_network, calc_avg_sentiment,
                            calc_median_affinity, calc_total_affinity, calc_total_conviction,
                            calc_total_funds_requested, find_in_edges_of_type_for_proposal, get_edges_by_type, get_edges_by_participant_and_type,
@@ -17,10 +18,16 @@ from network_utils import (add_proposal, add_participant, bootstrap_network, cal
 class TestNetworkUtils(unittest.TestCase):
     def setUp(self):
         self.network = nx.DiGraph()
-        self.params = {"random_state": np.random.RandomState(None)}
+        self.params = {
+            "probability_func": new_probability_func(seed=None),
+            "exponential_func": new_exponential_func(seed=None),
+            "gamma_func": new_gamma_func(seed=None),
+            "random_number_func": new_random_number_func(seed=None)
+        }
 
         for i in range(0, 10, 2):
-            self.network.add_node(i, item=Participant(TokenBatch(0, 0), self.params["random_state"]))
+            self.network.add_node(i, item=Participant(TokenBatch(0, 0), self.params["probability_func"], 
+                                self.params["random_number_func"]))
             self.network.add_node(i+1, item=Proposal(10, 5))
 
     def test_get_participants(self):
@@ -47,7 +54,7 @@ class TestNetworkUtils(unittest.TestCase):
         self.assertEqual(len(res), 1)
 
     def test_get_edges_by_participant_and_type(self):
-        self.network = setup_support_edges(self.network, self.params["random_state"])
+        self.network = setup_support_edges(self.network, self.params["random_number_func"])
         res = get_edges_by_participant_and_type(self.network, 0, "support")
 
         # Assert that Participant 0 has support edges to all other Proposals
@@ -64,7 +71,7 @@ class TestNetworkUtils(unittest.TestCase):
         """
         with patch('network_utils.influence') as mock:
             mock.return_value = 0.5
-            self.network = setup_influence_edges_bulk(self.network, self.params["random_state"])
+            self.network = setup_influence_edges_bulk(self.network, self.params["exponential_func"])
             edges = get_edges_by_type(self.network, "influence")
             self.assertEqual(len(edges), 20)
             for e in edges:
@@ -79,7 +86,7 @@ class TestNetworkUtils(unittest.TestCase):
         """
         with patch('network_utils.influence') as mock:
             mock.return_value = 0.5
-            self.network = setup_influence_edges_bulk(self.network, self.params["random_state"])
+            self.network = setup_influence_edges_bulk(self.network, self.params["exponential_func"])
             edges = get_edges_by_type(self.network, "influence")
             self.assertEqual(len(edges), 20)
             for e in edges:
@@ -87,7 +94,7 @@ class TestNetworkUtils(unittest.TestCase):
                     e[0], e[1])["influence"], 0.5)
 
             mock.return_value = 0.8
-            self.network = setup_influence_edges_bulk(self.network, self.params["random_state"])
+            self.network = setup_influence_edges_bulk(self.network, self.params["exponential_func"])
             edges = get_edges_by_type(self.network, "influence")
             self.assertEqual(len(edges), 20)
             for e in edges:
@@ -104,7 +111,7 @@ class TestNetworkUtils(unittest.TestCase):
         with patch('network_utils.influence') as mock:
             mock.return_value = 0.5
             self.network = setup_influence_edges_single(
-                                    self.network, 0, self.params["random_state"])
+                                    self.network, 0, self.params["exponential_func"])
             edges = list(get_edges_by_type(self.network, "influence"))
             self.assertEqual(len(edges), 8)
             for e in edges:
@@ -129,7 +136,7 @@ class TestNetworkUtils(unittest.TestCase):
         with patch('network_utils.influence') as mock:
             mock.return_value = 0.5
             self.network = setup_influence_edges_single(
-                                    self.network, 0, self.params["random_state"])
+                                    self.network, 0, self.params["exponential_func"])
             edges = list(get_edges_by_type(self.network, "influence"))
             self.assertEqual(len(edges), 8)
 
@@ -142,7 +149,7 @@ class TestNetworkUtils(unittest.TestCase):
             # Now, ensure that the original influence value of 0.5 was not
             # overwritten with 0.8
             mock.return_value = 0.8
-            self.network = setup_influence_edges_single(self.network, 0, self.params["random_state"])
+            self.network = setup_influence_edges_single(self.network, 0, self.params["exponential_func"])
             edges = list(get_edges_by_type(self.network, "influence"))
             self.assertEqual(len(edges), 8)
             for e in edges:
@@ -155,7 +162,7 @@ class TestNetworkUtils(unittest.TestCase):
         nodes. Also ensures that edges refer to the node index, not the Proposal
         object stored within the node.
         """
-        self.network = setup_conflict_edges(self.network, self.params["random_state"], rate=1)
+        self.network = setup_conflict_edges(self.network, self.params["random_number_func"], rate=1)
         edges = get_edges_by_type(self.network, "conflict")
 
         self.assertEqual(len(edges), 20)
@@ -172,7 +179,7 @@ class TestNetworkUtils(unittest.TestCase):
         """
         proposal_count = len(get_proposals(self.network))
 
-        self.network = setup_conflict_edges(self.network, self.params["random_state"], 1, rate=1)
+        self.network = setup_conflict_edges(self.network, self.params["random_number_func"], 1, rate=1)
         edges = get_edges_by_type(self.network, "conflict")
         self.assertEqual(len(edges), proposal_count-1)
         for e in edges:
@@ -185,7 +192,7 @@ class TestNetworkUtils(unittest.TestCase):
         Tests that support edges are created between every Participant and
         Proposal if no node index is specified.
         """
-        network = setup_support_edges(self.network, self.params["random_state"])
+        network = setup_support_edges(self.network, self.params["random_number_func"])
         self.assertEqual(len(network.edges), 25)
 
     def test_setup_support_edges_single_participant(self):
@@ -193,7 +200,7 @@ class TestNetworkUtils(unittest.TestCase):
         Tests that a support edge is created to other Proposals when the
         function is fed a node that contains a Participant
         """
-        network = setup_support_edges(self.network, self.params["random_state"], 0)
+        network = setup_support_edges(self.network, self.params["random_number_func"], 0)
         for i, j in network.edges:
             self.assertEqual(i, 0)
             self.assertIsInstance(network.nodes[i]["item"], Participant)
@@ -204,7 +211,7 @@ class TestNetworkUtils(unittest.TestCase):
         Tests that a support edge is created to other Participants when the
         function is fed a node that contains a Proposal
         """
-        network = setup_support_edges(self.network, self.params["random_state"], 1)
+        network = setup_support_edges(self.network, self.params["random_number_func"], 1)
         for i, j in network.edges:
             self.assertEqual(j, 1)
             self.assertIsInstance(network.nodes[i]["item"], Participant)
@@ -217,7 +224,9 @@ class TestNetworkUtils(unittest.TestCase):
         token_batches = [TokenBatch(1000, VestingOptions(10, 30))
                          for _ in range(4)]
         network = bootstrap_network(token_batches,
-                                    1, 3000, 4e6, 0.2, self.params["random_state"])
+                                    1, 3000, 4e6, 0.2, self.params["probability_func"],
+                                    self.params["random_number_func"], self.params["gamma_func"],
+                                    self.params["exponential_func"])
 
         edges = list(network.edges(data="type"))
         _, _, edge_types = list(zip(*edges))
@@ -239,7 +248,7 @@ class TestNetworkUtils(unittest.TestCase):
         This test ensures that the Proposal was added and that
         setup_conflict_edges() was executed for that particular node.
         """
-        n1, j = add_proposal(self.network, Proposal(23, 111), self.params["random_state"])
+        n1, j = add_proposal(self.network, Proposal(23, 111), self.params["random_number_func"])
         self.assertEqual(n1.nodes[j]["item"].funds_requested, 23)
         self.assertEqual(n1.nodes[j]["item"].trigger, 111)
 
@@ -256,8 +265,9 @@ class TestNetworkUtils(unittest.TestCase):
         particular node.
         """
         n1, j = add_participant(self.network,
-                                Participant(TokenBatch(0, 0), self.params["random_state"]),
-                                self.params["random_state"] )
+                                Participant(TokenBatch(0, 0), self.params["probability_func"], 
+                                self.params["random_number_func"]), self.params["exponential_func"],
+                                self.params["random_number_func"])
         self.assertIsInstance(n1.nodes[j]["item"], Participant)
 
         self.assertEqual(len(n1.edges), 5)
@@ -271,7 +281,7 @@ class TestNetworkUtils(unittest.TestCase):
         Ensure that the function reports the correct sum of conviction from all
         support edges.
         """
-        self.network = setup_support_edges(self.network, self.params["random_state"])
+        self.network = setup_support_edges(self.network, self.params["random_number_func"])
         ans = calc_total_conviction(self.network, 1)
         self.assertEqual(ans, 0)
 
@@ -292,7 +302,7 @@ class TestNetworkUtils(unittest.TestCase):
         Ensure that the affinities in the support edges add up to >0 (since they
         are randomly generated, they won't be 0)
         """
-        self.network = setup_support_edges(self.network, self.params["random_state"])
+        self.network = setup_support_edges(self.network, self.params["random_number_func"])
         ans = calc_total_affinity(self.network)
         self.assertNotEqual(ans, 0)
 
@@ -319,8 +329,8 @@ class TestNetworkUtils(unittest.TestCase):
         """
         Ensure that only edges of the specified type are included in the answer
         """
-        self.network = setup_support_edges(self.network, self.params["random_state"])
-        self.network = setup_conflict_edges(self.network, self.params["random_state"], rate=1)
+        self.network = setup_support_edges(self.network, self.params["random_number_func"])
+        self.network = setup_conflict_edges(self.network, self.params["random_number_func"], rate=1)
 
         s_edges = find_in_edges_of_type_for_proposal(
             self.network, 9, "support")
