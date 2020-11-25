@@ -537,37 +537,26 @@ class ParticipantExits:
         policy_output_passthru = s["policy_output"]
 
         report = {}
-        for idx in policy_output_passthru["failed"]:
-            for participant_idx, proposal_idx, _ in find_in_edges_of_type_for_proposal(network, idx, "support"):
-                edge = network.edges[participant_idx, proposal_idx]
-                if edge["affinity"] == 1:
-                    sentiment_old = network.nodes[participant_idx]["item"].sentiment
-                    sentiment_new = sentiment_old + config.sentiment_bonus_proposal_becomes_failed
-                    sentiment_new = 0 if sentiment_new < 0 else sentiment_new
-                    network.nodes[participant_idx]["item"].sentiment = sentiment_new
+        proposal_status = ["failed", "succeeded"]
+        sentiment_deltas = [config.sentiment_bonus_proposal_becomes_failed, config.sentiment_bonus_proposal_becomes_completed]
+        for status, delta in zip(proposal_status, sentiment_deltas):
+            for idx in policy_output_passthru[status]:
+                for participant_idx, proposal_idx, _ in find_in_edges_of_type_for_proposal(network, idx, "support"):
+                    edge = network.edges[participant_idx, proposal_idx]
+                    # Update the participant sentiment if he/she is the proposal creator (affinity = 1)
+                    # or if participant has staked on the proposal (tokens > 0)
+                    if edge["affinity"] == 1 or edge["tokens"] > 0:
+                        sentiment_old = network.nodes[participant_idx]["item"].sentiment
+                        sentiment_new = sentiment_old + (edge["affinity"] * delta)
+                        sentiment_new = np.clip(sentiment_new, a_min=0., a_max=1.)
+                        network.nodes[participant_idx]["item"].sentiment = sentiment_new
 
-                    report[participant_idx] = {
-                        "proposal_idx": proposal_idx,
-                        "sentiment_old": sentiment_old,
-                        "sentiment_new": sentiment_new,
-                        "status": "failed"
-                    }
-        
-        for idx in policy_output_passthru["succeeded"]:
-            for participant_idx, proposal_idx, _ in find_in_edges_of_type_for_proposal(network, idx, "support"):
-                edge = network.edges[participant_idx, proposal_idx]
-                if edge["affinity"] == 1:
-                    sentiment_old = network.nodes[participant_idx]["item"].sentiment
-                    sentiment_new = sentiment_old + config.sentiment_bonus_proposal_becomes_completed
-                    sentiment_new = 1 if sentiment_new > 1 else sentiment_new
-                    network.nodes[participant_idx]["item"].sentiment = sentiment_new
-
-                    report[participant_idx] = {
-                        "proposal_idx": proposal_idx,
-                        "sentiment_old": sentiment_old,
-                        "sentiment_new": sentiment_new,
-                        "status": "completed"
-                    }
+                        report[participant_idx] = {
+                            "proposal_idx": proposal_idx,
+                            "sentiment_old": sentiment_old,
+                            "sentiment_new": sentiment_new,
+                            "status": status
+                        }
         
         if params.get("debug"):
             for i in report:
