@@ -7,12 +7,15 @@ import numpy as np
 
 import networkx as nx
 
-from utils import new_probability_func, new_exponential_func, new_gamma_func, new_random_number_func, new_choice_func
+from utils import (new_probability_func, new_exponential_func,
+                   new_gamma_func, new_random_number_func,
+                   new_choice_func)
 from entities import Proposal, ProposalStatus
 from hatch import Commons, TokenBatch, VestingOptions
 from network_utils import (add_proposal, bootstrap_network,
                            calc_total_conviction, get_edges_by_type,
-                           get_participants, setup_conflict_edges)
+                           get_participants, get_proposals,
+                           setup_conflict_edges)
 from policies import (ActiveProposals, GenerateNewFunding,
                       GenerateNewParticipant, GenerateNewProposal,
                       ParticipantBuysTokens, ParticipantExits,
@@ -101,6 +104,28 @@ class TestGenerateNewParticipant(unittest.TestCase):
         participants = get_participants(network)
         for i, participant in participants:
             self.assertEqual(participant.holdings.age_days, 1)
+
+    def test_su_add_investment_to_commons(self):
+        old_token_supply = self.commons._token_supply
+        old_collateral_pool = self.commons._collateral_pool
+        commons = GenerateNewParticipant.su_add_investment_to_commons(
+            self.params, 0, 0, {"commons": self.commons},
+                               {"new_participant": False})
+
+        # Check if case there is no new participant, the token supply and
+        # the collateral pool do not change.
+        self.assertEqual(self.commons._token_supply, old_token_supply)
+        self.assertEqual(self.commons._collateral_pool, old_collateral_pool)
+        _input = {
+                "new_participant": True,
+                "new_participant_investment": 16.872149388283283,
+                "new_participant_tokens": 1.0545093367677052
+            }
+        GenerateNewParticipant.su_add_investment_to_commons(
+            self.params, 0, 0, {"commons": self.commons}, _input)
+
+        self.assertEqual(self.commons._token_supply, 1001.0539539273273)
+        self.assertEqual(self.commons._collateral_pool, 8016.872149388283)
 
 
 class TestGenerateNewProposal(unittest.TestCase):
@@ -237,6 +262,7 @@ class TestProposalFunding(unittest.TestCase):
             "gamma_func": new_gamma_func(seed=None),
             "random_number_func": new_random_number_func(seed=None)
         }
+        self.commons = Commons(1000, 1000)
         self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
                                           for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["probability_func"],
                                           self.params["random_number_func"], self.params["gamma_func"],
@@ -266,6 +292,41 @@ class TestProposalFunding(unittest.TestCase):
         for i in [4, 5]:
             self.assertEqual(
                 n_new.nodes[i]["item"].status, ProposalStatus.ACTIVE)
+
+    def test_su_deduct_funds_from_funding_pool(self):
+        """
+        Test that the code runs and if there is any proposal with enough
+        conviction, the fund requested by the proposal will be deducted
+        from de funding pool.
+        """
+        _input = {"proposal_idxs_with_enough_conviction": [3]}
+        network_copy = copy.copy(self.network)
+        network_copy.nodes[3]["item"].funds_requested = 50
+        old_funding_pool = self.commons._funding_pool
+        ProposalFunding.su_deduct_funds_from_funding_pool(
+            self.params, 0, 0, {"commons": self.commons,"network": network_copy, "funding_pool": 1000, "token_supply": 1000}, _input)
+        self.assertEqual(self.commons._funding_pool, old_funding_pool-50)
+
+    def test_su_update_age_and_conviction_thresholds(self):
+        """
+        Test that Proposal's age and conviction threshold are being updated.
+        The initial Proposal's age is 0, so it expects that both proposals increased
+        by 1 after the state update function.
+        """
+        _input = {}
+        ProposalFunding.su_update_age_and_conviction_thresholds(
+            self.params, 0, 0, {"commons": self.commons,"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000}, _input)
+        proposals = get_proposals(
+            self.network, status=ProposalStatus.CANDIDATE)
+
+        proposal_ages = []
+        proposal_thresholds = []
+        for _, proposal in proposals:
+            proposal_ages.append(proposal.age)
+            proposal_thresholds.append(proposal.trigger)
+
+        self.assertEqual(proposal_ages, [1, 1])
+        self.assertEqual(proposal_thresholds, [np.inf, 2000.0])
 
     def test_su_calculate_conviction(self):
         """
@@ -365,6 +426,19 @@ class TestParticipantVoting(unittest.TestCase):
                                                 }
         }
         self.assertEqual(ans, reference)
+
+    def test_su_update_participants_votes(self):
+        """
+        Test that the support edges with the new amount of tokens the
+        Participant has staked on the Proposal are being updated.
+        """
+        network_copy = copy.copy(self.network)
+        _input = {"participants_stake_on_proposals": {0: {4: 500.0, 5: 400.0}}}
+        ParticipantVoting.su_update_participants_votes(
+        self.params, 0, 0, {"network": network_copy, "funding_pool": 1000, "token_supply": 1000}, _input)
+
+        self.assertEqual(network_copy[0][4]["tokens"], 500)
+        self.assertEqual(network_copy[0][5]["tokens"], 400)
 
 
 class TestParticipantBuysTokens(unittest.TestCase):
