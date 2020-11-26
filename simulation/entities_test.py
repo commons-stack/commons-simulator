@@ -205,7 +205,7 @@ class TestParticipant(unittest.TestCase):
         """
         # Set a sentiment below the exit threshold
         self.p.sentiment = 0.2
-        self.p._probability = always
+        self.p._probability_func = always
         self.assertTrue(self.p.wants_to_exit())
-        self.p._probability = never
+        self.p._probability_func = never
         self.assertFalse(self.p.wants_to_exit())
