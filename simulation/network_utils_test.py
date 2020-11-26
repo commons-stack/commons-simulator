@@ -26,7 +26,7 @@ class TestNetworkUtils(unittest.TestCase):
         }
 
         for i in range(0, 10, 2):
-            self.network.add_node(i, item=Participant(TokenBatch(0, 0), self.params["probability_func"], 
+            self.network.add_node(i, item=Participant(TokenBatch(0, 0), self.params["probability_func"],
                                 self.params["random_number_func"]))
             self.network.add_node(i+1, item=Proposal(10, 5))
 
@@ -265,7 +265,7 @@ class TestNetworkUtils(unittest.TestCase):
         particular node.
         """
         n1, j = add_participant(self.network,
-                                Participant(TokenBatch(0, 0), self.params["probability_func"], 
+                                Participant(TokenBatch(0, 0), self.params["probability_func"],
                                 self.params["random_number_func"]), self.params["exponential_func"],
                                 self.params["random_number_func"])
         self.assertIsInstance(n1.nodes[j]["item"], Participant)
