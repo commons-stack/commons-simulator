@@ -2,6 +2,7 @@ import config
 import copy
 import numpy as np
 
+import config
 from convictionvoting import trigger_threshold
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch
@@ -24,7 +25,7 @@ class GenerateNewParticipant:
             "new_participant_tokens": None
         }
 
-        arrival_rate = (1+sentiment)/10
+        arrival_rate = (1+sentiment)/config.arrival_rate_denominator
         if probability_func(arrival_rate):
             ans["new_participant"] = True
             # Here we randomly generate each participant's post-Hatch
