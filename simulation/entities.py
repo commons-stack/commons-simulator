@@ -77,7 +77,7 @@ class Participant:
         cadCAD's state update functions will make the changes and maintain its
         functional-ness.
         """
-        engagement_rate = 0.3 * self.sentiment
+        engagement_rate = config.engagement_rate_multiplier_buy * self.sentiment
         force = self.sentiment - config.sentiment_sensitivity
         if self._probability_func(engagement_rate) and force > 0:
             delta_holdings = self._random_number_func() * force * config.delta_holdings_scale
@@ -94,7 +94,7 @@ class Participant:
         cadCAD's state update functions will make the changes and maintain its
         functional-ness.
         """
-        engagement_rate = 0.3 * self.sentiment
+        engagement_rate = config.engagement_rate_multiplier_sell * self.sentiment
         force = self.sentiment - config.sentiment_sensitivity
         if self._probability_func(engagement_rate) and force < 0:
             delta_holdings = self._random_number_func() * force * self.holdings.spendable()
@@ -176,7 +176,7 @@ class Participant:
                 # because modifying sentiment_sensitivity without changing the
                 # hardcoded cutoff value of 0.5 may cause unintended behaviour.
                 # Also, 0.75 is a reasonable number in this case.
-                cutoff = 0.75 * np.max(list(candidate_proposals.values()))
+                cutoff = config.candidate_proposals_cutoff * np.max(list(candidate_proposals.values()))
                 if cutoff < .5:
                     cutoff = .5
 
@@ -211,8 +211,8 @@ class Participant:
         Returns True if the Participant wants to exit (if sentiment < 0.5,
         random chance of exiting), otherwise False
         """
-        if self.sentiment < 0.5:
-            engagement_rate = 0.3 * self.sentiment
+        if self.sentiment < config.sentiment_sensitivity_exit:
+            engagement_rate = config.engagement_rate_multiplier_exit * self.sentiment
             return self._probability_func(1-engagement_rate)
         return False
 
