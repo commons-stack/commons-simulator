@@ -154,7 +154,7 @@ class TestGenerateNewProposal(unittest.TestCase):
 class TestGenerateNewFunding(unittest.TestCase):
     def setUp(self):
         self.params = {"exponential_func": new_exponential_func(seed=None)}
-    
+
     def test_p_exit_tribute_of_average_speculator_position_size(self):
         """
         Simply test that the code works.

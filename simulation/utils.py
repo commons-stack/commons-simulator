@@ -1,7 +1,7 @@
 import numpy as np
 from inspect import getmembers
 from types import FunctionType
-from scipy.stats import expon, gamma    
+from scipy.stats import expon, gamma
 
 
 

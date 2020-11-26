@@ -9,11 +9,14 @@ from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch, VestingOptions
 from simulation import new_probability_func, new_random_number_func
 
+
 def always(rate):
     return True
 
+
 def never(rate):
     return False
+
 
 class TestProposal(unittest.TestCase):
     def test_has_enough_conviction(self):
@@ -27,13 +30,13 @@ class TestProposal(unittest.TestCase):
 
 
 class TestParticipant(unittest.TestCase):
-    def setUp(self, ):
+    def setUp(self):
         self.params = {
             "probability_func": new_probability_func(seed=None),
             "random_number_func": new_random_number_func(seed=None)
         }
         self.p = Participant(TokenBatch(100, 100), self.params["probability_func"], self.params["random_number_func"])
-    
+
     def test_buy(self):
         """
         Test that the function works. If we set the probability to 1, Participant should buy in.
@@ -42,11 +45,11 @@ class TestParticipant(unittest.TestCase):
 
         # Must set Participant's sentiment artificially high, because of Zargham's force calculation
         self.p.sentiment = 1
-        self.p._probability = always
+        self.p._probability_func = always
         delta_holdings = self.p.buy()
         self.assertGreater(delta_holdings, 0)
 
-        self.p._probability = never
+        self.p._probability_func = never
         delta_holdings = self.p.buy()
         self.assertEqual(delta_holdings, 0)
 
@@ -56,12 +59,12 @@ class TestParticipant(unittest.TestCase):
         If we set the probability to 0, 0 will be returned.
         """
 
-        self.p._probability = always
+        self.p._probability_func = always
         self.p.sentiment = 0.1
         delta_holdings = self.p.sell()
         self.assertLess(delta_holdings, 0)
 
-        self.p._probability = never
+        self.p._probability_func = never
         delta_holdings = self.p.sell()
         self.assertEqual(delta_holdings, 0)
 
@@ -71,10 +74,10 @@ class TestParticipant(unittest.TestCase):
         get True. If not, we should get False.
         """
 
-        self.p._probability = always
+        self.p._probability_func = always
         self.assertTrue(self.p.create_proposal(10000, 0.5, 100000))
 
-        self.p._probability = never
+        self.p._probability_func = never
         self.assertFalse(self.p.create_proposal(10000, 0.5, 100000))
 
     def test_vote_on_candidate_proposals(self):
@@ -83,17 +86,17 @@ class TestParticipant(unittest.TestCase):
         get a dict of Proposal UUIDs that the Participant would vote on. If not,
         we should get an empty dict.
         """
-        
+
         candidate_proposals = {
             0: 1.0,
             1: 1.0,
             2: 1.0,
         }
-        self.p._probability = never
+        self.p._probability_func = never
         ans = self.p.vote_on_candidate_proposals(candidate_proposals)
         self.assertFalse(ans)
 
-        self.p._probability = always
+        self.p._probability_func = always
         ans = self.p.vote_on_candidate_proposals(candidate_proposals)
         self.assertEqual(len(ans), 3)
 
@@ -113,7 +116,7 @@ class TestParticipant(unittest.TestCase):
             2: 0.8,
             3: 0.4,
         }
-        self.p._probability = always
+        self.p._probability_func = always
         ans = self.p.vote_on_candidate_proposals(candidate_proposals)
         reference = {
             0: 1.0,

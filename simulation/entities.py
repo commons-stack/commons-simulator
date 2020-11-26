@@ -60,9 +60,9 @@ class Proposal:
 
 class Participant:
     def __init__(self, holdings: TokenBatch, probability_func, random_number_func):
-        self._probability = probability_func
-        self._random_number = random_number_func
-        self.sentiment = self._random_number()
+        self._probability_func = probability_func
+        self._random_number_func = random_number_func
+        self.sentiment = self._random_number_func()
         self.holdings = holdings
 
     def __repr__(self):
@@ -79,8 +79,8 @@ class Participant:
         """
         engagement_rate = 0.3 * self.sentiment
         force = self.sentiment - config.sentiment_sensitivity
-        if self._probability(engagement_rate) and force > 0:
-            delta_holdings = self._random_number() * force * config.delta_holdings_scale
+        if self._probability_func(engagement_rate) and force > 0:
+            delta_holdings = self._random_number_func() * force * config.delta_holdings_scale
             return delta_holdings
         return 0
 
@@ -96,8 +96,8 @@ class Participant:
         """
         engagement_rate = 0.3 * self.sentiment
         force = self.sentiment - config.sentiment_sensitivity
-        if self._probability(engagement_rate) and force < 0:
-            delta_holdings = self._random_number() * force * self.holdings.spendable()
+        if self._probability_func(engagement_rate) and force < 0:
+            delta_holdings = self._random_number_func() * force * self.holdings.spendable()
             return delta_holdings
         return 0
 
@@ -135,7 +135,7 @@ class Participant:
         percent_of_funding_pool_being_requested = total_funds_requested/funding_pool
         proposal_rate = median_affinity / \
             (1 + percent_of_funding_pool_being_requested)
-        new_proposal = self._probability(proposal_rate)
+        new_proposal = self._probability_func(proposal_rate)
         return new_proposal
 
     def vote_on_candidate_proposals(self, candidate_proposals: dict) -> dict:
@@ -162,7 +162,7 @@ class Participant:
         """
         new_voted_proposals = {}
         engagement_rate = 1.0
-        if self._probability(engagement_rate):
+        if self._probability_func(engagement_rate):
             # Put your tokens on your favourite Proposals, where favourite is
             # calculated as 0.75 * (the affinity for the Proposal you like the
             # most) e.g. if there are 2 Proposals that you have affinity 0.8,
@@ -213,5 +213,5 @@ class Participant:
         """
         if self.sentiment < 0.5:
             engagement_rate = 0.3 * self.sentiment
-            return self._probability(1-engagement_rate)
+            return self._probability_func(1-engagement_rate)
         return False
