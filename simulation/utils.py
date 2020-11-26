@@ -1,16 +1,45 @@
 import numpy as np
 from inspect import getmembers
 from types import FunctionType
+from scipy.stats import expon, gamma
 
 
-def probability(rate):
-    """
-    The higher the rate, the more likely this function will return True (up till 1.0)
-    Mock this function out to make behaviour deterministic.
-    """
-    if rate > 1.0:
-        raise Exception("Rate has a maximum value of 1.0")
-    return np.random.rand() < rate
+
+def new_probability_func(seed):
+    random_state = np.random.RandomState(seed)
+    def probability(rate):
+        if rate > 1.0:
+            raise Exception("Rate has a maximum value of 1.0")
+        return random_state.rand() < rate
+    return probability
+
+
+def new_exponential_func(seed):
+    random_state = np.random.RandomState(seed)
+    def exponential(loc, scale):
+        return expon.rvs(loc=loc, scale=scale, random_state=random_state)
+    return exponential
+
+
+def new_gamma_func(seed):
+    random_state = np.random.RandomState(seed)
+    def gamma_func(alpha, loc, scale):
+        return gamma.rvs(alpha, loc=loc, scale=scale, random_state=random_state)
+    return gamma_func
+
+
+def new_random_number_func(seed):
+    random_state = np.random.RandomState(seed)
+    def random_number_func():
+        return random_state.rand()
+    return random_number_func
+
+
+def new_choice_func(seed):
+    random_state = np.random.RandomState(seed)
+    def choice_func(choice_list):
+        return random_state.choice(choice_list)
+    return choice_func
 
 
 """

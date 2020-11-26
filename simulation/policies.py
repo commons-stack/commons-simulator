@@ -1,8 +1,6 @@
 import config
-import random
 import copy
 import numpy as np
-from scipy.stats import expon, gamma
 
 from convictionvoting import trigger_threshold
 from entities import Participant, Proposal, ProposalStatus
@@ -11,7 +9,6 @@ from network_utils import (add_proposal, add_participant, calc_median_affinity, 
                            calc_total_funds_requested, find_in_edges_of_type_for_proposal, get_edges_by_type,
                            get_participants, get_proposals,
                            setup_influence_edges_single, setup_support_edges)
-from utils import probability
 
 
 class GenerateNewParticipant:
@@ -19,6 +16,8 @@ class GenerateNewParticipant:
     def p_randomly(params, step, sL, s, **kwargs):
         commons = s["commons"]
         sentiment = s["sentiment"]
+        probability_func = params["probability_func"]
+        exponential_func = params["exponential_func"]
         ans = {
             "new_participant": False,
             "new_participant_investment": None,
@@ -26,7 +25,7 @@ class GenerateNewParticipant:
         }
 
         arrival_rate = (1+sentiment)/10
-        if probability(arrival_rate):
+        if probability_func(arrival_rate):
             ans["new_participant"] = True
             # Here we randomly generate each participant's post-Hatch
             # investment, in DAI/USD.
@@ -39,7 +38,7 @@ class GenerateNewParticipant:
             # scale is the standard deviation, so if scale=2, investments will
             # be around 0-12 DAI or even 15, if scale=100, the investments will be
             # around 0-600 DAI.
-            ans["new_participant_investment"] = expon.rvs(loc=config.investment_new_participant_min,
+            ans["new_participant_investment"] = exponential_func(loc=config.investment_new_participant_min,
                                                           scale=config.investment_new_participant_stdev)
             ans["new_participant_tokens"] = commons.dai_to_tokens(
                 ans["new_participant_investment"])
@@ -48,9 +47,13 @@ class GenerateNewParticipant:
     @staticmethod
     def su_add_to_network(params, step, sL, s, _input, **kwargs):
         network = s["network"]
+        probability_func = params["probability_func"]
+        exponential_func = params["exponential_func"]
+        random_number_func = params["random_number_func"]
         if _input["new_participant"]:
             network, i = add_participant(network, Participant(TokenBatch(
-                0, _input["new_participant_tokens"])))
+                0, _input["new_participant_tokens"]), probability_func,
+                random_number_func), exponential_func, random_number_func)
 
             if params.get("debug"):
                 print("GenerateNewParticipant: A new Participant {} invested {}DAI for {} tokens".format(
@@ -75,9 +78,12 @@ class GenerateNewProposal:
         """
         funding_pool = s["funding_pool"]
         network = s["network"]
+        choice_func = params["choice_func"]
 
         participants = get_participants(network)
-        i, participant = random.sample(participants, 1)[0]
+        participants_dict = dict(participants)
+        i = choice_func(list(participants_dict))
+        participant = participants_dict[i]
 
         wants_to_create_proposal = participant.create_proposal(calc_total_funds_requested(
             network), calc_median_affinity(network), funding_pool)
@@ -89,13 +95,15 @@ class GenerateNewProposal:
         network = s["network"]
         funding_pool = s["funding_pool"]
         token_supply = s["token_supply"]
+        gamma_func = params["gamma_func"]
+        random_number_func = params["random_number_func"]
         if _input["new_proposal"]:
             # Create the Proposal and add it to the network.
             rescale = funding_pool * config.scale_factor
-            r_rv = gamma.rvs(config.funds_requested_alpha, loc=config.funds_requested_min, scale=rescale)
+            r_rv = gamma_func(config.funds_requested_alpha, loc=config.funds_requested_min, scale=rescale)
             proposal = Proposal(funds_requested=r_rv,
                                 trigger=trigger_threshold(r_rv, funding_pool, token_supply, params["max_proposal_request"]))
-            network, proposal_idx = add_proposal(network, proposal)
+            network, proposal_idx = add_proposal(network, proposal, random_number_func)
 
             # add_proposal() has created support edges from other Participants
             # to this Proposal. If the Participant is the one who created this
@@ -117,8 +125,9 @@ class GenerateNewFunding:
         TODO: buy tokens and sell them immediately within the same simulation
         step, assuming a certain position size.
         """
-        exits = [expon.rvs(loc=config.speculator_position_size_min,
-                           scale=config.speculator_position_size_stdev) for i in range(config.speculators)]
+        exponential_func = params["exponential_func"]
+        exits = [exponential_func(loc=config.speculator_position_size_min, scale=config.speculator_position_size_stdev)
+                            for i in range(config.speculators)]
         commons = s["commons"]
         funding = sum(exits) * commons.exit_tribute
         return {"funding": funding}
@@ -135,6 +144,7 @@ class ActiveProposals:
     @staticmethod
     def p_influenced_by_grant_size(params, step, sL, s, **kwargs):
         network = s["network"]
+        probability_func = params["probability_func"]
 
         active_proposals = get_proposals(network, status=ProposalStatus.ACTIVE)
         proposals_that_will_fail = []
@@ -145,9 +155,9 @@ class ActiveProposals:
                            np.log(proposal.funds_requested))
             r_success = 1/(config.base_success_rate +
                            np.log(proposal.funds_requested))
-            if probability(r_failure):
+            if probability_func(r_failure):
                 proposals_that_will_fail.append(idx)
-            elif probability(r_success):
+            elif probability_func(r_success):
                 proposals_that_will_succeed.append(idx)
         return {"failed": proposals_that_will_fail, "succeeded": proposals_that_will_succeed}
 

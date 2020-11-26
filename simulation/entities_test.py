@@ -2,9 +2,20 @@ import unittest
 import uuid
 from unittest.mock import MagicMock, patch
 
+import numpy as np
+
 import utils
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch, VestingOptions
+from simulation import new_probability_func, new_random_number_func
+
+
+def always(rate):
+    return True
+
+
+def never(rate):
+    return False
 
 
 class TestProposal(unittest.TestCase):
@@ -20,24 +31,27 @@ class TestProposal(unittest.TestCase):
 
 class TestParticipant(unittest.TestCase):
     def setUp(self):
-        self.p = Participant(TokenBatch(100, 100))
+        self.params = {
+            "probability_func": new_probability_func(seed=None),
+            "random_number_func": new_random_number_func(seed=None)
+        }
+        self.p = Participant(TokenBatch(100, 100), self.params["probability_func"], self.params["random_number_func"])
 
     def test_buy(self):
         """
         Test that the function works. If we set the probability to 1, Participant should buy in.
         If we set the probability to 0, 0 will be returned.
         """
-        with patch('entities.probability') as mock:
-            mock.return_value = True
-            # Must set Participant's sentiment artificially high, because of Zargham's force calculation
-            self.p.sentiment = 1
-            delta_holdings = self.p.buy()
-            self.assertGreater(delta_holdings, 0)
 
-        with patch('entities.probability') as mock:
-            mock.return_value = False
-            delta_holdings = self.p.buy()
-            self.assertEqual(delta_holdings, 0)
+        # Must set Participant's sentiment artificially high, because of Zargham's force calculation
+        self.p.sentiment = 1
+        self.p._probability_func = always
+        delta_holdings = self.p.buy()
+        self.assertGreater(delta_holdings, 0)
+
+        self.p._probability_func = never
+        delta_holdings = self.p.buy()
+        self.assertEqual(delta_holdings, 0)
 
     def test_sell(self):
         """
@@ -45,29 +59,26 @@ class TestParticipant(unittest.TestCase):
         If we set the probability to 0, 0 will be returned.
         """
 
-        with patch('entities.probability') as mock:
-            mock.return_value = True
-            self.p.sentiment = 0.1
-            delta_holdings = self.p.sell()
-            self.assertLess(delta_holdings, 0)
+        self.p._probability_func = always
+        self.p.sentiment = 0.1
+        delta_holdings = self.p.sell()
+        self.assertLess(delta_holdings, 0)
 
-        with patch('entities.probability') as mock:
-            mock.return_value = False
-            delta_holdings = self.p.sell()
-            self.assertEqual(delta_holdings, 0)
+        self.p._probability_func = never
+        delta_holdings = self.p.sell()
+        self.assertEqual(delta_holdings, 0)
 
     def test_create_proposal(self):
         """
         Test that the function works. If we set the probability to 1, we should
         get True. If not, we should get False.
         """
-        with patch('entities.probability') as mock:
-            mock.return_value = True
-            self.assertTrue(self.p.create_proposal(10000, 0.5, 100000))
 
-        with patch('entities.probability') as mock:
-            mock.return_value = False
-            self.assertFalse(self.p.create_proposal(10000, 0.5, 100000))
+        self.p._probability_func = always
+        self.assertTrue(self.p.create_proposal(10000, 0.5, 100000))
+
+        self.p._probability_func = never
+        self.assertFalse(self.p.create_proposal(10000, 0.5, 100000))
 
     def test_vote_on_candidate_proposals(self):
         """
@@ -81,15 +92,13 @@ class TestParticipant(unittest.TestCase):
             1: 1.0,
             2: 1.0,
         }
-        with patch('entities.probability') as mock:
-            mock.return_value = False
-            ans = self.p.vote_on_candidate_proposals(candidate_proposals)
-            self.assertFalse(ans)
+        self.p._probability_func = never
+        ans = self.p.vote_on_candidate_proposals(candidate_proposals)
+        self.assertFalse(ans)
 
-        with patch('entities.probability') as mock:
-            mock.return_value = True
-            ans = self.p.vote_on_candidate_proposals(candidate_proposals)
-            self.assertEqual(len(ans), 3)
+        self.p._probability_func = always
+        ans = self.p.vote_on_candidate_proposals(candidate_proposals)
+        self.assertEqual(len(ans), 3)
 
     def test_vote_on_candidate_proposals_zargham_algorithm(self):
         """
@@ -107,15 +116,14 @@ class TestParticipant(unittest.TestCase):
             2: 0.8,
             3: 0.4,
         }
-        with patch('entities.probability') as mock:
-            mock.return_value = True
-            ans = self.p.vote_on_candidate_proposals(candidate_proposals)
-            reference = {
-                0: 1.0,
-                1: 0.9,
-                2: 0.8
-            }
-            self.assertEqual(ans, reference)
+        self.p._probability_func = always
+        ans = self.p.vote_on_candidate_proposals(candidate_proposals)
+        reference = {
+            0: 1.0,
+            1: 0.9,
+            2: 0.8
+        }
+        self.assertEqual(ans, reference)
 
     def test_stake_across_all_supported_proposals(self):
         """

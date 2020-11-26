@@ -3,9 +3,11 @@ import unittest
 from collections import namedtuple
 from os.path import commonpath
 from unittest.mock import patch
+import numpy as np
 
 import networkx as nx
 
+from utils import new_probability_func, new_exponential_func, new_gamma_func, new_random_number_func, new_choice_func
 from entities import Proposal, ProposalStatus
 from hatch import Commons, TokenBatch, VestingOptions
 from network_utils import (add_proposal, bootstrap_network,
@@ -18,14 +20,29 @@ from policies import (ActiveProposals, GenerateNewFunding,
                       ProposalFunding)
 
 
+def always(rate):
+    return True
+
+
+def never(rate):
+    return False
+
+
 class TestGenerateNewParticipant(unittest.TestCase):
     def setUp(self):
         self.commons = Commons(10000, 1000)
         self.sentiment = 0.5
+        self.params = {
+            "debug": False,
+            "probability_func": new_probability_func(seed=None),
+            "exponential_func": new_exponential_func(seed=None),
+            "gamma_func": new_gamma_func(seed=None),
+            "random_number_func": new_random_number_func(seed=None)
+        }
         self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
-
-        self.params = {"debug": False}
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["probability_func"],
+                                          self.params["random_number_func"], self.params["gamma_func"],
+                                          self.params["exponential_func"])
 
     def test_p_randomly(self):
         """
@@ -35,12 +52,11 @@ class TestGenerateNewParticipant(unittest.TestCase):
             "commons": self.commons,
             "sentiment": self.sentiment
         }
-        with patch("policies.probability") as p:
-            p.return_value = True
-            ans = GenerateNewParticipant.p_randomly(self.params, 0, 0, state)
-            self.assertEqual(ans["new_participant"], True)
-            self.assertIsNotNone(ans["new_participant_investment"])
-            self.assertIsNotNone(ans["new_participant_tokens"])
+        self.params["probability_func"] = always
+        ans = GenerateNewParticipant.p_randomly(self.params, 0, 0, state)
+        self.assertEqual(ans["new_participant"], True)
+        self.assertIsNotNone(ans["new_participant_investment"])
+        self.assertIsNotNone(ans["new_participant_tokens"])
 
     def test_su_add_to_network(self):
         """
@@ -77,24 +93,33 @@ class TestGenerateNewParticipant(unittest.TestCase):
 
 class TestGenerateNewProposal(unittest.TestCase):
     def setUp(self):
+        self.params = {
+            "max_proposal_request": 0.2,
+            "probability_func": new_probability_func(seed=None),
+            "exponential_func": new_exponential_func(seed=None),
+            "gamma_func": new_gamma_func(seed=None),
+            "random_number_func": new_random_number_func(seed=None),
+            "choice_func": new_choice_func(seed=None)
+        }
         self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
-        self.params = {"max_proposal_request": 0.2}
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["probability_func"],
+                                          self.params["random_number_func"], self.params["gamma_func"],
+                                          self.params["exponential_func"])
 
     def test_p_randomly(self):
         """
         Simply test that the code runs.
         """
-        with patch("entities.probability") as p:
+        with patch("entities.Participant.create_proposal") as p:
             p.return_value = True
             ans = GenerateNewProposal.p_randomly(
-                None, 0, 0, {"network": self.network, "funding_pool": 100000})
+                self.params, 0, 0, {"network": self.network, "funding_pool": 100000})
             self.assertTrue(ans["new_proposal"])
             self.assertIn("proposed_by_participant", ans)
 
             p.return_value = False
             ans = GenerateNewProposal.p_randomly(
-                None, 0, 0, {"network": self.network, "funding_pool": 100000})
+            self.params, 0, 0, {"network": self.network, "funding_pool": 100000})
             self.assertFalse(ans["new_proposal"])
 
     def test_su_add_to_network(self):
@@ -127,6 +152,9 @@ class TestGenerateNewProposal(unittest.TestCase):
 
 
 class TestGenerateNewFunding(unittest.TestCase):
+    def setUp(self):
+        self.params = {"exponential_func": new_exponential_func(seed=None)}
+
     def test_p_exit_tribute_of_average_speculator_position_size(self):
         """
         Simply test that the code works.
@@ -136,7 +164,7 @@ class TestGenerateNewFunding(unittest.TestCase):
         state = {
             "commons": m_commons}
         ans = GenerateNewFunding.p_exit_tribute_of_average_speculator_position_size(
-            None, 0, 0, state)
+            self.params, 0, 0, state)
         self.assertTrue(ans["funding"] > 0)
 
     def test_su_add_funding(self):
@@ -149,10 +177,18 @@ class TestGenerateNewFunding(unittest.TestCase):
 
 class TestActiveProposals(unittest.TestCase):
     def setUp(self):
+        self.params = {
+            "probability_func": new_probability_func(seed=None),
+            "exponential_func": new_exponential_func(seed=None),
+            "gamma_func": new_gamma_func(seed=None),
+            "random_number_func": new_random_number_func(seed=None)
+        }
         self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["probability_func"],
+                                          self.params["random_number_func"], self.params["gamma_func"],
+                                          self.params["exponential_func"])
 
-        self.network, _ = add_proposal(self.network, Proposal(100, 1))
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_number_func"])
 
         self.network.nodes[4]["item"].status = ProposalStatus.ACTIVE
         self.network.nodes[5]["item"].status = ProposalStatus.ACTIVE
@@ -161,12 +197,11 @@ class TestActiveProposals(unittest.TestCase):
         """
         Simply test that the code works.
         """
-        with patch("policies.probability") as p:
-            p.return_value = True
-            ans = ActiveProposals.p_influenced_by_grant_size(
-                None, 0, 0, {"network": copy.copy(self.network)})
+        self.params["probability_func"] = always
+        ans = ActiveProposals.p_influenced_by_grant_size(
+            self.params, 0, 0, {"network": copy.copy(self.network)})
 
-            self.assertEqual(ans["failed"], [4, 5])
+        self.assertEqual(ans["failed"], [4, 5])
 
     def test_su_set_proposal_status(self):
         """
@@ -182,17 +217,23 @@ class TestActiveProposals(unittest.TestCase):
 
 class TestProposalFunding(unittest.TestCase):
     def setUp(self):
+        self.params = {
+            "max_proposal_request": 0.2,
+            "alpha_days_to_80p_of_max_voting_weight": 10,
+            "probability_func": new_probability_func(seed=None),
+            "exponential_func": new_exponential_func(seed=None),
+            "gamma_func": new_gamma_func(seed=None),
+            "random_number_func": new_random_number_func(seed=None)
+        }
         self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["probability_func"],
+                                          self.params["random_number_func"], self.params["gamma_func"],
+                                          self.params["exponential_func"])
 
-        self.network, _ = add_proposal(self.network, Proposal(100, 1))
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_number_func"])
 
         self.network.nodes[4]["item"].status = ProposalStatus.CANDIDATE
         self.network.nodes[5]["item"].status = ProposalStatus.CANDIDATE
-        self.params = {
-            "max_proposal_request": 0.2,
-            "alpha_days_to_80p_of_max_voting_weight": 10
-        }
 
     def test_p_compare_conviction_and_threshold(self):
         """
@@ -247,14 +288,21 @@ class TestProposalFunding(unittest.TestCase):
 
 class TestParticipantVoting(unittest.TestCase):
     def setUp(self):
-        self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
-
-        self.network, _ = add_proposal(self.network, Proposal(100, 1))
         self.params = {
             "debug": False,
-            "days_to_80p_of_max_voting_weight": 10
+            "days_to_80p_of_max_voting_weight": 10,
+            "probability_func": new_probability_func(seed=None),
+            "exponential_func": new_exponential_func(seed=None),
+            "gamma_func": new_gamma_func(seed=None),
+            "random_number_func": new_random_number_func(seed=None)
         }
+        self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["probability_func"],
+                                          self.params["random_number_func"], self.params["gamma_func"],
+                                          self.params["exponential_func"])
+
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_number_func"])
+
         """
         For proper testing, we need to make sure the Proposals are CANDIDATE and
         ensure Proposal-Participant affinities are not some random value
@@ -270,19 +318,18 @@ class TestParticipantVoting(unittest.TestCase):
         Ensure that when a Participant votes on 2 Proposals of equal affinity,
         he will split his tokens 50-50 between them.
         """
-        with patch("entities.probability") as p:
-            p.return_value = True
-            ans = ParticipantVoting.p_participant_votes_on_proposal_according_to_affinity(
-                self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
+        self.params["probability_func"] = always
+        ans = ParticipantVoting.p_participant_votes_on_proposal_according_to_affinity(
+            self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
 
-            reference = {
-                'participants_stake_on_proposals': {0: {4: 500.0, 5: 500.0},
-                                                    1: {4: 500.0, 5: 500.0},
-                                                    2: {4: 500.0, 5: 500.0},
-                                                    3: {4: 500.0, 5: 500.0}
-                                                    }
-            }
-            self.assertEqual(ans, reference)
+        reference = {
+            'participants_stake_on_proposals': {0: {4: 500.0, 5: 500.0},
+                                                1: {4: 500.0, 5: 500.0},
+                                                2: {4: 500.0, 5: 500.0},
+                                                3: {4: 500.0, 5: 500.0}
+                                                }
+        }
+        self.assertEqual(ans, reference)
 
     def test_p_participant_votes_on_proposal_according_to_affinity_vesting_nonvesting(self):
         """
@@ -294,29 +341,36 @@ class TestParticipantVoting(unittest.TestCase):
         for _, participant in participants:
             participant.holdings = TokenBatch(1000, 1000)
 
-        with patch("entities.probability") as p:
-            p.return_value = True
-            ans = ParticipantVoting.p_participant_votes_on_proposal_according_to_affinity(
-                self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
+        self.params["probability_func"] = always
+        ans = ParticipantVoting.p_participant_votes_on_proposal_according_to_affinity(
+            self.params, 0, 0, {"network": copy.copy(self.network), "funding_pool": 1000, "token_supply": 1000})
 
-            reference = {
-                'participants_stake_on_proposals': {0: {4: 1000.0, 5: 1000.0},
-                                                    1: {4: 1000.0, 5: 1000.0},
-                                                    2: {4: 1000.0, 5: 1000.0},
-                                                    3: {4: 1000.0, 5: 1000.0}
-                                                    }
-            }
-            self.assertEqual(ans, reference)
+        reference = {
+            'participants_stake_on_proposals': {0: {4: 1000.0, 5: 1000.0},
+                                                1: {4: 1000.0, 5: 1000.0},
+                                                2: {4: 1000.0, 5: 1000.0},
+                                                3: {4: 1000.0, 5: 1000.0}
+                                                }
+        }
+        self.assertEqual(ans, reference)
 
 
 class TestParticipantBuysTokens(unittest.TestCase):
     def setUp(self):
+        self.params = {
+            "debug": True,
+            "probability_func": new_probability_func(seed=None),
+            "exponential_func": new_exponential_func(seed=None),
+            "gamma_func": new_gamma_func(seed=None),
+            "random_number_func": new_random_number_func(seed=None)
+        }
         self.network = bootstrap_network([TokenBatch(1000, 1000, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["probability_func"],
+                                          self.params["random_number_func"], self.params["gamma_func"],
+                                          self.params["exponential_func"])
         self.commons = Commons(1000, 1000)
 
-        self.network, _ = add_proposal(self.network, Proposal(100, 1))
-        self.params = {"debug": True}
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_number_func"])
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
 
@@ -396,14 +450,20 @@ class TestParticipantBuysTokens(unittest.TestCase):
 
 class TestParticipantSellsTokens(unittest.TestCase):
     def setUp(self):
-        self.network = bootstrap_network([TokenBatch(1000, 1000, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
-        self.commons = Commons(1000, 1000)
-
-        self.network, _ = add_proposal(self.network, Proposal(100, 1))
         self.params = {
             "debug": False,
+            "probability_func": new_probability_func(seed=None),
+            "exponential_func": new_exponential_func(seed=None),
+            "gamma_func": new_gamma_func(seed=None),
+            "random_number_func": new_random_number_func(seed=None)
         }
+        self.network = bootstrap_network([TokenBatch(1000, 1000, vesting_options=VestingOptions(10, 30))
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["probability_func"],
+                                          self.params["random_number_func"], self.params["gamma_func"],
+                                          self.params["exponential_func"])
+        self.commons = Commons(1000, 1000)
+
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_number_func"])
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
 
@@ -481,12 +541,20 @@ class TestParticipantSellsTokens(unittest.TestCase):
 
 class TestParticipantExits(unittest.TestCase):
     def setUp(self):
+        self.params = {
+            "debug": True,
+            "probability_func": new_probability_func(seed=None),
+            "exponential_func": new_exponential_func(seed=None),
+            "gamma_func": new_gamma_func(seed=None),
+            "random_number_func": new_random_number_func(seed=None)
+        }
         self.network = bootstrap_network([TokenBatch(1000, 1000, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2)
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["probability_func"],
+                                          self.params["random_number_func"], self.params["gamma_func"],
+                                          self.params["exponential_func"])
         self.commons = Commons(1000, 1000)
 
-        self.network, _ = add_proposal(self.network, Proposal(100, 1))
-        self.params = {"debug": True}
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_number_func"])
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
 
@@ -495,12 +563,11 @@ class TestParticipantExits(unittest.TestCase):
         for i, participant in participants:
             participant.sentiment = 0.1
 
-        with patch("entities.probability") as p:
-            p.return_value = True
-            ans = ParticipantExits.p_participant_decides_if_he_wants_to_exit(
-                self.params, 0, 0, self.default_state)
+        self.params["probability_func"] = always
+        ans = ParticipantExits.p_participant_decides_if_he_wants_to_exit(
+            self.params, 0, 0, self.default_state)
 
-            self.assertEqual(len(ans["defectors"]), 4)
+        self.assertEqual(len(ans["defectors"]), 4)
 
     def test_su_remove_participants_from_network(self):
         policy_output = {
