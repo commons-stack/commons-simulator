@@ -152,7 +152,7 @@ class TestParticipant(unittest.TestCase):
             3: 187.5,
         }
         self.assertEqual(ans, reference)
-    
+
     def test_update_token_batch_age(self):
         """
         Test that the participant token batch is updated by 1 day after

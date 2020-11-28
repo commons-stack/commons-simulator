@@ -92,8 +92,8 @@ class TestGenerateNewParticipant(unittest.TestCase):
 
     def test_su_update_participants_token_batch_age(self):
         """
-        Test that after running the state update function the participants' 
-        token batch age in days are incremented by one 
+        Test that after running the state update function the participants'
+        token batch age in days are incremented by one
         """
         _input = {}
         _, network = GenerateNewParticipant.su_update_participants_token_batch_age(
