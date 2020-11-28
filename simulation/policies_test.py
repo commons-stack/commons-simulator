@@ -90,6 +90,19 @@ class TestGenerateNewParticipant(unittest.TestCase):
             for u, v in network.in_edges(5):
                 self.assertEqual(network.edges[u, v]["type"], "influence")
 
+    def test_su_update_participants_token_batch_age(self):
+        """
+        Test that after running the state update function the participants' 
+        token batch age in days are incremented by one 
+        """
+        _input = {}
+        _, network = GenerateNewParticipant.su_update_participants_token_batch_age(
+                self.params, 0, 0, {"network": self.network.copy()}, _input)
+        participants = get_participants(network)
+        for i, participant in participants:
+            self.assertEqual(participant.holdings.age_days, 1)
+
+
 
 class TestGenerateNewProposal(unittest.TestCase):
     def setUp(self):

@@ -215,3 +215,7 @@ class Participant:
             engagement_rate = 0.3 * self.sentiment
             return self._probability_func(1-engagement_rate)
         return False
+
+    def update_token_batch_age(self):
+        self.holdings.update_age()
+        return self.holdings.age_days
