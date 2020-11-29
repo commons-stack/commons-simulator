@@ -73,7 +73,7 @@ class GenerateNewParticipant:
         network = s["network"]
         participants = get_participants(network)
         for i, participant in participants:
-            age = participant.holdings.update_age()
+            participant.update_token_batch_age()
 
         return "network", network
 

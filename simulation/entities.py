@@ -217,5 +217,8 @@ class Participant:
         return False
 
     def update_token_batch_age(self):
-        self.holdings.update_age()
-        return self.holdings.age_days
+        """
+        Participant.update_token_batch_age() is simply a front to
+        TokenBatch.update_age().
+        """
+        return self.holdings.update_age()

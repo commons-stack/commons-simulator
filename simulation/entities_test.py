@@ -159,8 +159,8 @@ class TestParticipant(unittest.TestCase):
         running Participant.update_token_batch_age()
         """
         old_age_days = self.p.holdings.age_days
-        self.p.update_token_batch_age()
-        self.assertEqual(self.p.holdings.age_days, old_age_days + 1)
+        new_age_days = self.p.update_token_batch_age()
+        self.assertEqual(new_age_days, old_age_days + 1)
 
 
 if __name__ == '__main__':

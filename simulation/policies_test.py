@@ -103,7 +103,6 @@ class TestGenerateNewParticipant(unittest.TestCase):
             self.assertEqual(participant.holdings.age_days, 1)
 
 
-
 class TestGenerateNewProposal(unittest.TestCase):
     def setUp(self):
         self.params = {
