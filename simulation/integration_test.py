@@ -15,14 +15,7 @@ from simulation import (CommonsSimulationConfiguration,
                         partial_state_update_blocks)
 
 
-def bootstrap_simulation(c: CommonsSimulationConfiguration):
-    random_seed = 1
-    probability_func = new_probability_func(random_seed)
-    exponential_func = new_exponential_func(random_seed)
-    gamma_func = new_gamma_func(random_seed)
-    random_number_func = new_random_number_func(random_seed)
-    choice_func = new_choice_func(random_seed)
-
+def bootstrap_simulation(c: CommonsSimulationConfiguration(random_seed=1)):
     contributions = [c.random_number_func() * 10e5 for i in range(c.hatchers)]
     cliff_days, halflife_days = c.cliff_and_halflife()
     token_batches, initial_token_supply = create_token_batches(
@@ -58,19 +51,19 @@ def bootstrap_simulation(c: CommonsSimulationConfiguration):
             "debug": False,
             "alpha_days_to_80p_of_max_voting_weight": c.alpha(),
             "max_proposal_request": c.max_proposal_request,
-            "random_seed": random_seed,
-            "probability_func": probability_func,
-            "exponential_func": exponential_func,
-            "gamma_func": gamma_func,
-            "random_number_func": random_number_func,
-            "choice_func": choice_func
+            "random_seed": c.random_seed,
+            "probability_func": c.probability_func,
+            "exponential_func": c.exponential_func,
+            "gamma_func": c.gamma_func,
+            "random_number_func": c.random_number_func,
+            "choice_func": c.choice_func
         }
     }
 
     return initial_conditions, simulation_parameters
 
 
-def run_simulation(c: CommonsSimulationConfiguration):
+def run_simulation(c: CommonsSimulationConfiguration(random_seed=1)):
     initial_conditions, simulation_parameters = bootstrap_simulation(c)
 
     exp = Experiment()
@@ -101,7 +94,7 @@ def run_simulation(c: CommonsSimulationConfiguration):
 
 class TestParticipant(unittest.TestCase):
     def setUp(self):
-        c = CommonsSimulationConfiguration()
+        c = CommonsSimulationConfiguration(random_seed=1)
         results, df_final = run_simulation(c)
         self.df_final = df_final
 
