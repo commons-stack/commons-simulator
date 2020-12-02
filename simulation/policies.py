@@ -68,6 +68,15 @@ class GenerateNewParticipant:
                 _input["new_participant_investment"])
         return "commons", commons
 
+    @staticmethod
+    def su_update_participants_token_batch_age(params, step, sL, s, _input, **kwargs):
+        network = s["network"]
+        participants = get_participants(network)
+        for i, participant in participants:
+            participant.update_token_batch_age()
+
+        return "network", network
+
 
 class GenerateNewProposal:
     @staticmethod

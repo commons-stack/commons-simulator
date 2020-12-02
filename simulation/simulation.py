@@ -172,6 +172,12 @@ partial_state_update_blocks = [
             'commons': GenerateNewParticipant.su_add_investment_to_commons,
         }
     },
+    {
+        "policies": {},
+        "variables": {
+            "network": GenerateNewParticipant.su_update_participants_token_batch_age,
+        }
+    },
     sync_state_variables,
     {
         "policies": {
