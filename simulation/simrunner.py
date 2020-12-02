@@ -43,26 +43,27 @@ def run_simulation(c: CommonsSimulationConfiguration):
     return result, df_final
 
 
-parser = argparse.ArgumentParser()
-c_default = CommonsSimulationConfiguration()
-parser.add_argument("--hatchers", type=int, default=c_default.hatchers)
-parser.add_argument("--proposals", type=int, default=c_default.proposals)
-parser.add_argument("--hatch_tribute", type=float,
-                    default=c_default.hatch_tribute)
-parser.add_argument("--vesting_80p_unlocked", type=float,
-                    default=c_default.vesting_80p_unlocked)
-parser.add_argument("--exit_tribute", type=float,
-                    default=c_default.exit_tribute)
-parser.add_argument("--kappa", type=int, default=c_default.kappa)
-parser.add_argument("--days_to_80p_of_max_voting_weight",
-                    type=int, default=c_default.days_to_80p_of_max_voting_weight)
-parser.add_argument("--max_proposal_request", type=float,
-                    default=c_default.max_proposal_request)
-parser.add_argument("-T", "--timesteps_days", type=int,
-                    default=c_default.timesteps_days)
-args = parser.parse_args()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    c_default = CommonsSimulationConfiguration()
+    parser.add_argument("--hatchers", type=int, default=c_default.hatchers)
+    parser.add_argument("--proposals", type=int, default=c_default.proposals)
+    parser.add_argument("--hatch_tribute", type=float,
+                        default=c_default.hatch_tribute)
+    parser.add_argument("--vesting_80p_unlocked", type=float,
+                        default=c_default.vesting_80p_unlocked)
+    parser.add_argument("--exit_tribute", type=float,
+                        default=c_default.exit_tribute)
+    parser.add_argument("--kappa", type=int, default=c_default.kappa)
+    parser.add_argument("--days_to_80p_of_max_voting_weight",
+                        type=int, default=c_default.days_to_80p_of_max_voting_weight)
+    parser.add_argument("--max_proposal_request", type=float,
+                        default=c_default.max_proposal_request)
+    parser.add_argument("-T", "--timesteps_days", type=int,
+                        default=c_default.timesteps_days)
+    args = parser.parse_args()
 
-c = CommonsSimulationConfiguration(**vars(args))
-print("Running sim config", c)
-o, _ = run_simulation(c)
-print(json.dumps(o))
+    c = CommonsSimulationConfiguration(**vars(args))
+    print("Running sim config", c)
+    o, _ = run_simulation(c)
+    print(json.dumps(o))
