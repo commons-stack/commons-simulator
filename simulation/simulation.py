@@ -101,9 +101,9 @@ class CommonsSimulationConfiguration:
     def alpha(self) -> float:
         """
         Converts days_to_80p_of_max_voting_weight to alpha.
-        alpha = 0.8 ^ (1/t)
+        alpha = (1 - 0.8) ^ (1/t)
         """
-        return 0.8 ** (1/self.days_to_80p_of_max_voting_weight)
+        return 0.2 ** (1/self.days_to_80p_of_max_voting_weight)
 
     def cliff_and_halflife(self) -> Tuple[float, float]:
         """
