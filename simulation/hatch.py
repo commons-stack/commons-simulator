@@ -2,6 +2,7 @@ from typing import List, Tuple
 from abcurve import AugmentedBondingCurve
 from collections import namedtuple
 from utils import attrs
+import config
 
 
 def vesting_curve(day: int, cliff_days: int, halflife_days: float) -> float:
@@ -9,7 +10,7 @@ def vesting_curve(day: int, cliff_days: int, halflife_days: float) -> float:
     The vesting curve includes the flat cliff, and the halflife curve where tokens are gradually unlocked.
     It looks like _/--
     """
-    return 1 - 0.5**((day - cliff_days)/halflife_days)
+    return 1 - config.vesting_curve_halflife**((day - cliff_days)/halflife_days)
 
 
 def convert_80p_to_cliff_and_halflife(days: int, v_ratio: int = 2) -> Tuple[float, float]:
@@ -19,7 +20,7 @@ def convert_80p_to_cliff_and_halflife(days: int, v_ratio: int = 2) -> Tuple[floa
     2.321928094887362 is log(base0.5) 0.2, or log 0.2 / log 0.5.
     v_ratio is cliff / halflife, and its default is determined by Commons Stack
     """
-    halflife_days = days / (2.321928094887362 + v_ratio)
+    halflife_days = days / (config.log_base05_of_02 + v_ratio)
     cliff_days = v_ratio * halflife_days
     return cliff_days, halflife_days
 
