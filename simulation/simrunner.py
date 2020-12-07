@@ -32,6 +32,11 @@ def run_simulation(c: CommonsSimulationConfiguration):
     raw_system_events, tensor_field, sessions = executor.execute()
 
     df = pd.DataFrame(raw_system_events)
+    return df
+
+
+def get_simulation_results(c):
+    df = run_simulation(c)
     df_final = df[df.substep.eq(2)]
 
     result = {
@@ -65,5 +70,5 @@ if __name__ == "__main__":
 
     c = CommonsSimulationConfiguration(**vars(args))
     print("Running sim config", c)
-    o, _ = run_simulation(c)
+    o, _ = get_simulation_results(c)
     print(json.dumps(o))

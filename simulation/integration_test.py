@@ -11,7 +11,7 @@ from utils import (new_probability_func, new_exponential_func, new_gamma_func,
                    new_random_number_func, new_choice_func)
 from hatch import create_token_batches, Commons
 from network_utils import bootstrap_network, get_participants
-from simrunner import run_simulation
+from simrunner import get_simulation_results
 from simulation import (bootstrap_simulation, CommonsSimulationConfiguration,
                         partial_state_update_blocks)
 
@@ -19,7 +19,7 @@ from simulation import (bootstrap_simulation, CommonsSimulationConfiguration,
 class TestParticipant(unittest.TestCase):
     def setUp(self):
         c = CommonsSimulationConfiguration(random_seed=1)
-        results, df_final = run_simulation(c)
+        results, df_final = get_simulation_results(c)
         self.df_final = df_final
 
     def test_participant_token_batch_age_is_updated_every_timestep(self):
@@ -35,8 +35,8 @@ class TestParticipant(unittest.TestCase):
             network = row['network']
             participants = get_participants(network)
 
-        participants_token_batch_ages = []
-        for i, participant in participants:
-            participants_token_batch_ages.append(participant.holdings.age_days)
-        # Check if the older token batch has the same age of the simulation
-        self.assertEqual(max(participants_token_batch_ages), timestep)
+            participants_token_batch_ages = []
+            for i, participant in participants:
+                participants_token_batch_ages.append(participant.holdings.age_days)
+            # Check if the older token batch has the same age of the simulation
+            self.assertEqual(max(participants_token_batch_ages), timestep)
