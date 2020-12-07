@@ -44,6 +44,7 @@ def save_policy_output(params, step, sL, s, _input):
 
 # This sub-policy block should be run every time the Commons object is updated.
 sync_state_variables = {
+    "label": "Sync state variables",
     "policies": {},
     "variables": {
         "funding_pool": update_funding_pool,
@@ -164,6 +165,7 @@ def bootstrap_simulation(c: CommonsSimulationConfiguration):
 
 partial_state_update_blocks = [
     {
+        "label": "Generate new participants",
         "policies": {
             "generate_new_participants": GenerateNewParticipant.p_randomly,
         },
@@ -173,6 +175,7 @@ partial_state_update_blocks = [
         }
     },
     {
+        "label": "Update participants' token batch age",
         "policies": {},
         "variables": {
             "network": GenerateNewParticipant.su_update_participants_token_batch_age,
@@ -180,6 +183,7 @@ partial_state_update_blocks = [
     },
     sync_state_variables,
     {
+        "label": "Generate new proposals",
         "policies": {
             "generate_new_proposals": GenerateNewProposal.p_randomly,
         },
@@ -188,6 +192,7 @@ partial_state_update_blocks = [
         }
     },
     {
+        "label": "Generate new funding",
         "policies": {
             "generate_new_funding": GenerateNewFunding.p_exit_tribute_of_average_speculator_position_size,
         },
@@ -196,12 +201,14 @@ partial_state_update_blocks = [
         }
     },
     {
+        "label": "Update proposals' age and conviction thresholds",
         "policies": {},
         "variables": {
             "network": ProposalFunding.su_update_age_and_conviction_thresholds,
         }
     },
     {
+        "label": "Compare proposals' conviction and thresholds",
         "policies": {
             "which_proposals_should_be_funded": ProposalFunding.p_compare_conviction_and_threshold
         },
@@ -212,6 +219,7 @@ partial_state_update_blocks = [
         }
     },
     {
+        "label": "Update participants' sentiment when a proposal becomes active",
         "policies": {},
         "variables": {
             "network": ParticipantExits.su_update_sentiment_when_proposal_becomes_active,
@@ -219,6 +227,7 @@ partial_state_update_blocks = [
     },
     sync_state_variables,
     {
+        "label": "Proposals become failed or completed",
         "policies": {
             "which_proposals_are_failed_or_completed": ActiveProposals.p_influenced_by_grant_size
         },
@@ -228,12 +237,14 @@ partial_state_update_blocks = [
         }
     },
     {
+        "label": "Update participants' sentiment when a proposal becomes failed or completed",
         "policies": {},
         "variables": {
             "network": ParticipantExits.su_update_sentiment_when_proposal_becomes_failed_or_completed,
         }
     },
     {
+        "label": "Participant votes on proposal according to affinity",
         "policies": {
             "participants_stake_tokens_on_proposals": ParticipantVoting.p_participant_votes_on_proposal_according_to_affinity
         },
@@ -242,12 +253,14 @@ partial_state_update_blocks = [
         },
     },
     {
+        "label": "Calculate proposals' conviction",
         "policies": {},
         "variables": {
             "network": ProposalFunding.su_calculate_conviction,
         }
     },
     {
+        "label": "Participant decides to buy tokens",
         "policies": {
             "participants_decide_to_buy_tokens": ParticipantBuysTokens.p_decide_to_buy_tokens_bulk,
         },
@@ -258,6 +271,7 @@ partial_state_update_blocks = [
     },
     sync_state_variables,
     {
+        "label": "Participant decides to sell tokens",
         "policies": {
             "participants_decide_to_sell_tokens": ParticipantSellsTokens.p_decide_to_sell_tokens_bulk,
         },
@@ -267,6 +281,7 @@ partial_state_update_blocks = [
         }
     },
     {
+        "label": "Participant decides if he wants to exit",
         "policies": {
             "participants_may_exit": ParticipantExits.p_participant_decides_if_he_wants_to_exit,
         },
