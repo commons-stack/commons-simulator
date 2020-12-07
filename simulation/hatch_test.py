@@ -17,8 +17,24 @@ class HatchTest(unittest.TestCase):
         self.assertEqual(convert_80p_to_cliff_and_halflife(
             90), (41.64807836875666, 20.82403918437833))
 
+    def test_hatch_raise_split_pools(self):
+        # Total hatch raised is 100000 and hatch tribute is 2%.
+        funding_pool, collateral_pool = hatch_raise_split_pools(100000, 0.02)
+
+        # Funding pool should have 2000, since it is 2% of the total hatch.
+        self.assertEqual(funding_pool, 2000)
+        # Collateral pool should have 98000, since it is the raised tach less the tribute.
+        self.assertEqual(collateral_pool, 98000)
+
 
 class TokenBatchTest(unittest.TestCase):
+    def test_total(self):
+        token_batch = TokenBatch(200, 100)
+        token_batch.vesting_spent = 50
+        # Test if token_batch total is unspent vesting plus nonvesting holdings.
+        self.assertEqual(token_batch.total,
+                        (token_batch.vesting - token_batch.vesting_spent) + token_batch.nonvesting)
+
     def test_bool(self):
         zero = TokenBatch(0, 0)
         vesting_only = TokenBatch(1, 0)
@@ -45,6 +61,13 @@ class TokenBatchTest(unittest.TestCase):
         five = TokenBatch(1, 5)
         four = TokenBatch(1, 4)
         self.assertEqual(five-four, (0, 1))
+
+    def test_update_age(self):
+        # Check if the TokenBatch age in days is updated by the number of iteractions.
+        iteractions = 5
+        token_batch = TokenBatch(200, 100)
+        self.assertEqual(token_batch.update_age(iteractions), iteractions)
+
 
     def test_unlocked_fraction(self):
         tbh = TokenBatch(10000, 0, vesting_options=VestingOptions(3, 3))
@@ -124,6 +147,24 @@ class CommonsTest(unittest.TestCase):
 
         self.assertEqual(self.commons.token_price(), 0.14)
 
+    def test_deposit(self):
+        # Deposits 1000 DAI.
+        new_deposit = 1000
+        initial_collateral_pool = self.commons._collateral_pool
+        initial_token_supply = self.commons._token_supply
+        tokens, realized_price = self.commons.bonding_curve.deposit(
+            new_deposit, self.commons._collateral_pool, self.commons._token_supply)
+        tokens_deposit, realized_price_deposit = self.commons.deposit(new_deposit)
+
+        # Check if deposit() sends the incoming amount only to the collateral pool.
+        self.assertEqual(self.commons._collateral_pool, new_deposit + initial_collateral_pool)
+        # Check if the new create tokens go to token supply
+        self.assertEqual(self.commons._token_supply, tokens + initial_token_supply)
+
+        # Check if the tokens and realized price are according to the augmented bonding curve.
+        self.assertEqual(tokens, tokens_deposit)
+        self.assertEqual(realized_price, realized_price_deposit)
+
     def test_burn_without_exit_tribute(self):
         old_token_supply = self.commons._token_supply
         old_collateral_pool = self.commons._collateral_pool
@@ -135,3 +176,42 @@ class CommonsTest(unittest.TestCase):
         self.assertEqual(self.commons._token_supply, old_token_supply-50000)
         self.assertEqual(self.commons._collateral_pool,
                          old_collateral_pool-money_returned)
+
+    def test_burn_with_exit_tribute(self):
+        self.commons.exit_tribute = 0.02
+        old_token_supply = self.commons._token_supply
+        old_collateral_pool = self.commons._collateral_pool
+        old_funding_pool = self.commons._funding_pool
+
+        money_returned, realized_price = self.commons.burn(50000)
+
+        self.assertEqual(money_returned, 6688.5)
+        self.assertEqual(realized_price, 0.1365)
+        self.assertEqual(self.commons._funding_pool,
+                         old_funding_pool +
+                         (50000*realized_price*self.commons.exit_tribute))
+        self.assertEqual(self.commons._token_supply, old_token_supply-50000)
+        self.assertEqual(self.commons._collateral_pool,
+                         old_collateral_pool-(50000*realized_price))
+
+    def test_dai_to_tokens(self):
+        dai = 5000
+        token_amount = self.commons.dai_to_tokens(dai)
+        # Check if, at a given amount of dai, the correct token amount is returned.
+        self.assertEqual(token_amount, 35714.28571428571)
+
+    def test_token_price(self):
+        # Check if the token price is correct according to the bonding curve.
+        self.assertEqual(self.commons.token_price(), 0.14)
+
+    def test_spend(self):
+        old_funding_pool = self.commons._funding_pool
+
+        amount = old_funding_pool + 1
+        # If the amount to be spent is greater than the funding pool, spend() raises an exception.
+        with self.assertRaises(Exception): self.commons.spend(amount)
+
+        amount = 5000
+        # If the amount to be spent is smaller than the funding pool, spend() returns None.
+        self.assertEqual(self.commons.spend(amount), None)
+        self.assertEqual(self.commons._funding_pool, old_funding_pool-amount)

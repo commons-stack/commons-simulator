@@ -3,6 +3,7 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import math
 
 import utils
 from entities import Participant, Proposal, ProposalStatus
@@ -19,14 +20,29 @@ def never(rate):
 
 
 class TestProposal(unittest.TestCase):
+    def setUp(self):
+        self.p = Proposal(500, 0.0)
+
+    def test_update_age(self):
+        self.p.update_age()
+
+        # The Proposal's age starts at 0 and should be incremented by 1 after update_age()
+        self.assertEqual(self.p.age, 1)
+
+    def test_update_threshold(self):
+        # Just check if the trigger_threshold is correct
+        self.assertEqual(self.p.update_threshold(500000.0, 3000.0, 10000.0), 1500.000300000045)
+
+        # If the proposal status is not CANDIDATE, update_threshold shoud return NaN
+        self.p.status = ProposalStatus.ACTIVE
+        self.assertTrue(math.isnan(self.p.update_threshold(500000.0, 3000.0, 10000.0)))
+
     def test_has_enough_conviction(self):
-        p = Proposal(500, 0.0)
-
         # a newly created Proposal can't expect to have any Conviction gathered at all
-        self.assertFalse(p.has_enough_conviction(10000, 3e6, 0.2))
+        self.assertFalse(self.p.has_enough_conviction(10000, 3e6, 0.2))
 
-        p.conviction = 2666666.7
-        self.assertTrue(p.has_enough_conviction(10000, 3e6, 0.2))
+        self.p.conviction = 2666666.7
+        self.assertTrue(self.p.has_enough_conviction(10000, 3e6, 0.2))
 
 
 class TestParticipant(unittest.TestCase):
@@ -67,6 +83,34 @@ class TestParticipant(unittest.TestCase):
         self.p._probability_func = never
         delta_holdings = self.p.sell()
         self.assertEqual(delta_holdings, 0)
+
+    def test_increase_holdings(self):
+        """
+        Test that the function works. The result nonvesting holdings should be
+        the initial nonvesting holdings plus the added nonvesting holdings.
+        The vesting and the vesting_spent holdings should not me modified.
+        """
+        added_nonvesting_holdings = 50
+        inital_nonvesting_holdings = self.p.holdings.nonvesting
+        initial_vesting_holdings = self.p.holdings.vesting
+        initial_vesting_spent_holdings = self.p.holdings.vesting_spent
+        self.p.increase_holdings(added_nonvesting_holdings)
+
+        self.assertEqual(self.p.holdings.nonvesting,
+                        added_nonvesting_holdings + inital_nonvesting_holdings)
+        # Test if vesting and vesting_spent holdings are unchanged
+        self.assertEqual(self.p.holdings.vesting, initial_vesting_holdings)
+        self.assertEqual(self.p.holdings.vesting_spent, initial_vesting_spent_holdings)
+
+    def test_spend(self):
+        """
+        Test that the function works. It simply tests it spend() behaviours as a
+        front to TokenBatch.spend() returning a tuple with vesting, vesting_spent
+        and nonvesting.
+        """
+        self.assertEqual(self.p.spend(50), (self.p.holdings.vesting,
+                                            self.p.holdings.vesting_spent,
+                                            self.p.holdings.nonvesting))
 
     def test_create_proposal(self):
         """
@@ -162,6 +206,15 @@ class TestParticipant(unittest.TestCase):
         new_age_days = self.p.update_token_batch_age()
         self.assertEqual(new_age_days, old_age_days + 1)
 
-
-if __name__ == '__main__':
-    unittest.main()
+    def test_wants_to_exit(self):
+        """
+        Test that the function works. First force the probability to be True
+        and check if the participant wanted to exit. Then force the probability
+        to be False and check if the participant do not wanted to exit.
+        """
+        # Set a sentiment below the exit threshold
+        self.p.sentiment = 0.2
+        self.p._probability_func = always
+        self.assertTrue(self.p.wants_to_exit())
+        self.p._probability_func = never
+        self.assertFalse(self.p.wants_to_exit())
