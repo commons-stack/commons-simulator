@@ -24,6 +24,45 @@ class TestParticipant(unittest.TestCase):
         results, df_final = get_simulation_results(c)
         self.df_final = df_final
 
+def run_simulation(c: CommonsSimulationConfiguration):
+    initial_conditions, simulation_parameters = bootstrap_simulation(c)
+
+    exp = Experiment()
+    exp.append_configs(
+        initial_state=initial_conditions,
+        partial_state_update_blocks=partial_state_update_blocks,
+        sim_configs=simulation_parameters
+    )
+
+    # Do not use multi_proc, breaks ipdb.set_trace()
+    exec_mode = ExecutionMode()
+    single_proc_context = ExecutionContext(exec_mode.local_mode)
+    executor = Executor(single_proc_context, configs)
+
+    raw_system_events, tensor_field, sessions = executor.execute()
+
+    df = pd.DataFrame(raw_system_events)
+    df_final = df
+
+    result = {
+        "timestep": list(df_final["timestep"]),
+        "funding_pool": list(df_final["funding_pool"]),
+        "token_price": list(df_final["token_price"]),
+        "sentiment": list(df_final["sentiment"])
+    }
+    return result, df_final
+
+
+class TestParticipant(unittest.TestCase):
+    def setUp(self):
+        c = CommonsSimulationConfiguration(random_seed=1)
+        results, df_final = run_simulation(c)
+        self.df_final = df_final
+        PSUBs_labels = {}
+        for idx, block in enumerate(partial_state_update_blocks):
+            PSUBs_labels[idx+1] = block["label"]
+
+        self.PSUBs_labels = PSUBs_labels
 
     def test_participant_token_batch_age_is_updated_every_timestep(self):
             """
