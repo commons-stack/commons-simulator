@@ -93,6 +93,7 @@ class TestGenerateNewParticipant(unittest.TestCase):
             for u, v in network.in_edges(5):
                 self.assertEqual(network.edges[u, v]["type"], "influence")
 
+<<<<<<< HEAD
     def test_su_update_participants_token_batch_age(self):
         """
         Test that after running the state update function the participants'
@@ -105,6 +106,8 @@ class TestGenerateNewParticipant(unittest.TestCase):
         for i, participant in participants:
             self.assertEqual(participant.holdings.age_days, 1)
 
+=======
+>>>>>>> c449d87da4dc718d10e22befbd748d8081321535
     def test_su_add_investment_to_commons(self):
         old_token_supply = self.commons._token_supply
         old_collateral_pool = self.commons._collateral_pool
