@@ -291,3 +291,17 @@ def find_in_edges_of_type_for_proposal(network: nx.DiGraph, proposal_idx: int, e
             ans.append((participant_idx, proposal_idx, edge_type))
 
     return ans
+
+
+def get_proposals_conviction_list(network):
+    """
+    Convenience function. Return a list of proposals' conviction of
+    a given network.
+    """
+    support_edges = get_edges_by_type(network, "support")
+    conviction_list = []
+    for i, j in support_edges:
+        edge = network.edges[i, j]
+        conviction = edge["conviction"]
+        conviction_list.append(conviction)
+    return conviction_list

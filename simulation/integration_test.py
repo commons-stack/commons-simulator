@@ -11,9 +11,9 @@ import copy
 from utils import (new_probability_func, new_exponential_func, new_gamma_func,
                    new_random_number_func, new_choice_func)
 from hatch import create_token_batches, Commons
-from simrunner import get_simulation_results
+from simrunner import get_simulation_results, run_simulation
 from network_utils import (bootstrap_network, get_participants,
-                           get_edges_by_type)
+                           get_edges_by_type, get_proposals_conviction_list)
 from simulation import (bootstrap_simulation, CommonsSimulationConfiguration,
                         partial_state_update_blocks)
 
@@ -24,65 +24,26 @@ class TestParticipant(unittest.TestCase):
         results, df_final = get_simulation_results(c)
         self.df_final = df_final
 
-def run_simulation(c: CommonsSimulationConfiguration):
-    initial_conditions, simulation_parameters = bootstrap_simulation(c)
-
-    exp = Experiment()
-    exp.append_configs(
-        initial_state=initial_conditions,
-        partial_state_update_blocks=partial_state_update_blocks,
-        sim_configs=simulation_parameters
-    )
-
-    # Do not use multi_proc, breaks ipdb.set_trace()
-    exec_mode = ExecutionMode()
-    single_proc_context = ExecutionContext(exec_mode.local_mode)
-    executor = Executor(single_proc_context, configs)
-
-    raw_system_events, tensor_field, sessions = executor.execute()
-
-    df = pd.DataFrame(raw_system_events)
-    df_final = df
-
-    result = {
-        "timestep": list(df_final["timestep"]),
-        "funding_pool": list(df_final["funding_pool"]),
-        "token_price": list(df_final["token_price"]),
-        "sentiment": list(df_final["sentiment"])
-    }
-    return result, df_final
-
-
-class TestParticipant(unittest.TestCase):
-    def setUp(self):
-        c = CommonsSimulationConfiguration(random_seed=1)
-        results, df_final = run_simulation(c)
-        self.df_final = df_final
-        PSUBs_labels = {}
-        for idx, block in enumerate(partial_state_update_blocks):
-            PSUBs_labels[idx+1] = block["label"]
-
-        self.PSUBs_labels = PSUBs_labels
-
     def test_participant_token_batch_age_is_updated_every_timestep(self):
-            """
-            Test that the age of the Participants' token batch is updated every
-            timestep. The test checks if the older token batch age has the same
-            age
-            of the simulation (timestep). It considers that at least one
-            participant stays in the commons from the beginning to the end of the
-            simulation.
-            """
-            for index, row in self.df_final.iterrows():
-                timestep = row["timestep"]
-                network = row["network"]
-                participants = get_participants(network)
+        """
+        Test that the age of the Participants' token batch is updated every
+        timestep. The test checks if the older token batch age has the same
+        age
+        of the simulation (timestep). It considers that at least one
+        participant stays in the commons from the beginning to the end of the
+        simulation.
+        """
+        for index, row in self.df_final.iterrows():
+            timestep = row["timestep"]
+            network = row["network"]
+            participants = get_participants(network)
 
-                participants_token_batch_ages = []
-                for i, participant in participants:
-                    participants_token_batch_ages.append(participant.holdings.age_days)
-                # Check if the older token batch has the same age of the simulation
-                self.assertEqual(max(participants_token_batch_ages), timestep)
+            participants_token_batch_ages = []
+            for i, participant in participants:
+                participants_token_batch_ages.append(
+                                            participant.holdings.age_days)
+            # Check if the older token batch has the same age of the simulation
+            self.assertEqual(max(participants_token_batch_ages), timestep)
 
 
 class TestProposal(unittest.TestCase):
@@ -90,37 +51,57 @@ class TestProposal(unittest.TestCase):
         c = CommonsSimulationConfiguration(random_seed=1)
         df = run_simulation(c)
         self.df = df
-        
+
     def test_conviction_is_updated_once_by_timestep(self):
-        for index, row in self.df_final.iterrows():
+        """
+        Test that the Proposals' conviction is updated only once by timestep.
+        First it creates a new column on the result Data Frame with the psub
+        labels, and then check the behaviour of each psub. Only the psub
+        "Calculate proposals' conviction" updated the proposals' convictions.
+        The psubs "Generate new participants" and "Generate new proposals" add
+        new participants and proposals to the network, but should not affect
+        the conviction of existing proposals. The psub
+        "Participant decides if he wants to exit" removes participants from
+        the network, thus it might remove proposals created by the removed
+        participants. This psub should not affect the remainig proposals'
+        conviction. The other psubs should not affect the proposals'
+        conviction.
+
+        Reminder: Currently on the code the proposals that become active,
+        failed or completed are still having their convictions calculated.
+        """
+        psubs = partial_state_update_blocks
+        # Mapping the substep order to the PSUB label
+        psub_map = {order+1: psub['label'] for (order,
+                                                psub) in enumerate(psubs)}
+
+        # Add a column with the psub executed on each sustep
+        self.df['psubs'] = self.df.substep.map(psub_map)
+
+        for index, row in self.df.iterrows():
             timestep = row["timestep"]
-            substep = row["substep"]
+            psub = row["psubs"]
             network = row["network"]
-            # Arbitrarily testing timestep 2
-            if timestep == 2:
-                print("substep", substep)
-                support_edges = get_edges_by_type(network, "support")
-                conviction_list = []
-                for i, j in support_edges:
-                    edge = network.edges[i, j]
-                    prior_conviction = edge["conviction"]
-                    conviction_list.append(prior_conviction)
-                # If there is no timestep before, there is no need (later test
-                # this with the last substep of the last timestep)
-                if substep > 1:
-                    if self.PSUBs_labels[substep] == "Generate new proposals":
-                        length_diff = len(conviction_list) - len(prior_conviction_list)
-                        priot_conviction_list = prior_conviction_list + [0.0] * length_diff
-                        self.assertEqual(conviction_list, priot_conviction_list)
-                        prior_conviction_list = copy.deepcopy(conviction_list)
 
-                    if self.PSUBs_labels[substep] == "Calculate proposals' conviction":
-                        # Checks that no proposal have been added or removed
-                        self.assertEqual(len(conviction_list), len(prior_conviction_list))
-                        self.assertFalse(conviction_list == prior_conviction_list)
+            conviction_list = get_proposals_conviction_list(network)
 
-                    else:
-                        self.assertEqual(conviction_list, prior_conviction_list)
-
-                    prior_conviction_list = copy.deepcopy(conviction_list)
+            if timestep == 0:
                 prior_conviction_list = copy.deepcopy(conviction_list)
+            if (psub == "Generate new participants" or
+                    psub == "Generate new proposals"):
+                len_diff = len(conviction_list) - len(prior_conviction_list)
+                prior_conviction_list = prior_conviction_list + [0] * len_diff
+                self.assertEqual(sorted(conviction_list),
+                                 sorted(prior_conviction_list))
+            elif psub == "Calculate proposals' conviction":
+                # Checks that no proposal have been added or removed
+                self.assertEqual(len(conviction_list),
+                                 len(prior_conviction_list))
+                self.assertFalse(conviction_list == prior_conviction_list)
+            elif psub == "Participant decides if he wants to exit":
+                self.assertTrue(set(conviction_list) <=
+                                set(prior_conviction_list))
+            else:
+                self.assertEqual(conviction_list, prior_conviction_list)
+
+            prior_conviction_list = copy.deepcopy(conviction_list)

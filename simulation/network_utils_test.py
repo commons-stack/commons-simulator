@@ -10,7 +10,7 @@ from utils import new_probability_func, new_exponential_func, new_gamma_func, ne
 from network_utils import (add_proposal, add_participant, bootstrap_network, calc_avg_sentiment,
                            calc_median_affinity, calc_total_affinity, calc_total_conviction,
                            calc_total_funds_requested, find_in_edges_of_type_for_proposal, get_edges_by_type, get_edges_by_participant_and_type,
-                           get_participants, get_proposals,
+                           get_participants, get_proposals, get_proposals_conviction_list,
                            setup_conflict_edges, setup_influence_edges_bulk,
                            setup_influence_edges_single, setup_support_edges)
 
@@ -343,3 +343,13 @@ class TestNetworkUtils(unittest.TestCase):
         c_edges_expected = [(1, 9, 'conflict'), (3, 9, 'conflict'),
                             (5, 9, 'conflict'), (7, 9, 'conflict')]
         self.assertEqual(c_edges, c_edges_expected)
+
+    def test_get_proposals_conviction_list(self):
+        """
+        Test that the returning list of proposals' convictions is correct.
+        """
+        self.network = setup_support_edges(self.network, self.params["random_number_func"])
+        conviction_list = get_proposals_conviction_list(self.network)
+        expected_list = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        self.assertEqual(conviction_list, expected_list)
