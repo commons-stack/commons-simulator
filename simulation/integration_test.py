@@ -55,15 +55,15 @@ class TestProposal(unittest.TestCase):
     def test_conviction_is_updated_once_by_timestep(self):
         """
         Test that the Proposals' conviction is updated only once by timestep.
-        First it creates a new column on the result Data Frame with the psub
-        labels, and then check the behaviour of each psub. Only the psub
+        First, it creates a new column on the result Data Frame with the psub
+        labels, and then checks the behavior of each psub. Only the psub
         "Calculate proposals' conviction" updated the proposals' convictions.
         The psubs "Generate new participants" and "Generate new proposals" add
         new participants and proposals to the network, but should not affect
         the conviction of existing proposals. The psub
         "Participant decides if he wants to exit" removes participants from
         the network, thus it might remove proposals created by the removed
-        participants. This psub should not affect the remainig proposals'
+        participants. This psub should not affect the remaining proposals'
         conviction. The other psubs should not affect the proposals'
         conviction.
 
