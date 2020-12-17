@@ -24,10 +24,6 @@ class TestParticipant(unittest.TestCase):
         results, df_final = get_simulation_results(c)
         self.df_final = df_final
 
-<<<<<<< HEAD
-
-=======
->>>>>>>  Add int test to ensure conviction is updated only once
     def test_participant_token_batch_age_is_updated_every_timestep(self):
         """
         Test that the age of the Participants' token batch is updated every
