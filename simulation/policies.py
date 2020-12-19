@@ -119,7 +119,7 @@ class GenerateNewProposal:
             # to this Proposal. If the Participant is the one who created this
             # Proposal, change his affinity for the Proposal to 1 (maximum).
             network.edges[_input["proposed_by_participant"],
-                          proposal_idx]["affinity"] = 1
+                            proposal_idx]["support"] = network.edges[_input["proposed_by_participant"], proposal_idx]["support"]._replace(affinity=1)
             if params.get("debug"):
                 print("GenerateNewProposal: Participant {} created Proposal {}".format(
                     _input["proposed_by_participant"], proposal_idx))
@@ -258,13 +258,13 @@ class ProposalFunding:
         support_edges = get_edges_by_type(network, "support")
         for i, j in support_edges:
             edge = network.edges[i, j]
-            prior_conviction = edge['conviction']
-            current_tokens = edge['tokens']
+            prior_conviction = edge['support'].conviction
+            current_tokens = edge['support'].tokens
 
-            edge['conviction'] = current_tokens + alpha*prior_conviction
+            edge['support'] = edge['support']._replace(conviction=current_tokens + alpha*prior_conviction)
             if params.get("debug") and s["timestep"] == 1:
                 print("ProposalFunding: Participant {} initially has staked {} tokens on Proposal {}, which will result in {} conviction in the next timestep".format(
-                    i, current_tokens, j, edge["conviction"]))
+                    i, current_tokens, j, edge["support"].conviction))
 
         return "network", network
 
@@ -290,7 +290,7 @@ class ParticipantVoting:
         for participant_idx, participant in participants:
             proposal_idx_affinity = {}  # {4: 0.9, 5: 0.9}
             for proposal_idx, _ in candidate_proposals:
-                proposal_idx_affinity[proposal_idx] = network[participant_idx][proposal_idx]["affinity"]
+                proposal_idx_affinity[proposal_idx] = network[participant_idx][proposal_idx]["support"].affinity
             proposals_that_participant_cares_enough_to_vote_on = participant.vote_on_candidate_proposals(
                 proposal_idx_affinity)
 
@@ -328,7 +328,7 @@ class ParticipantVoting:
                 # the affinities in
                 # p_participant_votes_on_proposal_according_to_affinity()
                 # Also, do not recalculate conviction here. Leave that to ProposalFunding.su_calculate_conviction()
-                network[participant_idx][proposal_idx]["tokens"] = tokens_staked
+                network[participant_idx][proposal_idx]["support"] = network[participant_idx][proposal_idx]["support"]._replace(tokens=tokens_staked)
 
         return "network", network
 
@@ -533,7 +533,7 @@ class ParticipantExits:
         for idx in policy_output_passthru["proposal_idxs_with_enough_conviction"]:
             for participant_idx, proposal_idx, _ in find_in_edges_of_type_for_proposal(network, idx, "support"):
                 edge = network.edges[participant_idx, proposal_idx]
-                if edge["affinity"] == 1:
+                if edge["support"].affinity == 1:
                     sentiment_old = network.nodes[participant_idx]["item"].sentiment
                     sentiment_new = sentiment_old + config.sentiment_bonus_proposal_becomes_active
                     sentiment_new = 1 if sentiment_new > 1 else sentiment_new
@@ -560,7 +560,7 @@ class ParticipantExits:
         for idx in policy_output_passthru["failed"]:
             for participant_idx, proposal_idx, _ in find_in_edges_of_type_for_proposal(network, idx, "support"):
                 edge = network.edges[participant_idx, proposal_idx]
-                if edge["affinity"] == 1:
+                if edge["support"].affinity == 1:
                     sentiment_old = network.nodes[participant_idx]["item"].sentiment
                     sentiment_new = sentiment_old + config.sentiment_bonus_proposal_becomes_failed
                     sentiment_new = 0 if sentiment_new < 0 else sentiment_new
@@ -576,7 +576,7 @@ class ParticipantExits:
         for idx in policy_output_passthru["succeeded"]:
             for participant_idx, proposal_idx, _ in find_in_edges_of_type_for_proposal(network, idx, "support"):
                 edge = network.edges[participant_idx, proposal_idx]
-                if edge["affinity"] == 1:
+                if edge["support"].affinity == 1:
                     sentiment_old = network.nodes[participant_idx]["item"].sentiment
                     sentiment_new = sentiment_old + config.sentiment_bonus_proposal_becomes_completed
                     sentiment_new = 1 if sentiment_new > 1 else sentiment_new

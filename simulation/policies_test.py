@@ -185,7 +185,7 @@ class TestGenerateNewProposal(unittest.TestCase):
 
         # Check that the Participant that created the Proposal has an affinity
         # of 1 towards it
-        self.assertEqual(network.edges[0, 5]["affinity"], 1)
+        self.assertEqual(network.edges[0, 5]["support"].affinity, 1)
 
 
 class TestGenerateNewFunding(unittest.TestCase):
@@ -340,7 +340,7 @@ class TestProposalFunding(unittest.TestCase):
         """
         support_edges = get_edges_by_type(self.network, "support")
         for i, j in support_edges:
-            self.network.edges[i, j]["tokens"] = 100
+            self.network.edges[i, j]["support"] = self.network.edges[i, j]["support"]._replace(tokens=100)
 
         n_0 = copy.copy(self.network)
         _, n_1 = ProposalFunding.su_calculate_conviction(
@@ -348,15 +348,15 @@ class TestProposalFunding(unittest.TestCase):
         # Make sure the conviction actually changed
         for i, j in support_edges:
             edge = n_1.edges[i, j]
-            self.assertEqual(edge["tokens"], 100)
-            self.assertEqual(edge["conviction"], 100)
+            self.assertEqual(edge["support"].tokens, 100)
+            self.assertEqual(edge["support"].conviction, 100)
 
         _, n_2 = ProposalFunding.su_calculate_conviction(
             self.params, 0, 0, {"network": copy.copy(n_1), "funding_pool": 1000, "token_supply": 1000}, {})
         for i, j in support_edges:
             edge = n_2.edges[i, j]
-            self.assertEqual(edge["tokens"], 100)
-            self.assertEqual(edge["conviction"], 1100)
+            self.assertEqual(edge["support"].tokens, 100)
+            self.assertEqual(edge["support"].conviction, 1100)
 
 
 class TestParticipantVoting(unittest.TestCase):
@@ -384,7 +384,7 @@ class TestParticipantVoting(unittest.TestCase):
         self.network.nodes[5]["item"].status = ProposalStatus.CANDIDATE
         support_edges = get_edges_by_type(self.network, "support")
         for u, v in support_edges:
-            self.network[u][v]["affinity"] = 0.9
+            self.network[u][v]["support"] = self.network[u][v]["support"]._replace(affinity=0.9)
 
     def test_p_participant_votes_on_proposal_according_to_affinity(self):
         """
@@ -437,8 +437,8 @@ class TestParticipantVoting(unittest.TestCase):
         ParticipantVoting.su_update_participants_votes(
         self.params, 0, 0, {"network": network_copy, "funding_pool": 1000, "token_supply": 1000}, _input)
 
-        self.assertEqual(network_copy[0][4]["tokens"], 500)
-        self.assertEqual(network_copy[0][5]["tokens"], 400)
+        self.assertEqual(network_copy[0][4]["support"].tokens, 500)
+        self.assertEqual(network_copy[0][5]["support"].tokens, 400)
 
 
 class TestParticipantBuysTokens(unittest.TestCase):
@@ -710,8 +710,8 @@ class TestParticipantExits(unittest.TestCase):
         # Let's say Participant 2 owns Proposal 4, Participant 3 owns Proposal 5
         self.network.nodes[2]["item"].sentiment = 0.4
         self.network.nodes[3]["item"].sentiment = 0.6
-        self.network.edges[2, 4]["affinity"] = 1
-        self.network.edges[3, 5]["affinity"] = 1
+        self.network.edges[2, 4]["support"] = self.network.edges[2, 4]["support"]._replace(affinity=1)
+        self.network.edges[3, 5]["support"] = self.network.edges[3, 5]["support"]._replace(affinity=1)
 
         self.default_state["policy_output"] = policy_output_passthru
         _, n_network = ParticipantExits.su_update_sentiment_when_proposal_becomes_active(
@@ -734,8 +734,8 @@ class TestParticipantExits(unittest.TestCase):
         # Let's say Participant 2 owns Proposal 4, Participant 3 owns Proposal 5
         self.network.nodes[2]["item"].sentiment = 0.5
         self.network.nodes[3]["item"].sentiment = 0.7
-        self.network.edges[2, 4]["affinity"] = 1
-        self.network.edges[3, 5]["affinity"] = 1
+        self.network.edges[2, 4]["support"] = self.network.edges[2, 4]["support"]._replace(affinity=1)
+        self.network.edges[3, 5]["support"] = self.network.edges[3, 5]["support"]._replace(affinity=1)
 
         self.default_state["policy_output"] = policy_output_passthru
         _, n_network = ParticipantExits.su_update_sentiment_when_proposal_becomes_failed_or_completed(

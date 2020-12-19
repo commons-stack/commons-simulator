@@ -291,7 +291,7 @@ class TestNetworkUtils(unittest.TestCase):
         # Participants and 5 Proposals, this should result in a sum of 5
         # conviction for each Proposal.
         for u, v in support_edges:
-            self.network.edges[u, v]["conviction"] = 1
+            self.network.edges[u, v]["support"] = self.network.edges[u, v]["support"]._replace(conviction=1)
 
         for i in [1, 3, 5, 7, 9]:
             ans = calc_total_conviction(self.network, i)

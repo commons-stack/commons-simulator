@@ -1,7 +1,7 @@
 import uuid
 from enum import Enum
 from os.path import abspath
-from typing import List, Tuple
+from typing import List, NamedTuple, Tuple
 
 import numpy as np
 
@@ -222,3 +222,9 @@ class Participant:
         TokenBatch.update_age().
         """
         return self.holdings.update_age()
+
+
+class ParticipantSupport(NamedTuple):
+    affinity: float
+    tokens: float = 0.
+    conviction: float = 0.

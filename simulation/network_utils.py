@@ -5,7 +5,7 @@ import numpy as np
 from networkx.classes.reportviews import NodeDataView
 
 from convictionvoting import trigger_threshold
-from entities import Participant, Proposal, ProposalStatus
+from entities import Participant, ParticipantSupport, Proposal, ProposalStatus
 from hatch import TokenBatch
 
 
@@ -200,7 +200,7 @@ def setup_support_edges(network: nx.DiGraph, random_number_func, idx=None) -> nx
         # will be a few Proposals that they really care about.
         rv = random_number_func()
         a_rv = 1-4*(1-rv)*rv
-        n.add_edge(i, j, affinity=a_rv, tokens=0, conviction=0, type="support")
+        n.add_edge(i, j, support=ParticipantSupport(affinity=a_rv, tokens=0, conviction=0), type="support")
         return n
     participants = dict(get_participants(network))
     proposals = dict(get_proposals(network))
@@ -251,7 +251,7 @@ def calc_median_affinity(network: nx.DiGraph):
     if len(supporters) == 0:
         raise Exception("The network has 0 support edges!")
 
-    affinities = [network.edges[e]['affinity'] for e in supporters]
+    affinities = [network.edges[e]['support'].affinity for e in supporters]
     median_affinity = np.median(affinities)
     return median_affinity
 
@@ -262,15 +262,15 @@ def calc_total_conviction(network: nx.DiGraph, proposal_idx: int) -> float:
         raise Exception(
             "proposal_idx must point to a node that has a Proposal")
 
-    incoming_edges = network.in_edges(proposal_idx, data="conviction")
-    convictions = [cv for _, _, cv in incoming_edges if cv]
+    incoming_edges = network.in_edges(proposal_idx, data="support")
+    convictions = [support.conviction for _, _, support in incoming_edges if support]
 
     return np.sum(convictions)
 
 
 def calc_total_affinity(network: nx.DiGraph) -> float:
-    view = network.edges(data="affinity")
-    affinities = [affinity for _, _, affinity in view]
+    view = network.edges(data="support")
+    affinities = [support.affinity for _, _, support in view]
     return np.sum(affinities)
 
 
