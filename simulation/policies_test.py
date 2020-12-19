@@ -22,6 +22,8 @@ from policies import (ActiveProposals, GenerateNewFunding,
                       ParticipantSellsTokens, ParticipantVoting,
                       ProposalFunding)
 
+import config
+
 
 def always(rate):
     return True
@@ -710,8 +712,8 @@ class TestParticipantExits(unittest.TestCase):
         # Let's say Participant 2 owns Proposal 4, Participant 3 owns Proposal 5
         self.network.nodes[2]["item"].sentiment = 0.4
         self.network.nodes[3]["item"].sentiment = 0.6
-        self.network.edges[2, 4]["support"] = self.network.edges[2, 4]["support"]._replace(affinity=1)
-        self.network.edges[3, 5]["support"] = self.network.edges[3, 5]["support"]._replace(affinity=1)
+        self.network.edges[2, 4]["support"] = self.network.edges[2, 4]["support"]._replace(affinity=1, is_author=1)
+        self.network.edges[3, 5]["support"] = self.network.edges[3, 5]["support"]._replace(affinity=1, is_author=1)
 
         self.default_state["policy_output"] = policy_output_passthru
         _, n_network = ParticipantExits.su_update_sentiment_when_proposal_becomes_active(
@@ -731,15 +733,21 @@ class TestParticipantExits(unittest.TestCase):
             "succeeded": [5]
         }
 
-        # Let's say Participant 2 owns Proposal 4, Participant 3 owns Proposal 5
-        self.network.nodes[2]["item"].sentiment = 0.5
-        self.network.nodes[3]["item"].sentiment = 0.7
-        self.network.edges[2, 4]["support"] = self.network.edges[2, 4]["support"]._replace(affinity=1)
-        self.network.edges[3, 5]["support"] = self.network.edges[3, 5]["support"]._replace(affinity=1)
+        # Let's say Participant 2 owns Proposal 4, Participant 3 owns Proposal 5 and have staked on Proposal 4
+        participant_2_sentiment = 0.5
+        participant_3_sentiment = 0.7
+        self.network.nodes[2]["item"].sentiment = participant_2_sentiment
+        self.network.nodes[3]["item"].sentiment = participant_3_sentiment
+        self.network.edges[2, 4]["support"] = self.network.edges[2, 4]["support"]._replace(affinity=1, is_author=1)
+        self.network.edges[3, 4]["support"] = self.network.edges[3, 4]["support"]._replace(tokens=1)
+        self.network.edges[2, 5]["support"] = self.network.edges[2, 5]["support"]._replace(tokens=0)
+        self.network.edges[3, 5]["support"] = self.network.edges[3, 5]["support"]._replace(affinity=1, is_author=1)
 
         self.default_state["policy_output"] = policy_output_passthru
         _, n_network = ParticipantExits.su_update_sentiment_when_proposal_becomes_failed_or_completed(
             self.params, 0, 0, self.default_state, {})
 
-        self.assertEqual(n_network.nodes[2]["item"].sentiment, 0.4)
-        self.assertEqual(n_network.nodes[3]["item"].sentiment, 1)
+        new_sentiment_2 = (participant_2_sentiment + 1 * config.sentiment_bonus_proposal_becomes_failed)
+        new_sentiment_3 = (participant_3_sentiment + (self.network.edges[3, 4]["support"].affinity * config.sentiment_bonus_proposal_becomes_failed)) + (1 * config.sentiment_bonus_proposal_becomes_completed)
+        self.assertEqual(n_network.nodes[2]["item"].sentiment, new_sentiment_2)
+        self.assertEqual(n_network.nodes[3]["item"].sentiment, new_sentiment_3)
