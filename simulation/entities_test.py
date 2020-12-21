@@ -6,7 +6,7 @@ import numpy as np
 import math
 
 import utils
-from entities import Participant, Proposal, ProposalStatus
+from entities import Participant, ParticipantSupport, Proposal, ProposalStatus
 from hatch import TokenBatch, VestingOptions
 from simulation import new_probability_func, new_random_number_func
 
@@ -218,3 +218,23 @@ class TestParticipant(unittest.TestCase):
         self.assertTrue(self.p.wants_to_exit())
         self.p._probability_func = never
         self.assertFalse(self.p.wants_to_exit())
+
+
+class TestParticipantSupport(unittest.TestCase):
+    def setUp(self):
+        self.pSupport = ParticipantSupport(affinity=1)
+
+    def test_available_fields(self):
+        """
+        Test that the it only has the fields currently used for defining 
+        participant->proposal support edges
+        """
+        self.assertEqual(self.pSupport._fields, ('affinity', 'tokens', 'conviction'))
+
+    def test_default_values(self):
+        """
+        Test it assigns default values to all other fields
+        """
+        self.assertEqual(self.pSupport.affinity, 1)
+        self.assertEqual(self.pSupport.tokens, 0)
+        self.assertEqual(self.pSupport.conviction, 0)
