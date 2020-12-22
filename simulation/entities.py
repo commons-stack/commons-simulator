@@ -209,9 +209,13 @@ class Participant:
     def wants_to_exit(self):
         """
         Returns True if the Participant wants to exit (if sentiment < 0.5,
-        random chance of exiting), otherwise False
+        random chance of exiting) and if the Participant has no vesyting
+        token, otherwise False.
         """
-        if self.sentiment < config.sentiment_sensitivity_exit:
+        sensitivity_exit = config.sentiment_sensitivity_exit
+        vesting = self.holdings.vesting
+
+        if self.sentiment < sensitivity_exit and vesting == 0:
             engagement_rate = config.engagement_rate_multiplier_exit * self.sentiment
             return self._probability_func(1-engagement_rate)
         return False
