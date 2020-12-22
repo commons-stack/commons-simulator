@@ -72,8 +72,8 @@ class CommonsSimulationConfiguration:
                  kappa=2,
                  days_to_80p_of_max_voting_weight=10,
                  max_proposal_request=0.2,
-                 timesteps_days=100,
-                 random_seed=1):
+                 timesteps_days=730,
+                 random_seed=None):
         self.hatchers = hatchers
         self.proposals = proposals
         self.hatch_tribute = hatch_tribute
