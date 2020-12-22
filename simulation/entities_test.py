@@ -218,7 +218,7 @@ class TestParticipant(unittest.TestCase):
         # A participant with vesting should not be able to exit
         self.assertFalse(self.p.wants_to_exit())
         self.p.holdings.vesting = 0
-        # After the participant have no vesting, he can exit
+        # After the participant has no vesting, he can exit
         self.assertTrue(self.p.wants_to_exit())
         self.p._probability_func = never
         self.assertFalse(self.p.wants_to_exit())
