@@ -228,3 +228,4 @@ class ParticipantSupport(NamedTuple):
     affinity: float
     tokens: float = 0.
     conviction: float = 0.
+    is_author: bool = False

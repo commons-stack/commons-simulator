@@ -229,7 +229,7 @@ class TestParticipantSupport(unittest.TestCase):
         Test that the it only has the fields currently used for defining 
         participant->proposal support edges
         """
-        self.assertEqual(self.pSupport._fields, ('affinity', 'tokens', 'conviction'))
+        self.assertEqual(self.pSupport._fields, ('affinity', 'tokens', 'conviction', 'is_author'))
 
     def test_default_values(self):
         """
@@ -238,3 +238,4 @@ class TestParticipantSupport(unittest.TestCase):
         self.assertEqual(self.pSupport.affinity, 1)
         self.assertEqual(self.pSupport.tokens, 0)
         self.assertEqual(self.pSupport.conviction, 0)
+        self.assertEqual(self.pSupport.is_author, False)
