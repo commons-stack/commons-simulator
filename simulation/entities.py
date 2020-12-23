@@ -97,7 +97,11 @@ class Participant:
         engagement_rate = config.engagement_rate_multiplier_sell * self.sentiment
         force = self.sentiment - config.sentiment_sensitivity
         if self._probability_func(engagement_rate) and force < 0:
-            delta_holdings = self._random_number_func() * force * self.holdings.spendable()
+            spendable = self.holdings.spendable()
+            # It is expected that the function returns a positive value for the
+            # amount sold. 
+            force = -1 * force 
+            delta_holdings = self._random_number_func() * force * spendable
             return delta_holdings
         return 0
 
