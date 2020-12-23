@@ -1,37 +1,14 @@
-import random
 import uuid
 from enum import Enum
-from inspect import getmembers
 from os.path import abspath
-from types import FunctionType
-from typing import List, Tuple
+from typing import List, NamedTuple, Tuple
 
 import numpy as np
 
 import config
 from convictionvoting import trigger_threshold
 from hatch import TokenBatch
-from utils import probability
-
-
-"""
-Helper functions from
-https://stackoverflow.com/questions/192109/is-there-a-built-in-function-to-print-all-the-current-properties-and-values-of-a
-to print all attributes of a class without me explicitly coding it out.
-"""
-
-
-def api(obj):
-    return [name for name in dir(obj) if name[0] != '_']
-
-
-def attrs(obj):
-    disallowed_properties = {
-        name for name, value in getmembers(type(obj))
-        if isinstance(value, (property, FunctionType))}
-    return {
-        name: getattr(obj, name) for name in api(obj)
-        if name not in disallowed_properties and hasattr(obj, name)}
+from utils import attrs
 
 
 ProposalStatus = Enum("ProposalStatus", "CANDIDATE ACTIVE COMPLETED FAILED")
@@ -43,7 +20,6 @@ ProposalStatus = Enum("ProposalStatus", "CANDIDATE ACTIVE COMPLETED FAILED")
 
 class Proposal:
     def __init__(self, funds_requested: int, trigger: float):
-        self.uuid = uuid.uuid4()
         self.conviction = 0
         self.status = ProposalStatus.CANDIDATE
         self.age = 0
@@ -79,24 +55,18 @@ class Proposal:
             return True
         else:
             raise(Exception(
-                "Proposal {} is not a Candidate Proposal and so asking it if it will pass is inappropriate".format(str(self.uuid))))
+                "Proposal is not a Candidate Proposal and so asking it if it will pass is inappropriate"))
 
 
 class Participant:
-    def __init__(self, holdings_vesting: TokenBatch = None, holdings_nonvesting: TokenBatch = None):
-        self.name = "Somebody"
-        self.sentiment = np.random.rand()
-        self.holdings_vesting = holdings_vesting
-        self.holdings_nonvesting = holdings_nonvesting
+    def __init__(self, holdings: TokenBatch, probability_func, random_number_func):
+        self._probability_func = probability_func
+        self._random_number_func = random_number_func
+        self.sentiment = self._random_number_func()
+        self.holdings = holdings
 
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, attrs(self))
-
-    @property
-    def holdings(self) -> float:
-        if self.holdings_vesting:
-            return self.holdings_vesting + self.holdings_nonvesting
-        return float(self.holdings_nonvesting.value)
 
     def buy(self) -> float:
         """
@@ -107,10 +77,10 @@ class Participant:
         cadCAD's state update functions will make the changes and maintain its
         functional-ness.
         """
-        engagement_rate = 0.3 * self.sentiment
+        engagement_rate = config.engagement_rate_multiplier_buy * self.sentiment
         force = self.sentiment - config.sentiment_sensitivity
-        if probability(engagement_rate) and force > 0:
-            delta_holdings = np.random.rand() * force
+        if self._probability_func(engagement_rate) and force > 0:
+            delta_holdings = self._random_number_func() * force * config.delta_holdings_scale
             return delta_holdings
         return 0
 
@@ -124,12 +94,30 @@ class Participant:
         cadCAD's state update functions will make the changes and maintain its
         functional-ness.
         """
-        engagement_rate = 0.3 * self.sentiment
+        engagement_rate = config.engagement_rate_multiplier_sell * self.sentiment
         force = self.sentiment - config.sentiment_sensitivity
-        if probability(engagement_rate) and force < 0:
-            delta_holdings = np.random.rand() * force
+        if self._probability_func(engagement_rate) and force < 0:
+            spendable = self.holdings.spendable()
+            # It is expected that the function returns a positive value for the
+            # amount sold. 
+            force = -1 * force 
+            delta_holdings = self._random_number_func() * force * spendable
             return delta_holdings
         return 0
+
+    def increase_holdings(self, x: float):
+        """
+        increase_holdings() is the opposite of spend() and adds to the
+        nonvesting part of the TokenBatch.
+        """
+        self.holdings.nonvesting += x
+        return self.holdings.vesting, self.holdings.vesting_spent, self.holdings.nonvesting
+
+    def spend(self, x: float) -> Tuple[float, float, float]:
+        """
+        Participant.spend() is simply a front to TokenBatch.spend().
+        """
+        return self.holdings.spend(x)
 
     def create_proposal(self, total_funds_requested, median_affinity, funding_pool) -> bool:
         """
@@ -151,7 +139,7 @@ class Participant:
         percent_of_funding_pool_being_requested = total_funds_requested/funding_pool
         proposal_rate = median_affinity / \
             (1 + percent_of_funding_pool_being_requested)
-        new_proposal = probability(proposal_rate)
+        new_proposal = self._probability_func(proposal_rate)
         return new_proposal
 
     def vote_on_candidate_proposals(self, candidate_proposals: dict) -> dict:
@@ -178,7 +166,7 @@ class Participant:
         """
         new_voted_proposals = {}
         engagement_rate = 1.0
-        if probability(engagement_rate):
+        if self._probability_func(engagement_rate):
             # Put your tokens on your favourite Proposals, where favourite is
             # calculated as 0.75 * (the affinity for the Proposal you like the
             # most) e.g. if there are 2 Proposals that you have affinity 0.8,
@@ -192,7 +180,7 @@ class Participant:
                 # because modifying sentiment_sensitivity without changing the
                 # hardcoded cutoff value of 0.5 may cause unintended behaviour.
                 # Also, 0.75 is a reasonable number in this case.
-                cutoff = 0.75 * np.max(list(candidate_proposals.values()))
+                cutoff = config.candidate_proposals_cutoff * np.max(list(candidate_proposals.values()))
                 if cutoff < .5:
                     cutoff = .5
 
@@ -217,7 +205,35 @@ class Participant:
 
         affinity_total = sum([a for a, idx in supported_proposals])
         for affinity, proposal_idx in supported_proposals:
-            tokens_per_supported_proposal[proposal_idx] = self.holdings * (
+            tokens_per_supported_proposal[proposal_idx] = self.holdings.total * (
                 affinity/affinity_total)
 
         return tokens_per_supported_proposal
+
+    def wants_to_exit(self):
+        """
+        Returns True if the Participant wants to exit (if sentiment < 0.5,
+        random chance of exiting) and if the Participant has no vesting
+        token, otherwise False.
+        """
+        sensitivity_exit = config.sentiment_sensitivity_exit
+        vesting = self.holdings.vesting
+
+        if self.sentiment < sensitivity_exit and vesting == 0:
+            engagement_rate = config.engagement_rate_multiplier_exit * self.sentiment
+            return self._probability_func(1-engagement_rate)
+        return False
+
+    def update_token_batch_age(self):
+        """
+        Participant.update_token_batch_age() is simply a front to
+        TokenBatch.update_age().
+        """
+        return self.holdings.update_age()
+
+
+class ParticipantSupport(NamedTuple):
+    affinity: float
+    tokens: float = 0.
+    conviction: float = 0.
+    is_author: bool = False

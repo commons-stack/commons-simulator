@@ -1,17 +1,15 @@
-import random
-
+import config
+import copy
 import numpy as np
-from scipy.stats import expon, gamma
 
-import convictionvoting
+import config
 from convictionvoting import trigger_threshold
 from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch
-from network_utils import (add_proposal, calc_median_affinity, calc_total_conviction,
-                           calc_total_funds_requested, get_edges_by_type,
+from network_utils import (add_proposal, add_participant, calc_median_affinity, calc_total_conviction,
+                           calc_total_funds_requested, find_in_edges_of_type_for_proposal, get_edges_by_type,
                            get_participants, get_proposals,
                            setup_influence_edges_single, setup_support_edges)
-from utils import probability
 
 
 class GenerateNewParticipant:
@@ -19,14 +17,16 @@ class GenerateNewParticipant:
     def p_randomly(params, step, sL, s, **kwargs):
         commons = s["commons"]
         sentiment = s["sentiment"]
+        probability_func = params["probability_func"]
+        exponential_func = params["exponential_func"]
         ans = {
             "new_participant": False,
             "new_participant_investment": None,
             "new_participant_tokens": None
         }
 
-        arrival_rate = (1+sentiment)/10
-        if probability(arrival_rate):
+        arrival_rate = (1+sentiment)/config.arrival_rate_denominator
+        if probability_func(arrival_rate):
             ans["new_participant"] = True
             # Here we randomly generate each participant's post-Hatch
             # investment, in DAI/USD.
@@ -39,7 +39,8 @@ class GenerateNewParticipant:
             # scale is the standard deviation, so if scale=2, investments will
             # be around 0-12 DAI or even 15, if scale=100, the investments will be
             # around 0-600 DAI.
-            ans["new_participant_investment"] = expon.rvs(loc=0.0, scale=100)
+            ans["new_participant_investment"] = exponential_func(loc=config.investment_new_participant_min,
+                                                          scale=config.investment_new_participant_stdev)
             ans["new_participant_tokens"] = commons.dai_to_tokens(
                 ans["new_participant_investment"])
         return ans
@@ -47,13 +48,15 @@ class GenerateNewParticipant:
     @staticmethod
     def su_add_to_network(params, step, sL, s, _input, **kwargs):
         network = s["network"]
+        probability_func = params["probability_func"]
+        exponential_func = params["exponential_func"]
+        random_number_func = params["random_number_func"]
         if _input["new_participant"]:
-            i = len(network.nodes)
-            network.add_node(i, item=Participant(
-                holdings_vesting=None, holdings_nonvesting=TokenBatch(_input["new_participant_tokens"])))
-            network = setup_influence_edges_single(network, i)
-            network = setup_support_edges(network, i)
-            if params[0].get("debug"):
+            network, i = add_participant(network, Participant(TokenBatch(
+                0, _input["new_participant_tokens"]), probability_func,
+                random_number_func), exponential_func, random_number_func)
+
+            if params.get("debug"):
                 print("GenerateNewParticipant: A new Participant {} invested {}DAI for {} tokens".format(
                     i, _input['new_participant_investment'], _input['new_participant_tokens']))
         return "network", network
@@ -66,6 +69,15 @@ class GenerateNewParticipant:
                 _input["new_participant_investment"])
         return "commons", commons
 
+    @staticmethod
+    def su_update_participants_token_batch_age(params, step, sL, s, _input, **kwargs):
+        network = s["network"]
+        participants = get_participants(network)
+        for i, participant in participants:
+            participant.update_token_batch_age()
+
+        return "network", network
+
 
 class GenerateNewProposal:
     @staticmethod
@@ -76,9 +88,12 @@ class GenerateNewProposal:
         """
         funding_pool = s["funding_pool"]
         network = s["network"]
+        choice_func = params["choice_func"]
 
         participants = get_participants(network)
-        i, participant = random.sample(participants, 1)[0]
+        participants_dict = dict(participants)
+        i = choice_func(list(participants_dict))
+        participant = participants_dict[i]
 
         wants_to_create_proposal = participant.create_proposal(calc_total_funds_requested(
             network), calc_median_affinity(network), funding_pool)
@@ -90,22 +105,25 @@ class GenerateNewProposal:
         network = s["network"]
         funding_pool = s["funding_pool"]
         token_supply = s["token_supply"]
-        scale_factor = 0.01
+        gamma_func = params["gamma_func"]
+        random_number_func = params["random_number_func"]
         if _input["new_proposal"]:
             # Create the Proposal and add it to the network.
-            rescale = funding_pool * scale_factor
-            r_rv = gamma.rvs(3, loc=0.001, scale=rescale)
+            rescale = funding_pool * config.scale_factor
+            r_rv = gamma_func(config.funds_requested_alpha, loc=config.funds_requested_min, scale=rescale)
             proposal = Proposal(funds_requested=r_rv,
-                                trigger=convictionvoting.trigger_threshold(r_rv, funding_pool, token_supply, params[0]["max_proposal_request"]))
-            network, j = add_proposal(network, proposal)
+                                trigger=trigger_threshold(r_rv, funding_pool, token_supply, params["max_proposal_request"]))
+            network, proposal_idx = add_proposal(network, proposal, random_number_func)
 
             # add_proposal() has created support edges from other Participants
             # to this Proposal. If the Participant is the one who created this
-            # Proposal, change his affinity for the Proposal to 1 (maximum).
-            network.edges[_input["proposed_by_participant"], j]["affinity"] = 1
-            if params[0].get("debug"):
+            # Proposal, set the participant's role as author and change his affinity for the Proposal to 1 (maximum).
+            network.edges[_input["proposed_by_participant"],
+                            proposal_idx]["support"] = \
+                                network.edges[_input["proposed_by_participant"], proposal_idx]["support"]._replace(affinity=1, is_author=True)
+            if params.get("debug"):
                 print("GenerateNewProposal: Participant {} created Proposal {}".format(
-                    _input["proposed_by_participant"], j))
+                    _input["proposed_by_participant"], proposal_idx))
         return "network", network
 
 
@@ -118,11 +136,9 @@ class GenerateNewFunding:
         TODO: buy tokens and sell them immediately within the same simulation
         step, assuming a certain position size.
         """
-        speculator_position_size_min = 200  # DAI
-        speculator_position_size_stdev = 200
-        speculators = 5
-        exits = [expon.rvs(loc=speculator_position_size_min,
-                           scale=speculator_position_size_stdev) for i in range(speculators)]
+        exponential_func = params["exponential_func"]
+        exits = [exponential_func(loc=config.speculator_position_size_min, scale=config.speculator_position_size_stdev)
+                            for i in range(config.speculators)]
         commons = s["commons"]
         funding = sum(exits) * commons.exit_tribute
         return {"funding": funding}
@@ -138,31 +154,32 @@ class GenerateNewFunding:
 class ActiveProposals:
     @staticmethod
     def p_influenced_by_grant_size(params, step, sL, s, **kwargs):
-        base_failure_rate = 0.15
-        base_success_rate = 0.30
-
         network = s["network"]
+        probability_func = params["probability_func"]
 
         active_proposals = get_proposals(network, status=ProposalStatus.ACTIVE)
         proposals_that_will_fail = []
         proposals_that_will_succeed = []
 
         for idx, proposal in active_proposals:
-            r_failure = 1/(base_failure_rate +
+            r_failure = 1/(config.base_failure_rate +
                            np.log(proposal.funds_requested))
-            r_success = 1/(base_success_rate +
+            r_success = 1/(config.base_success_rate +
                            np.log(proposal.funds_requested))
-            if probability(r_failure):
+            if probability_func(r_failure):
                 proposals_that_will_fail.append(idx)
-            elif probability(r_success):
+            elif probability_func(r_success):
                 proposals_that_will_succeed.append(idx)
         return {"failed": proposals_that_will_fail, "succeeded": proposals_that_will_succeed}
 
-    @ staticmethod
+    @staticmethod
     def su_set_proposal_status(params, step, sL, s, _input, **kwargs):
         network = s["network"]
         for idx in _input["failed"]:
             network.nodes[idx]["item"].status = ProposalStatus.FAILED
+
+        for idx in _input["succeeded"]:
+            network.nodes[idx]["item"].status = ProposalStatus.COMPLETED
 
         return "network", network
 
@@ -184,9 +201,9 @@ class ProposalFunding:
             total_conviction = calc_total_conviction(network, idx)
             proposal.conviction = total_conviction
             res = proposal.has_enough_conviction(
-                funding_pool, token_supply, params[0]["max_proposal_request"])
+                funding_pool, token_supply, params["max_proposal_request"])
 
-            if params[0].get("debug"):
+            if params.get("debug"):
                 print("ProposalFunding: Proposal {} has {} conviction, and needs {} to pass".format(idx,
                                                                                                     proposal.conviction, proposal.trigger))
             if res:
@@ -195,7 +212,7 @@ class ProposalFunding:
         return {"proposal_idxs_with_enough_conviction": proposals_w_enough_conviction}
 
     @staticmethod
-    def su_compare_conviction_and_threshold_make_proposal_active(params, step, sL, s, _input, **kwargs):
+    def su_make_proposal_active(params, step, sL, s, _input, **kwargs):
         network = s["network"]
 
         for idx in _input["proposal_idxs_with_enough_conviction"]:
@@ -204,12 +221,12 @@ class ProposalFunding:
         return "network", network
 
     @staticmethod
-    def su_compare_conviction_and_threshold_deduct_funds_from_funding_pool(params, step, sL, s, _input, **kwargs):
+    def su_deduct_funds_from_funding_pool(params, step, sL, s, _input, **kwargs):
         commons = s["commons"]
         network = s["network"]
         for idx in _input["proposal_idxs_with_enough_conviction"]:
             funds = network.nodes[idx]["item"].funds_requested
-            if params[0].get("debug"):
+            if params.get("debug"):
                 print("ProposalFunding: Proposal {} passed! deducting {} from Commons funding pool".format(
                     idx, funds))
             commons.spend(funds)
@@ -226,26 +243,29 @@ class ProposalFunding:
         for _, proposal in proposals:
             proposal.update_age()
             proposal.update_threshold(
-                funding_pool, token_supply, max_proposal_request=params[0]["max_proposal_request"])
+                funding_pool, token_supply, max_proposal_request=params["max_proposal_request"])
 
         return "network", network
 
     @staticmethod
     def su_calculate_conviction(params, step, sL, s, _input, **kwargs):
+        """
+        Actually calculates the conviction. This function should only run ONCE
+        per timestep/iteration!
+        """
         network = s["network"]
-        days_to_80p_of_max_voting_weight = params[0]["days_to_80p_of_max_voting_weight"]
+        alpha = params["alpha_days_to_80p_of_max_voting_weight"]
 
         support_edges = get_edges_by_type(network, "support")
         for i, j in support_edges:
             edge = network.edges[i, j]
-            prior_conviction = edge['conviction']
-            current_tokens = edge['tokens']
+            prior_conviction = edge['support'].conviction
+            current_tokens = edge['support'].tokens
 
-            edge['conviction'] = current_tokens + \
-                days_to_80p_of_max_voting_weight*prior_conviction
-            if params[0].get("debug") and s["timestep"] == 1:
+            edge['support'] = edge['support']._replace(conviction=current_tokens + alpha*prior_conviction)
+            if params.get("debug") and s["timestep"] == 1:
                 print("ProposalFunding: Participant {} initially has staked {} tokens on Proposal {}, which will result in {} conviction in the next timestep".format(
-                    i, current_tokens, j, edge["conviction"]))
+                    i, current_tokens, j, edge["support"].conviction))
 
         return "network", network
 
@@ -271,7 +291,7 @@ class ParticipantVoting:
         for participant_idx, participant in participants:
             proposal_idx_affinity = {}  # {4: 0.9, 5: 0.9}
             for proposal_idx, _ in candidate_proposals:
-                proposal_idx_affinity[proposal_idx] = network[participant_idx][proposal_idx]["affinity"]
+                proposal_idx_affinity[proposal_idx] = network[participant_idx][proposal_idx]["support"].affinity
             proposals_that_participant_cares_enough_to_vote_on = participant.vote_on_candidate_proposals(
                 proposal_idx_affinity)
 
@@ -284,7 +304,7 @@ class ParticipantVoting:
 
             participants_stakes[participant_idx] = stakes
 
-            if params[0].get("debug"):
+            if params.get("debug"):
                 if proposals_that_participant_cares_enough_to_vote_on:
                     print("ParticipantVoting: Participant {} was given Proposals with corresponding affinities {} and he decided to vote on {}, distributing his tokens thusly {}".format(
                         participant_idx, proposal_idx_affinity, proposals_that_participant_cares_enough_to_vote_on, stakes))
@@ -309,6 +329,260 @@ class ParticipantVoting:
                 # the affinities in
                 # p_participant_votes_on_proposal_according_to_affinity()
                 # Also, do not recalculate conviction here. Leave that to ProposalFunding.su_calculate_conviction()
-                network[participant_idx][proposal_idx]["tokens"] = tokens_staked
+                network[participant_idx][proposal_idx]["support"] = network[participant_idx][proposal_idx]["support"]._replace(tokens=tokens_staked)
 
+        return "network", network
+
+
+class ParticipantBuysTokens:
+    """
+    When implementing buying tokens, Participants may either buy in bulk with no
+    slippage, or endure slippage while buying. Neither is realistic but I'd say
+    no slippage is closer to what Participants will experience in real life.
+
+    When implementing selling tokens, slippage is more likely to change the
+    decision. In any case, let us implement no slippage first since it is easier
+    to reason with.
+
+    Also, buying in bulk is easier to implement in cadCAD because if the state
+    update function changes the Commons object each time a Participant buys
+    in/sells out, then it would have to update the network and commons object in
+    the same function, which is not allowed in cadCAD.
+    """
+    @staticmethod
+    def p_decide_to_buy_tokens_bulk(params, step, sL, s, **kwargs):
+        network = s["network"]
+        commons = s["commons"]
+        participants = get_participants(network)
+        ans = {}
+        total_dai = 0
+        for i, participant in participants:
+            # If a participant decides to buy, it will be specified in units of DAI.
+            # If a participant decides to sell, it will be specified in units of tokens.
+            x = participant.buy()
+            if x > 0:
+                total_dai += x
+                ans[i] = x
+
+        # Now that we have the sum of DAI, ask the Commons object how many
+        # tokens this would be minted as a result. This will be inaccurate due
+        # to slippage, and we need the result of this policy to be final to
+        # avoid chaining 2 state update functions, so we run the deposit on a
+        # throwaway copy of Commons
+        if total_dai == 0:
+            if params.get("debug"):
+                print(
+                    "ParticipantBuysTokens: No Participants bought tokens in timestep {}".format(step))
+            return {"participant_decisions": ans, "total_dai": 0, "tokens": 0, "token_price": 0, "final_token_distribution": {}}
+
+        else:
+            commons2 = copy.copy(commons)
+            tokens, token_price = commons2.deposit(total_dai)
+
+            final_token_distribution = {}
+            for i in ans:
+                final_token_distribution[i] = ans[i] / total_dai
+
+            if params.get("debug"):
+                print(
+                    "ParticipantBuysTokens: These Participants have decided to buy tokens with this amount of DAI: {}".format(ans))
+                print("ParticipantBuysTokens: A total of {} DAI will be deposited. {} tokens should be minted as a result at a price of {} DAI/token".format(
+                    total_dai, tokens, token_price))
+
+            return {"participant_decisions": ans, "total_dai": total_dai, "tokens": tokens, "token_price": token_price, "final_token_distribution": final_token_distribution}
+
+    @staticmethod
+    def su_buy_participants_tokens(params, step, sL, s, _input, **kwargs):
+        commons = s["commons"]
+
+        if _input["total_dai"] > 0:
+            tokens, realized_price = commons.deposit(_input["total_dai"])
+            if _input["tokens"] != tokens or _input["token_price"] != realized_price:
+                raise Exception("ParticipantBuysTokens: {} tokens were minted at a price of {} (expected: {} with price {})".format(
+                    tokens, realized_price, _input["tokens"], _input["token_price"]))
+
+        return "commons", commons
+
+    @staticmethod
+    def su_update_participants_tokens(params, step, sL, s, _input, **kwargs):
+        network = s["network"]
+        decisions = _input["participant_decisions"]
+        final_token_distribution = _input["final_token_distribution"]
+        tokens = _input["tokens"]
+
+        for participant_idx, decision in decisions.items():
+            network.nodes[participant_idx]["item"].increase_holdings(
+                final_token_distribution[participant_idx] * tokens)
+
+        return "network", network
+
+
+class ParticipantSellsTokens:
+    @staticmethod
+    def p_decide_to_sell_tokens_bulk(params, step, sL, s, **kwargs):
+        network = s["network"]
+        commons = s["commons"]
+        participants = get_participants(network)
+        ans = {}
+        total_tokens = 0
+        for i, participant in participants:
+            # If a participant decides to buy, it will be specified in units of DAI.
+            # If a participant decides to sell, it will be specified in units of tokens.
+            x = participant.sell()
+            if x > 0:
+                total_tokens += x
+                ans[i] = x
+
+        # Now that we have the sum of tokens, ask the Commons object how many
+        # DAI would be redeemed as a result. This will be inaccurate due
+        # to slippage, and we need the result of this policy to be final to
+        # avoid chaining 2 state update functions, so we run the operation on a
+        # throwaway copy of Commons
+        if total_tokens == 0:
+            if params.get("debug"):
+                print(
+                    "ParticipantSellsTokens: No Participants sold tokens in timestep {}".format(step))
+            return {"participant_decisions": ans, "total_tokens": 0, "dai_returned": 0, "realized_price": 0}
+        else:
+            commons2 = copy.copy(commons)
+            dai_returned, realized_price = commons2.burn(total_tokens)
+
+            final_dai_distribution = {}
+            for i in ans:
+                final_dai_distribution[i] = ans[i] / total_tokens
+
+            if params.get("debug"):
+                print(
+                    "ParticipantSellsTokens: These Participants have decided to sell this many  tokens: {}".format(ans))
+                print("ParticipantSellsTokens: A total of {} tokens will be burned. {} DAI should be returned as a result, at a price of {} DAI/token".format(
+                    total_tokens, dai_returned, realized_price))
+            return {"participant_decisions": ans, "total_tokens": total_tokens, "dai_returned": dai_returned, "realized_price": realized_price}
+
+    @staticmethod
+    def su_burn_participants_tokens(params, step, sL, s, _input, **kwargs):
+        commons = s["commons"]
+
+        if _input["total_tokens"] > 0:
+            dai_returned, realized_price = commons.burn(_input["total_tokens"])
+            if _input["dai_returned"] != dai_returned or _input["realized_price"] != realized_price:
+                raise Exception("ParticipantSellsTokens: {} DAI was returned at a price of {} (expected: {} with price {})".format(
+                    dai_returned, realized_price, _input["dai_returned"], _input["realized_price"]))
+
+        return "commons", commons
+
+    @staticmethod
+    def su_update_participants_tokens(params, step, sL, s, _input, **kwargs):
+        network = s["network"]
+        decisions = _input["participant_decisions"]
+        dai_returned = _input["dai_returned"]
+
+        for participant_idx, decision in decisions.items():
+            network.nodes[participant_idx]["item"].spend(decision)
+
+        return "network", network
+
+
+class ParticipantExits:
+    @staticmethod
+    def p_participant_decides_if_he_wants_to_exit(params, step, sL, s, **kwargs):
+        network = s["network"]
+        participants = get_participants(network)
+        defectors = {}
+        for i, participant in participants:
+            e = participant.wants_to_exit()
+            if e:
+                defectors[i] = {
+                    "sentiment": participant.sentiment,
+                    "holdings": participant.holdings.total,
+                }
+
+        if params.get("debug"):
+            print("ParticipantExits: Participants {} (2nd number is their sentiment) want to exit".format(
+                defectors))
+        return {"defectors": defectors}
+
+    @staticmethod
+    def su_remove_participants_from_network(params, step, sL, s, _input, **kwargs):
+        network = s["network"]
+        defectors = _input["defectors"]
+
+        for i, _ in defectors.items():
+            network.remove_node(i)
+
+        return "network", network
+
+    @staticmethod
+    def su_burn_exiters_tokens(params, step, sL, s, _input, **kwargs):
+        commons = s["commons"]
+        network = s["network"]
+        defectors = _input["defectors"]
+
+        burnt_token_results = {}
+        for i, v in defectors.items():
+            dai_returned, realized_price = commons.burn(v["holdings"])
+            burnt_token_results[i] = {
+                "dai_returned": dai_returned, "realized_price": realized_price}
+
+        return "commons", commons
+
+    @staticmethod
+    def su_update_sentiment_when_proposal_becomes_active(params, step, sL, s, _input, **kwargs):
+        network = s["network"]
+        policy_output_passthru = s["policy_output"]
+
+        report = {}
+        for idx in policy_output_passthru["proposal_idxs_with_enough_conviction"]:
+            for participant_idx, proposal_idx, _ in find_in_edges_of_type_for_proposal(network, idx, "support"):
+                edge = network.edges[participant_idx, proposal_idx]
+                if edge["support"].is_author:
+                    sentiment_old = network.nodes[participant_idx]["item"].sentiment
+                    sentiment_new = sentiment_old + config.sentiment_bonus_proposal_becomes_active
+                    sentiment_new = 1 if sentiment_new > 1 else sentiment_new
+                    network.nodes[participant_idx]["item"].sentiment = sentiment_new
+
+                    report[participant_idx] = {
+                        "proposal_idx": proposal_idx,
+                        "sentiment_old": sentiment_old,
+                        "sentiment_new": sentiment_new
+                    }
+
+        if params.get("debug"):
+            for i in report:
+                print(
+                    "ParticipantExits: Participant {} changed his sentiment from {} to {} because Proposal {} became active".format(i, report[i]["sentiment_old"], report[i]["sentiment_new"], report[i]["proposal_idx"]))
+        return "network", network
+
+    @staticmethod
+    def su_update_sentiment_when_proposal_becomes_failed_or_completed(params, step, sL, s, _input, **kwargs):
+        network = s["network"]
+        policy_output_passthru = s["policy_output"]
+
+        proposal_status_delta = {
+            "failed": config.sentiment_bonus_proposal_becomes_failed,
+            "succeeded": config.sentiment_bonus_proposal_becomes_completed,
+        }
+        report = {}
+        for status, delta in proposal_status_delta.items():
+            for idx in policy_output_passthru[status]:
+                for participant_idx, proposal_idx, _ in find_in_edges_of_type_for_proposal(network, idx, "support"):
+                    edge = network.edges[participant_idx, proposal_idx]
+                    # Update the participant sentiment if he/she is the proposal creator
+                    # or if participant has staked on the proposal (tokens > 0)
+                    if edge["support"].is_author or edge["support"].tokens > 0:
+                        sentiment_old = network.nodes[participant_idx]["item"].sentiment
+                        sentiment_new = sentiment_old + (edge["support"].affinity * delta)
+                        sentiment_new = np.clip(sentiment_new, a_min=0., a_max=1.)
+                        network.nodes[participant_idx]["item"].sentiment = sentiment_new
+
+                        report[participant_idx] = {
+                            "proposal_idx": proposal_idx,
+                            "sentiment_old": sentiment_old,
+                            "sentiment_new": sentiment_new,
+                            "status": status
+                        }
+
+        if params.get("debug"):
+            for i in report:
+                print(
+                    "ParticipantExits: Participant {} changed his sentiment from {} to {} because Proposal {} became {}".format(i, report[i]["sentiment_old"], report[i]["sentiment_new"], report[i]["proposal_idx"], report[i]["status"]))
         return "network", network

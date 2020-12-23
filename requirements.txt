@@ -2,10 +2,12 @@ pandas
 numpy
 scipy
 funcy
-cadCAD
+cadCAD==0.4.23
 jupyter
 matplotlib
 seaborn
 networkx
 flask
 flask-cors
+ipdb==0.13.4
+

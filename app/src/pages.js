@@ -85,6 +85,8 @@ export const HomePage = () => {
               step={1}
               min={0}
               max={100}
+              advanced="true"
+              type="hidden"
             />
             <SliderField
               label="Exit Tribute : What percent of the released Reserve will go to the Funding Pool when tokens are sold?"
@@ -101,6 +103,8 @@ export const HomePage = () => {
               step={0.05}
               min={2}
               max={4}
+              advanced="true"
+              type="hidden"
             />
             <SliderField
               label="Alpha : How many days/weeks? does it take to reach 80% of a voter’s max voting weight?"
@@ -112,11 +116,19 @@ export const HomePage = () => {
             />
             <SliderField
               label="Beta : What is the max percentage of the Funding Pool that can be spent in one proposal? (0.01 to 0.90)"
-              name="proposal_max_size"
+              name="max_proposal_request"
               defaultValue={0.5}
               step={0.05}
               min={0.01}
               max={0.9}
+            />
+            <SliderField
+              label="Days : How many days you want to simulate the RadicalxChange Commons? (30 to 180)"
+              name="timesteps_days"
+              defaultValue={60}
+              step={5}
+              min={30}
+              max={180}
             />
           </Params>
          }
@@ -527,8 +539,8 @@ const Results = ({ results, next }) => {
     <div css={`margin-top: 20px`}>
       <Typography variant="h4" gutterBottom>Results</Typography>
       {results && Object.keys(results).filter(key => key !== 'timestep').map( prop =>
-        <div>
-          <h3 style={{'text-transform': 'capitalize'}}>{prop.replace('_', ' ')}</h3>
+        <div key={prop}>
+          <h3 style={{'textTransform': 'capitalize'}}>{prop.replace('_', ' ')}</h3>
           <Line data={dataWrapper(prop, results.timestep, results[prop])}></Line>
         </div>
       )}

@@ -1,4 +1,5 @@
 import numpy as np
+import config
 
 
 def trigger_threshold(funds_requested, funding_pool, token_supply, max_proposal_request):
@@ -8,7 +9,7 @@ def trigger_threshold(funds_requested, funding_pool, token_supply, max_proposal_
     token_supply: current token_supply
     max_proposal_request: maximum fraction of the funding pool that a proposal can ever request
     """
-    rho = 0.5 * max_proposal_request**2
+    rho = config.rho_multiplier * max_proposal_request**config.rho_power
 
     fraction = funds_requested/funding_pool
     if fraction < max_proposal_request:
