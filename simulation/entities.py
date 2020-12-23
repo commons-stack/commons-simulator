@@ -97,7 +97,11 @@ class Participant:
         engagement_rate = config.engagement_rate_multiplier_sell * self.sentiment
         force = self.sentiment - config.sentiment_sensitivity
         if self._probability_func(engagement_rate) and force < 0:
-            delta_holdings = self._random_number_func() * force * self.holdings.spendable()
+            spendable = self.holdings.spendable()
+            # It is expected that the function returns a positive value for the
+            # amount sold. 
+            force = -1 * force 
+            delta_holdings = self._random_number_func() * force * spendable
             return delta_holdings
         return 0
 
@@ -209,9 +213,13 @@ class Participant:
     def wants_to_exit(self):
         """
         Returns True if the Participant wants to exit (if sentiment < 0.5,
-        random chance of exiting), otherwise False
+        random chance of exiting) and if the Participant has no vesting
+        token, otherwise False.
         """
-        if self.sentiment < config.sentiment_sensitivity_exit:
+        sensitivity_exit = config.sentiment_sensitivity_exit
+        vesting = self.holdings.vesting
+
+        if self.sentiment < sensitivity_exit and vesting == 0:
             engagement_rate = config.engagement_rate_multiplier_exit * self.sentiment
             return self._probability_func(1-engagement_rate)
         return False

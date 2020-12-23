@@ -448,7 +448,7 @@ class ParticipantSellsTokens:
             dai_returned, realized_price = commons2.burn(total_tokens)
 
             final_dai_distribution = {}
-            for i, participant in participants:
+            for i in ans:
                 final_dai_distribution[i] = ans[i] / total_tokens
 
             if params.get("debug"):
@@ -580,7 +580,7 @@ class ParticipantExits:
                             "sentiment_new": sentiment_new,
                             "status": status
                         }
-        
+
         if params.get("debug"):
             for i in report:
                 print(

@@ -215,6 +215,10 @@ class TestParticipant(unittest.TestCase):
         # Set a sentiment below the exit threshold
         self.p.sentiment = 0.2
         self.p._probability_func = always
+        # A participant with vesting should not be able to exit
+        self.assertFalse(self.p.wants_to_exit())
+        self.p.holdings.vesting = 0
+        # After the participant has no vesting, he can exit
         self.assertTrue(self.p.wants_to_exit())
         self.p._probability_func = never
         self.assertFalse(self.p.wants_to_exit())
@@ -226,7 +230,7 @@ class TestParticipantSupport(unittest.TestCase):
 
     def test_available_fields(self):
         """
-        Test that the it only has the fields currently used for defining 
+        Test that the it only has the fields currently used for defining
         participant->proposal support edges
         """
         self.assertEqual(self.pSupport._fields, ('affinity', 'tokens', 'conviction', 'is_author'))
