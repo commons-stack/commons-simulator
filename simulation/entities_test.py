@@ -78,7 +78,7 @@ class TestParticipant(unittest.TestCase):
         self.p._probability_func = always
         self.p.sentiment = 0.1
         delta_holdings = self.p.sell()
-        self.assertLess(delta_holdings, 0)
+        self.assertGreater(delta_holdings, 0)
 
         self.p._probability_func = never
         delta_holdings = self.p.sell()
