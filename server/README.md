@@ -14,3 +14,10 @@ node server.js
 npm i -g pm2
 pm2 start server.js
 ```
+
+## Monitoring server status
+
+```sh
+pm2 status
+pm2 logs --format <pid>
+```
