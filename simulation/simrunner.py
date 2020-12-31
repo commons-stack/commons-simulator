@@ -66,6 +66,8 @@ if __name__ == "__main__":
                         default=c_default.max_proposal_request)
     parser.add_argument("-T", "--timesteps_days", type=int,
                         default=c_default.timesteps_days)
+    parser.add_argument("--random_seed", type=int,
+                        default=c_default.random_seed)
     args = parser.parse_args()
 
     c = CommonsSimulationConfiguration(**vars(args))
