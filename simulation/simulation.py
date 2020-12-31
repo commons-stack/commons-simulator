@@ -148,7 +148,7 @@ def bootstrap_simulation(c: CommonsSimulationConfiguration):
             # "min_proposal_age_days": 7, # minimum periods passed before a proposal can pass,
             # "sentiment_sensitivity": 0.75,
             # 'min_supp':50, #number of tokens that must be stake for a proposal to be a candidate
-            "debug": True,
+            "debug": False,
             "alpha_days_to_80p_of_max_voting_weight": c.alpha(),
             "max_proposal_request": c.max_proposal_request,
             "random_seed": c.random_seed,
