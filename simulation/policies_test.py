@@ -636,10 +636,14 @@ class TestParticipantExits(unittest.TestCase):
             "gamma_func": new_gamma_func(seed=None),
             "random_number_func": new_random_number_func(seed=None)
         }
-        self.network = bootstrap_network([TokenBatch(1000, 1000, vesting_options=VestingOptions(10, 30))
-                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["probability_func"],
-                                          self.params["random_number_func"], self.params["gamma_func"],
-                                          self.params["exponential_func"])
+        vesting_participants = [TokenBatch(1000, 1000, vesting_options=VestingOptions(10, 30))
+                                for _ in range(2)]
+        nonvesting_participants = [TokenBatch(0, 1000, vesting_options=VestingOptions(10, 30))
+                                   for _ in range(2)]
+        self.network = bootstrap_network(vesting_participants + nonvesting_participants,
+                                         1, 3000, 4e6, 0.2, self.params["probability_func"],
+                                         self.params["random_number_func"], self.params["gamma_func"],
+                                         self.params["exponential_func"])
         self.commons = Commons(1000, 1000)
 
         self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_number_func"])
@@ -655,7 +659,7 @@ class TestParticipantExits(unittest.TestCase):
         ans = ParticipantExits.p_participant_decides_if_he_wants_to_exit(
             self.params, 0, 0, self.default_state)
 
-        self.assertEqual(len(ans["defectors"]), 4)
+        self.assertEqual(len(ans["defectors"]), 2)
 
     def test_su_remove_participants_from_network(self):
         policy_output = {
