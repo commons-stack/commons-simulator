@@ -1,5 +1,9 @@
 # Commons Simulator
 
+## Server status
+
+[![commons-stack](https://circleci.com/gh/commons-stack/commons-simulator.svg?style=svg)](https://github.com/commons-stack/commons-simulator)
+
 ## Usage
 
 ```sh
