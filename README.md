@@ -2,7 +2,7 @@
 
 ## Server status
 
-[![commons-stack](https://circleci.com/gh/commons-stack/commons-simulator.svg?style=svg)](https://github.com/commons-stack/commons-simulator)
+[![commons-stack](https://circleci.com/gh/commons-stack/commons-simulator.svg?style=svg)](https://app.circleci.com/pipelines/github/commons-stack/commons-simulator)
 
 ## Usage
 
