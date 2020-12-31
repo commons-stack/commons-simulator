@@ -24,7 +24,8 @@ app.post('/cadcad', function(req, res) {
             'kappa',
             'days_to_80p_of_max_voting_weight',
             'max_proposal_request',
-            'timesteps_days'
+            'timesteps_days',
+            'random_seed'
         ].forEach(arg => {
             if (!req.body[arg]) {
                 throw new Error('missing parameter : ' + arg)
