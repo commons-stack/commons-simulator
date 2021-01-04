@@ -6,7 +6,7 @@ from hatch import (create_token_batches, Commons,
 from entities import attrs
 from policies import (GenerateNewParticipant, GenerateNewProposal,
                       GenerateNewFunding, ActiveProposals, ProposalFunding,
-                      ParticipantVoting, ParticipantSellsTokens, 
+                      ParticipantVoting, ParticipantSellsTokens,
                       ParticipantBuysTokens, ParticipantExits,
                       ParticipantSentiment)
 from network_utils import bootstrap_network, calc_avg_sentiment

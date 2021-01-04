@@ -592,7 +592,7 @@ class ParticipantSentiment:
     @staticmethod
     def su_update_sentiment_decay(params, step, sL, s, _input, **kwargs):
         network = s["network"]
-        
+
         participants = get_participants(network)
         for participant_idx, participant in participants:
             sentiment_old = network.nodes[participant_idx]["item"].sentiment
