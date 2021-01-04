@@ -1,5 +1,5 @@
 # Participant Sentiment Parameters
-sentiment_decay = 0.01
+sentiment_decay = 0.005
 sentiment_sensitivity = 0.75
 candidate_proposals_cutoff = 0.75
 delta_holdings_scale = 10000
