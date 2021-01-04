@@ -72,6 +72,8 @@ def create_network(token_batches: List[TokenBatch], probability_func, random_num
     network = nx.DiGraph()
     for i, tb in enumerate(token_batches):
         p_instance = Participant(tb, probability_func, random_number_func)
+        # Make the initial participants have sentiments between 0.5 and 1
+        p_instance.sentiment = 0.5 + 0.5 * random_number_func()
         network.add_node(i, item=p_instance)
     return network
 
