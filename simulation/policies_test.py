@@ -20,7 +20,7 @@ from policies import (ActiveProposals, GenerateNewFunding,
                       GenerateNewParticipant, GenerateNewProposal,
                       ParticipantBuysTokens, ParticipantExits,
                       ParticipantSellsTokens, ParticipantVoting,
-                      ProposalFunding)
+                      ProposalFunding, ParticipantSentiment)
 
 import config
 
@@ -755,3 +755,38 @@ class TestParticipantExits(unittest.TestCase):
         new_sentiment_3 = (participant_3_sentiment + (self.network.edges[3, 4]["support"].affinity * config.sentiment_bonus_proposal_becomes_failed)) + (1 * config.sentiment_bonus_proposal_becomes_completed)
         self.assertEqual(n_network.nodes[2]["item"].sentiment, new_sentiment_2)
         self.assertEqual(n_network.nodes[3]["item"].sentiment, new_sentiment_3)
+
+
+class TestParticipantSentiment(unittest.TestCase):
+    def setUp(self):
+        self.params = {
+            "debug": True,
+            "probability_func": new_probability_func(seed=None),
+            "exponential_func": new_exponential_func(seed=None),
+            "gamma_func": new_gamma_func(seed=None),
+            "random_number_func": new_random_number_func(seed=None)
+        }
+        self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
+                                          for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["probability_func"],
+                                          self.params["random_number_func"], self.params["gamma_func"],
+                                          self.params["exponential_func"])
+
+    def test_su_update_sentiment_decay(self):
+        """
+        Test that the participants' sentiment is decreased by the value defined
+        on config.sentiment_decay after executing the state update function
+        su_update_sentiment_decay.
+        """
+        participants_old_sentiment = []
+        participants = get_participants(self.network)
+
+        for _, participant in participants:
+            participants_old_sentiment.append(participant.sentiment)
+
+        network = ParticipantSentiment.su_update_sentiment_decay(self.params,
+                                                                 0, 0, {"network": self.network.copy()}, {})
+
+        for i, participant in participants:
+            old_sentiment = participants_old_sentiment[i]
+            sentiment_decay = old_sentiment - participant.sentiment
+            self.assertAlmostEqual(sentiment_decay, config.sentiment_decay)

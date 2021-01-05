@@ -586,3 +586,18 @@ class ParticipantExits:
                 print(
                     "ParticipantExits: Participant {} changed his sentiment from {} to {} because Proposal {} became {}".format(i, report[i]["sentiment_old"], report[i]["sentiment_new"], report[i]["proposal_idx"], report[i]["status"]))
         return "network", network
+
+
+class ParticipantSentiment:
+    @staticmethod
+    def su_update_sentiment_decay(params, step, sL, s, _input, **kwargs):
+        network = s["network"]
+
+        participants = get_participants(network)
+        for participant_idx, participant in participants:
+            sentiment_old = network.nodes[participant_idx]["item"].sentiment
+            sentiment_new = sentiment_old - config.sentiment_decay
+            sentiment_new = 0 if sentiment_new < 0 else sentiment_new
+            network.nodes[participant_idx]["item"].sentiment = sentiment_new
+
+        return "network", network

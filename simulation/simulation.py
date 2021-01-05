@@ -1,11 +1,17 @@
 from typing import Tuple
 import numpy as np
-from hatch import create_token_batches, TokenBatch, Commons, convert_80p_to_cliff_and_halflife
+from hatch import (create_token_batches, Commons,
+                   convert_80p_to_cliff_and_halflife)
 
 from entities import attrs
-from policies import GenerateNewParticipant, GenerateNewProposal, GenerateNewFunding, ActiveProposals, ProposalFunding, ParticipantVoting, ParticipantSellsTokens, ParticipantBuysTokens, ParticipantExits
+from policies import (GenerateNewParticipant, GenerateNewProposal,
+                      GenerateNewFunding, ActiveProposals, ProposalFunding,
+                      ParticipantVoting, ParticipantSellsTokens,
+                      ParticipantBuysTokens, ParticipantExits,
+                      ParticipantSentiment)
 from network_utils import bootstrap_network, calc_avg_sentiment
-from utils import new_probability_func, new_exponential_func, new_gamma_func, new_random_number_func, new_choice_func
+from utils import (new_probability_func, new_exponential_func, new_gamma_func,
+                   new_random_number_func, new_choice_func)
 
 
 def update_collateral_pool(params, step, sL, s, _input):
@@ -137,7 +143,7 @@ def bootstrap_simulation(c: CommonsSimulationConfiguration):
         "token_supply": commons._token_supply,
         "token_price": commons.token_price(),
         "policy_output": None,
-        "sentiment": 0.5
+        "sentiment": 0.75
     }
 
     simulation_parameters = {
@@ -288,6 +294,13 @@ partial_state_update_blocks = [
         "variables": {
             "commons": ParticipantExits.su_burn_exiters_tokens,
             "network": ParticipantExits.su_remove_participants_from_network,
+        }
+    },
+    {
+        "label": "Participants' sentiment decays",
+        "policies": {},
+        "variables": {
+            "network": ParticipantSentiment.su_update_sentiment_decay,
         }
     },
     sync_state_variables
