@@ -7,7 +7,9 @@ const cors = require('cors')
 app.use(cors())
 app.use(bodyParser.json())
 
-app.listen(5000)
+const server = app.listen(5000)
+
+server.setTimeout(180000) // 3min
 
 let CACHE = {}
 
