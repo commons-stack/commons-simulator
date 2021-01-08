@@ -12,6 +12,7 @@ from cadCAD import configs
 
 from simulation import (CommonsSimulationConfiguration, bootstrap_simulation,
                         partial_state_update_blocks)
+from utils import new_random_number_func
 
 
 def run_simulation(c: CommonsSimulationConfiguration):
@@ -38,12 +39,14 @@ def run_simulation(c: CommonsSimulationConfiguration):
 def get_simulation_results(c):
     df = run_simulation(c)
     df_final = df[df.substep.eq(2)]
+    random_func = new_random_number_func(None)
 
     result = {
         "timestep": list(df_final["timestep"]),
         "funding_pool": list(df_final["funding_pool"]),
         "token_price": list(df_final["token_price"]),
-        "sentiment": list(df_final["sentiment"])
+        "sentiment": list(df_final["sentiment"]),
+        "score": int(random_func() * 1000)
     }
     return result, df_final
 
