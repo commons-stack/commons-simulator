@@ -58,7 +58,7 @@ class TestGenerateNewParticipant(unittest.TestCase):
             "sentiment": self.sentiment
         }
         self.params["probability_func"] = always
-        ans = GenerateNewParticipant.p_randomly(self.params, 0, 0, state)
+        ans = GenerateNewParticipant.p_randomly(self.params, 0, 0, state)[0]
         self.assertEqual(ans["new_participant"], True)
         self.assertIsNotNone(ans["new_participant_investment"])
         self.assertIsNotNone(ans["new_participant_tokens"])
@@ -74,10 +74,12 @@ class TestGenerateNewParticipant(unittest.TestCase):
 
             n_old_len = len(self.network.nodes)
 
-            _input = {
+            _input = {0:
+                {
                 "new_participant": True,
                 "new_participant_investment": 16.872149388283283,
                 "new_participant_tokens": 1.0545093367677052
+                }
             }
             _, network = GenerateNewParticipant.su_add_to_network(
                 self.params, 0, 0, {"network": self.network.copy()}, _input)
@@ -118,11 +120,13 @@ class TestGenerateNewParticipant(unittest.TestCase):
         # the collateral pool do not change.
         self.assertEqual(self.commons._token_supply, old_token_supply)
         self.assertEqual(self.commons._collateral_pool, old_collateral_pool)
-        _input = {
+        _input = {0:
+            {
                 "new_participant": True,
                 "new_participant_investment": 16.872149388283283,
                 "new_participant_tokens": 1.0545093367677052
             }
+        }
         GenerateNewParticipant.su_add_investment_to_commons(
             self.params, 0, 0, {"commons": self.commons}, _input)
 

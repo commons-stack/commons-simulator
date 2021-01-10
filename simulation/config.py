@@ -38,3 +38,4 @@ log_base05_of_02 = 2.321928094887362
 
 # GenerateNewParticipant Parameters
 arrival_rate_denominator = 10
+max_new_participants = 1
