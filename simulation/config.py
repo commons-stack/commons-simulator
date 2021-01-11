@@ -2,12 +2,12 @@
 sentiment_decay = 0.005
 sentiment_sensitivity = 0.75
 candidate_proposals_cutoff = 0.75
-delta_holdings_scale = 10000
+delta_holdings_scale = 70000
 sentiment_bonus_proposal_becomes_active = 0.5
 sentiment_bonus_proposal_becomes_completed = 0.3
 sentiment_bonus_proposal_becomes_failed = -0.1
-engagement_rate_multiplier_buy = 0.3
-engagement_rate_multiplier_sell = 0.3
+engagement_rate_multiplier_buy = 0.6
+engagement_rate_multiplier_sell = 0.6
 engagement_rate_multiplier_exit = 0.3
 sentiment_sensitivity_exit = 0.5
 
