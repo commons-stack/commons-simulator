@@ -73,7 +73,7 @@ class CommonsSimulationConfiguration:
                  hatchers=5,
                  proposals=2,
                  hatch_tribute=0.2,
-                 vesting_80p_unlocked=60,
+                 vesting_80p_unlocked=120,
                  exit_tribute=0.35,
                  kappa=2,
                  days_to_80p_of_max_voting_weight=10,
