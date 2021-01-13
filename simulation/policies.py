@@ -20,30 +20,31 @@ class GenerateNewParticipant:
         probability_func = params["probability_func"]
         exponential_func = params["exponential_func"]
         ans = {
-            "new_participant": False,
             "new_participant_investment": None,
             "new_participant_tokens": None
         }
+        dict_ans = {}
 
         arrival_rate = (1+sentiment)/config.arrival_rate_denominator
-        if probability_func(arrival_rate):
-            ans["new_participant"] = True
-            # Here we randomly generate each participant's post-Hatch
-            # investment, in DAI/USD.
-            #
-            # expon.rvs() arguments:
-            #
-            # loc is the minimum number, so if loc=100, there will be no
-            # investments < 100
-            #
-            # scale is the standard deviation, so if scale=2, investments will
-            # be around 0-12 DAI or even 15, if scale=100, the investments will be
-            # around 0-600 DAI.
-            ans["new_participant_investment"] = exponential_func(loc=config.investment_new_participant_min,
-                                                          scale=config.investment_new_participant_stdev)
-            ans["new_participant_tokens"] = commons.dai_to_tokens(
-                ans["new_participant_investment"])
-        return ans
+        for i in range(config.max_new_participants):
+            if probability_func(arrival_rate):
+                # Here we randomly generate each participant's post-Hatch
+                # investment, in DAI/USD.
+                #
+                # expon.rvs() arguments:
+                #
+                # loc is the minimum number, so if loc=100, there will be no
+                # investments < 100
+                #
+                # scale is the standard deviation, so if scale=2, investments will
+                # be around 0-12 DAI or even 15, if scale=100, the investments will be
+                # around 0-600 DAI.
+                ans["new_participant_investment"] = exponential_func(loc=config.investment_new_participant_min,
+                                                            scale=config.investment_new_participant_stdev)
+                ans["new_participant_tokens"] = commons.dai_to_tokens(
+                    ans["new_participant_investment"])
+                dict_ans[i] = ans
+        return dict_ans
 
     @staticmethod
     def su_add_to_network(params, step, sL, s, _input, **kwargs):
@@ -51,22 +52,27 @@ class GenerateNewParticipant:
         probability_func = params["probability_func"]
         exponential_func = params["exponential_func"]
         random_number_func = params["random_number_func"]
-        if _input["new_participant"]:
-            network, i = add_participant(network, Participant(TokenBatch(
-                0, _input["new_participant_tokens"]), probability_func,
-                random_number_func), exponential_func, random_number_func)
 
-            if params.get("debug"):
-                print("GenerateNewParticipant: A new Participant {} invested {}DAI for {} tokens".format(
-                    i, _input['new_participant_investment'], _input['new_participant_tokens']))
+        for i in _input:
+            ans = _input[i]
+            if ans != 0:
+                network, i = add_participant(network, Participant(TokenBatch(
+                    0, ans["new_participant_tokens"]), probability_func,
+                    random_number_func), exponential_func, random_number_func)
+
+                if params.get("debug"):
+                    print("GenerateNewParticipant: A new Participant {} invested {}DAI for {} tokens".format(
+                        i, ans['new_participant_investment'], ans['new_participant_tokens']))
         return "network", network
 
     @staticmethod
     def su_add_investment_to_commons(params, step, sL, s, _input, **kwargs):
         commons = s["commons"]
-        if _input["new_participant"]:
-            tokens, realized_price = commons.deposit(
-                _input["new_participant_investment"])
+        for i in _input:
+            ans = _input[i]
+            if ans != 0:
+                tokens, realized_price = commons.deposit(
+                    ans["new_participant_investment"])
         return "commons", commons
 
     @staticmethod

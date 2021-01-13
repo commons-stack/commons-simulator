@@ -3,6 +3,7 @@
 
 import argparse
 import json
+from network_utils import get_participants, get_proposals
 
 import pandas as pd
 from cadCAD.configuration import Experiment
@@ -10,6 +11,7 @@ from cadCAD.configuration.utils import config_sim
 from cadCAD.engine import ExecutionContext, ExecutionMode, Executor
 from cadCAD import configs
 
+from entities import ProposalStatus
 from simulation import (CommonsSimulationConfiguration, bootstrap_simulation,
                         partial_state_update_blocks)
 from utils import new_random_number_func
@@ -41,12 +43,26 @@ def get_simulation_results(c):
     df_final = df[df.substep.eq(2)]
     random_func = new_random_number_func(None)
 
+    last_network = df_final.iloc[-1, 0]
+    candidates = len(get_proposals(last_network, status=ProposalStatus.CANDIDATE))
+    actives = len(get_proposals(last_network, status=ProposalStatus.ACTIVE))
+    completed = len(get_proposals(last_network, status=ProposalStatus.COMPLETED))
+    failed = len(get_proposals(last_network, status=ProposalStatus.FAILED))
+    participants = len(get_participants(last_network))
+
     result = {
         "timestep": list(df_final["timestep"]),
         "funding_pool": list(df_final["funding_pool"]),
         "token_price": list(df_final["token_price"]),
         "sentiment": list(df_final["sentiment"]),
-        "score": int(random_func() * 1000)
+        "score": int(random_func() * 1000),
+        "participants": participants,
+        "proposals": {
+            "candidates": candidates,
+            "actives": actives,
+            "completed": completed,
+            "failed": failed
+        }
     }
     return result, df_final
 
