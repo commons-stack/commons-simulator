@@ -20,7 +20,6 @@ class GenerateNewParticipant:
         probability_func = params["probability_func"]
         exponential_func = params["exponential_func"]
         ans = {
-            "new_participant": False,
             "new_participant_investment": None,
             "new_participant_tokens": None
         }
@@ -29,7 +28,6 @@ class GenerateNewParticipant:
         arrival_rate = (1+sentiment)/config.arrival_rate_denominator
         for i in range(config.max_new_participants):
             if probability_func(arrival_rate):
-                ans["new_participant"] = True
                 # Here we randomly generate each participant's post-Hatch
                 # investment, in DAI/USD.
                 #
