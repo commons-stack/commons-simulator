@@ -1,5 +1,6 @@
 from typing import Tuple
 import numpy as np
+import copy
 from hatch import (create_token_batches, Commons,
                    convert_80p_to_cliff_and_halflife)
 
@@ -43,6 +44,10 @@ def update_avg_sentiment(params, step, sL, s, _input):
     s = calc_avg_sentiment(network)
     return "sentiment", s
 
+def network_deepcopy(params, step, sL, s, _input):
+    network = s["network"]
+    return "network", copy.deepcopy(network)
+
 
 def save_policy_output(params, step, sL, s, _input):
     return "policy_output", _input
@@ -58,6 +63,14 @@ sync_state_variables = {
         "token_supply": update_token_supply,
         "token_price": update_token_price,
         "sentiment": update_avg_sentiment,
+    }
+}
+
+network_snapshot = {
+    "label": "Get a snapshop of the network",
+    "policies": {},
+    "variables": {
+        "network": network_deepcopy,
     }
 }
 
@@ -200,7 +213,7 @@ partial_state_update_blocks = [
     {
         "label": "Generate new funding",
         "policies": {
-            "generate_new_funding": GenerateNewFunding.p_exit_tribute_of_average_speculator_position_size,
+            "generate_new_funding": GenerateNewFunding.p_exit_tribute_of_average_speculator_position_size,  # TODO: Doesn't interact with the BC
         },
         "variables": {
             "network": GenerateNewFunding.su_add_funding,
@@ -303,5 +316,6 @@ partial_state_update_blocks = [
             "network": ParticipantSentiment.su_update_sentiment_decay,
         }
     },
-    sync_state_variables
+    sync_state_variables,
+    # network_snapshot,  # Enable it only if running an A/B testing or parameter sweep with a no_deepcopy version of cadCAD
 ]
