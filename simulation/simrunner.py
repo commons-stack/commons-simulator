@@ -12,6 +12,7 @@ from cadCAD.engine import ExecutionContext, ExecutionMode, Executor
 from cadCAD import configs
 
 from entities import ProposalStatus
+from score import CommonsScore
 from simulation import (CommonsSimulationConfiguration, bootstrap_simulation,
                         partial_state_update_blocks)
 from utils import new_random_number_func
@@ -50,12 +51,14 @@ def get_simulation_results(c):
     failed = len(get_proposals(last_network, status=ProposalStatus.FAILED))
     participants = len(get_participants(last_network))
 
+    score = CommonsScore(params=c, df_final=df_final)
+
     result = {
         "timestep": list(df_final["timestep"]),
         "funding_pool": list(df_final["funding_pool"]),
         "token_price": list(df_final["token_price"]),
         "sentiment": list(df_final["sentiment"]),
-        "score": int(random_func() * 1000),
+        "score": score.eval(),
         "participants": participants,
         "proposals": {
             "candidates": candidates,
