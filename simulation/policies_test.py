@@ -37,6 +37,7 @@ class TestGenerateNewParticipant(unittest.TestCase):
     def setUp(self):
         self.commons = Commons(10000, 1000)
         self.sentiment = 0.5
+        self.timestep = 200
         self.params = {
             "debug": False,
             "probability_func": new_probability_func(seed=None),
@@ -55,7 +56,8 @@ class TestGenerateNewParticipant(unittest.TestCase):
         """
         state = {
             "commons": self.commons,
-            "sentiment": self.sentiment
+            "sentiment": self.sentiment,
+            "timestep": self.timestep
         }
         self.params["probability_func"] = always
         ans = GenerateNewParticipant.p_randomly(self.params, 0, 0, state)[0]
