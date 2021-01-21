@@ -17,6 +17,7 @@ class GenerateNewParticipant:
     def p_randomly(params, step, sL, s, **kwargs):
         commons = s["commons"]
         sentiment = s["sentiment"]
+        timestep = s["timestep"]
         probability_func = params["probability_func"]
         exponential_func = params["exponential_func"]
         ans = {
@@ -24,9 +25,17 @@ class GenerateNewParticipant:
             "new_participant_tokens": None
         }
         dict_ans = {}
+        
+        if timestep < config.speculation_days:
+            # If in speculation period, the arrival rate is higher
+            arrival_rate = 0.5 + 0.5 * sentiment
+            multiplier = config.multiplier_new_participants
+            max_new_participants = config.max_new_participants * multiplier
+        else:
+            arrival_rate = (1+sentiment)/config.arrival_rate_denominator
+            max_new_participants = config.max_new_participants
 
-        arrival_rate = (1+sentiment)/config.arrival_rate_denominator
-        for i in range(config.max_new_participants):
+        for i in range(max_new_participants):
             if probability_func(arrival_rate):
                 # Here we randomly generate each participant's post-Hatch
                 # investment, in DAI/USD.

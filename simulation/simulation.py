@@ -13,6 +13,7 @@ from policies import (GenerateNewParticipant, GenerateNewProposal,
 from network_utils import bootstrap_network, calc_avg_sentiment
 from utils import (new_probability_func, new_exponential_func, new_gamma_func,
                    new_random_number_func, new_choice_func)
+import config
 
 
 def update_collateral_pool(params, step, sL, s, _input):

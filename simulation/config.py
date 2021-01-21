@@ -1,3 +1,6 @@
+import numpy as np
+
+
 # Participant Sentiment Parameters
 sentiment_decay = 0.005
 sentiment_sensitivity = 0.75
@@ -39,3 +42,7 @@ log_base05_of_02 = 2.321928094887362
 # GenerateNewParticipant Parameters
 arrival_rate_denominator = 10
 max_new_participants = 1
+
+# Speculation vesting
+speculation_days = 24 + int(72 * np.random.rand())
+multiplier_new_participants = 1 + int(9 * np.random.rand())
