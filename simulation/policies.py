@@ -28,7 +28,7 @@ class GenerateNewParticipant:
             "new_participant_tokens": None
         }
         dict_ans = {}
-        
+
         if timestep < speculation_days:
             # If in speculation period, the arrival rate is higher
             arrival_rate = 0.5 + 0.5 * sentiment
