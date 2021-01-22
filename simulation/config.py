@@ -1,7 +1,4 @@
 # Participant Sentiment Parameters
-import numpy as np
-
-
 sentiment_decay = 0.005
 sentiment_sensitivity = 0.75
 candidate_proposals_cutoff = 0.75
