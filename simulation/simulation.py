@@ -115,7 +115,7 @@ class CommonsSimulationConfiguration:
         self.random_number_func = new_random_number_func(random_seed)
         self.choice_func = new_choice_func(random_seed)
 
-        self.speculation_days = 24 + int(72 * self.random_number_func())
+        self.speculation_days = int(.2 * vesting_80p_unlocked) + int(0.6 * vesting_80p_unlocked * self.random_number_func())
         self.multiplier_new_participants = 1 + int(9 * self.random_number_func())
 
     def __repr__(self):
