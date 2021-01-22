@@ -3,6 +3,14 @@ const app = express()
 const { exec } = require('child_process')
 const bodyParser = require('body-parser')
 const cors = require('cors')
+const fs = require('fs')
+const { Store } = require("fs-json-store");
+const stringHash = require("string-hash");
+
+// Creating data cache directory for the current deployment
+const upTime = new Date().toISOString()
+const DATA_DIR = `./data/${upTime}`
+fs.mkdirSync(DATA_DIR)
 
 app.use(cors())
 app.use(bodyParser.json())
@@ -10,8 +18,6 @@ app.use(bodyParser.json())
 const server = app.listen(5000)
 
 server.setTimeout(180000) // 3min
-
-let CACHE = {}
 
 app.post('/cadcad', function(req, res) {
     console.log('/cadcad', req.body)
@@ -38,7 +44,9 @@ app.post('/cadcad', function(req, res) {
         return res.status(400).send(e.message)
     }
 
-    if (!CACHE[SIMULATION_COMMAND]) {
+    const simulationId = stringHash(SIMULATION_COMMAND)
+    const cacheFile = `${DATA_DIR}/${simulationId}.json`
+    if (!fs.existsSync(cacheFile)) {
         console.log(SIMULATION_COMMAND + ' PROCESSING')
         exec(SIMULATION_COMMAND, (error, stdout, stderr) => {
             console.log(req.body, stdout, error, stderr)
@@ -46,7 +54,8 @@ app.post('/cadcad', function(req, res) {
             try {
                 const lines = stdout.split(/\n/).filter(n => n)
                 const json_output = JSON.parse(lines[lines.length - 1])
-                CACHE[SIMULATION_COMMAND] = json_output
+                const store = new Store({file: cacheFile})
+                store.write([req.body, json_output])
                 res.json(json_output)
             } catch (e) {
                 if (e) res.status(500).send(stdout)
@@ -55,6 +64,7 @@ app.post('/cadcad', function(req, res) {
         })
     } else {
         console.log(SIMULATION_COMMAND + ' CACHED')
-        res.json(CACHE[SIMULATION_COMMAND])
+        const store = new Store({file: cacheFile})
+        store.read().then((data) => res.json(data[1]))
     }
 });

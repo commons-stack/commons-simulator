@@ -4,12 +4,18 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon --watch server.js 5000"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "fs-json-store": "^7.0.0",
+    "string-hash": "^1.1.3"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
   }
 }
