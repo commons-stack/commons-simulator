@@ -115,6 +115,9 @@ class CommonsSimulationConfiguration:
         self.random_number_func = new_random_number_func(random_seed)
         self.choice_func = new_choice_func(random_seed)
 
+        self.speculation_days = 24 + int(72 * self.random_number_func())
+        self.multiplier_new_participants = 1 + int(9 * self.random_number_func())
+
     def __repr__(self):
         return "<{} {}>".format(self.__class__.__name__, attrs(self))
 
@@ -175,7 +178,9 @@ def bootstrap_simulation(c: CommonsSimulationConfiguration):
             "exponential_func": c.exponential_func,
             "gamma_func": c.gamma_func,
             "random_number_func": c.random_number_func,
-            "choice_func": c.choice_func
+            "choice_func": c.choice_func,
+            "speculation_days": c.speculation_days,
+            "multiplier_new_participants": c.multiplier_new_participants
         }
     }
 
