@@ -20,16 +20,18 @@ class GenerateNewParticipant:
         timestep = s["timestep"]
         probability_func = params["probability_func"]
         exponential_func = params["exponential_func"]
+        speculation_days = params["speculation_days"]
+        multiplier_new_participants = params["multiplier_new_participants"]
+
         ans = {
             "new_participant_investment": None,
             "new_participant_tokens": None
         }
         dict_ans = {}
-        
-        if timestep < config.speculation_days:
+        if timestep < speculation_days:
             # If in speculation period, the arrival rate is higher
             arrival_rate = 0.5 + 0.5 * sentiment
-            multiplier = config.multiplier_new_participants
+            multiplier = multiplier_new_participants
             max_new_participants = config.max_new_participants * multiplier
         else:
             arrival_rate = (1+sentiment)/config.arrival_rate_denominator
@@ -273,14 +275,16 @@ class ProposalFunding:
 
         support_edges = get_edges_by_type(network, "support")
         for i, j in support_edges:
-            edge = network.edges[i, j]
-            prior_conviction = edge['support'].conviction
-            current_tokens = edge['support'].tokens
+            proposal_status = network.nodes[j]['item'].status
+            if proposal_status == ProposalStatus.CANDIDATE:
+                edge = network.edges[i, j]
+                prior_conviction = edge['support'].conviction
+                current_tokens = edge['support'].tokens
 
-            edge['support'] = edge['support']._replace(conviction=current_tokens + alpha*prior_conviction)
-            if params.get("debug") and s["timestep"] == 1:
-                print("ProposalFunding: Participant {} initially has staked {} tokens on Proposal {}, which will result in {} conviction in the next timestep".format(
-                    i, current_tokens, j, edge["support"].conviction))
+                edge['support'] = edge['support']._replace(conviction=current_tokens + alpha*prior_conviction)
+                if params.get("debug") and s["timestep"] == 1:
+                    print("ProposalFunding: Participant {} initially has staked {} tokens on Proposal {}, which will result in {} conviction in the next timestep".format(
+                        i, current_tokens, j, edge["support"].conviction))
 
         return "network", network
 
