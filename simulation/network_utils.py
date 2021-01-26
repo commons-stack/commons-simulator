@@ -59,7 +59,7 @@ def add_proposal(network: nx.DiGraph, p: Proposal, random_number_func) -> Tuple[
 def add_participant(network: nx.DiGraph, p: Participant, exponential_func, random_number_func) -> Tuple[nx.DiGraph, int]:
     j = max(network.nodes) + 1
     network.add_node(j, item=p)
-    network = setup_influence_edges_single(network, j, exponential_func)
+    # network = setup_influence_edges_single(network, j, exponential_func) # TODO: Disabled as these aren't being used on any model policy
     network = setup_support_edges(network, random_number_func, j)
     return network, j
 
@@ -237,7 +237,7 @@ def bootstrap_network(n_participants: List[TokenBatch], n_proposals: int, fundin
 
     n = setup_support_edges(n, random_number_func)
     n = setup_conflict_edges(n, random_number_func)
-    n = setup_influence_edges_bulk(n, exponential_func)
+    # n = setup_influence_edges_bulk(n, exponential_func)  # TODO: Disabled as these aren't being used on any model policy
     return n
 
 
