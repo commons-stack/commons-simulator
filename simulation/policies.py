@@ -8,8 +8,7 @@ from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch
 from network_utils import (add_proposal, add_participant, calc_median_affinity, calc_total_conviction,
                            calc_total_funds_requested, find_in_edges_of_type_for_proposal, get_edges_by_type,
-                           get_participants, get_proposals,
-                           setup_influence_edges_single, setup_support_edges)
+                           get_participants, get_proposals)
 
 
 class GenerateNewParticipant:
