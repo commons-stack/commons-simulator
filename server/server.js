@@ -5,6 +5,7 @@ const bodyParser = require('body-parser')
 const cors = require('cors')
 const fs = require('fs')
 const { Store } = require("fs-json-store");
+const moment = require('moment')
 const stringHash = require("string-hash");
 
 // Creating data cache directory for the current deployment
@@ -48,14 +49,18 @@ app.post('/cadcad', function(req, res) {
     const cacheFile = `${DATA_DIR}/${simulationId}.json`
     if (!fs.existsSync(cacheFile)) {
         console.log(SIMULATION_COMMAND + ' PROCESSING')
+        const startTime = moment()
         exec(SIMULATION_COMMAND, (error, stdout, stderr) => {
             console.log(req.body, stdout, error, stderr)
+            const endTime = moment()
+            var timeDiff = endTime.diff(startTime, 'seconds')
+            console.log('Total execution time (sec): ', timeDiff)
             if (error) return res.status(500).send(stderr)
             try {
                 const lines = stdout.split(/\n/).filter(n => n)
                 const json_output = JSON.parse(lines[lines.length - 1])
                 const store = new Store({file: cacheFile})
-                store.write([req.body, json_output])
+                store.write([req.body, json_output, { execTimeinSec: timeDiff }])
                 res.json(json_output)
             } catch (e) {
                 if (e) res.status(500).send(stdout)
