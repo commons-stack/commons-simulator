@@ -21,6 +21,7 @@ from policies import (ActiveProposals, GenerateNewFunding,
                       ParticipantBuysTokens, ParticipantExits,
                       ParticipantSellsTokens, ParticipantVoting,
                       ProposalFunding, ParticipantSentiment)
+from simulation import CommonsSimulationConfiguration
 
 import config
 
@@ -35,6 +36,7 @@ def never(rate):
 
 class TestGenerateNewParticipant(unittest.TestCase):
     def setUp(self):
+        self.c_default = CommonsSimulationConfiguration()
         self.commons = Commons(10000, 1000)
         self.sentiment = 0.5
         self.timestep = 200
@@ -43,7 +45,10 @@ class TestGenerateNewParticipant(unittest.TestCase):
             "probability_func": new_probability_func(seed=None),
             "exponential_func": new_exponential_func(seed=None),
             "gamma_func": new_gamma_func(seed=None),
-            "random_number_func": new_random_number_func(seed=None)
+            "random_number_func": new_random_number_func(seed=None),
+            "speculation_days":  int(.2 * self.c_default.vesting_80p_unlocked) + \
+                int(0.6 * self.c_default.vesting_80p_unlocked * new_random_number_func(seed=None)()),
+            "multiplier_new_participants": 1 + int(9 * new_random_number_func(seed=None)()),
         }
         self.network = bootstrap_network([TokenBatch(1000, 0, vesting_options=VestingOptions(10, 30))
                                           for _ in range(4)], 1, 3000, 4e6, 0.2, self.params["probability_func"],
@@ -92,10 +97,11 @@ class TestGenerateNewParticipant(unittest.TestCase):
 
             # There are 4 Participants in the network, all of them should have
             # influence edges to the newly added Participant.
-            self.assertEqual(len(network.in_edges(5)), 4)
+            # TODO: influence edges are currently disabled
+            # self.assertEqual(len(network.in_edges(5)), 4)
             # Check that all of these edges are support type edges.
-            for u, v in network.in_edges(5):
-                self.assertEqual(network.edges[u, v]["type"], "influence")
+            # for u, v in network.in_edges(5):
+            #     self.assertEqual(network.edges[u, v]["type"], "influence")
 
     def test_su_update_participants_token_batch_age(self):
         """
@@ -229,7 +235,7 @@ class TestActiveProposals(unittest.TestCase):
                                           self.params["random_number_func"], self.params["gamma_func"],
                                           self.params["exponential_func"])
 
-        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_number_func"])
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), 0, self.params["random_number_func"])
 
         self.network.nodes[4]["item"].status = ProposalStatus.ACTIVE
         self.network.nodes[5]["item"].status = ProposalStatus.ACTIVE
@@ -272,7 +278,7 @@ class TestProposalFunding(unittest.TestCase):
                                           self.params["random_number_func"], self.params["gamma_func"],
                                           self.params["exponential_func"])
 
-        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_number_func"])
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), 0, self.params["random_number_func"])
 
         self.network.nodes[4]["item"].status = ProposalStatus.CANDIDATE
         self.network.nodes[5]["item"].status = ProposalStatus.CANDIDATE
@@ -378,7 +384,7 @@ class TestParticipantVoting(unittest.TestCase):
                                           self.params["random_number_func"], self.params["gamma_func"],
                                           self.params["exponential_func"])
 
-        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_number_func"])
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), 0, self.params["random_number_func"])
 
         """
         For proper testing, we need to make sure the Proposals are CANDIDATE and
@@ -460,7 +466,7 @@ class TestParticipantBuysTokens(unittest.TestCase):
                                           self.params["exponential_func"])
         self.commons = Commons(1000, 1000)
 
-        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_number_func"])
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), 0, self.params["random_number_func"])
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
 
@@ -553,7 +559,7 @@ class TestParticipantSellsTokens(unittest.TestCase):
                                           self.params["exponential_func"])
         self.commons = Commons(1000, 1000)
 
-        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_number_func"])
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), 0, self.params["random_number_func"])
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
 
@@ -648,7 +654,7 @@ class TestParticipantExits(unittest.TestCase):
                                          self.params["exponential_func"])
         self.commons = Commons(1000, 1000)
 
-        self.network, _ = add_proposal(self.network, Proposal(100, 1), self.params["random_number_func"])
+        self.network, _ = add_proposal(self.network, Proposal(100, 1), 0, self.params["random_number_func"])
         self.default_state = {"network": self.network, "commons": self.commons,
                               "funding_pool": 1000, "token_supply": 1000}
 

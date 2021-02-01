@@ -8,7 +8,7 @@ from entities import Participant, Proposal, ProposalStatus
 from hatch import TokenBatch
 from network_utils import (add_proposal, add_participant, calc_median_affinity, calc_total_conviction,
                            calc_total_funds_requested, find_in_edges_of_type_for_proposal, get_edges_by_type,
-                           get_participants, get_proposals)
+                           get_participants, get_proposals, get_proposals_by_participant_and_status)
 
 
 class GenerateNewParticipant:
@@ -124,19 +124,14 @@ class GenerateNewProposal:
         gamma_func = params["gamma_func"]
         random_number_func = params["random_number_func"]
         if _input["new_proposal"]:
+            proposed_by = _input["proposed_by_participant"]
             # Create the Proposal and add it to the network.
             rescale = funding_pool * config.scale_factor
             r_rv = gamma_func(config.funds_requested_alpha, loc=config.funds_requested_min, scale=rescale)
             proposal = Proposal(funds_requested=r_rv,
                                 trigger=trigger_threshold(r_rv, funding_pool, token_supply, params["max_proposal_request"]))
-            network, proposal_idx = add_proposal(network, proposal, random_number_func)
+            network, proposal_idx = add_proposal(network, proposal, proposed_by, random_number_func)
 
-            # add_proposal() has created support edges from other Participants
-            # to this Proposal. If the Participant is the one who created this
-            # Proposal, set the participant's role as author and change his affinity for the Proposal to 1 (maximum).
-            network.edges[_input["proposed_by_participant"],
-                            proposal_idx]["support"] = \
-                                network.edges[_input["proposed_by_participant"], proposal_idx]["support"]._replace(affinity=1, is_author=True)
             if params.get("debug"):
                 print("GenerateNewProposal: Participant {} created Proposal {}".format(
                     _input["proposed_by_participant"], proposal_idx))
@@ -302,14 +297,14 @@ class ParticipantVoting:
         """
         network = s["network"]
         participants = get_participants(network)
-        candidate_proposals = get_proposals(
-            network, status=ProposalStatus.CANDIDATE)
 
         participants_stakes = {}
         for participant_idx, participant in participants:
             proposal_idx_affinity = {}  # {4: 0.9, 5: 0.9}
-            for proposal_idx, _ in candidate_proposals:
-                proposal_idx_affinity[proposal_idx] = network[participant_idx][proposal_idx]["support"].affinity
+            candidate_proposals = get_proposals_by_participant_and_status(
+                network, participant_idx=participant_idx, status_filter=[ProposalStatus.CANDIDATE])
+            for proposal_idx, proposal in candidate_proposals.items():
+                proposal_idx_affinity[proposal_idx] = proposal["support"].affinity
             proposals_that_participant_cares_enough_to_vote_on = participant.vote_on_candidate_proposals(
                 proposal_idx_affinity)
 

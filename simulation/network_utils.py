@@ -9,9 +9,9 @@ from entities import Participant, ParticipantSupport, Proposal, ProposalStatus
 from hatch import TokenBatch
 
 
-def get_edges_by_type(network: nx.DiGraph, edge_type_selection: str):
+def get_edges_by_type(network: nx.DiGraph, edge_type_selection: str, participant_idx: int = None):
     def filter_by_type(n1, n2):
-        if network.edges[(n1, n2)]["type"] == edge_type_selection:
+        if (participant_idx is None or n1 == participant_idx) and network.edges[(n1, n2)]["type"] == edge_type_selection:
             return True
         return False
 
@@ -23,7 +23,7 @@ def get_edges_by_participant_and_type(network: nx.DiGraph, participant_idx: int,
     edges_view = network.adj[participant_idx]
     answer = {}
     for key in edges_view:
-        if edges_view[key]["type"] == "support":
+        if edges_view[key]["type"] == edge_type_selection:
             answer[key] = edges_view[key]
     return answer
 
@@ -49,10 +49,23 @@ def get_participants(network: nx.DiGraph) -> NodeDataView:
     return view.nodes(data="item")
 
 
-def add_proposal(network: nx.DiGraph, p: Proposal, random_number_func) -> Tuple[nx.DiGraph, int]:
+def get_proposals_by_participant_and_status(network: nx.DiGraph, participant_idx: int, status_filter: List[ProposalStatus] = []) -> Dict:
+    edges_view = network.adj[participant_idx]
+    answer = {}
+    for key in edges_view:
+        edge = edges_view[key]
+        node = network.nodes[key]["item"]
+        if edge["type"] == "support" and (len(status_filter) == 0 or node.status in status_filter):
+            answer[key] = edge
+    return answer
+
+
+def add_proposal(network: nx.DiGraph, p: Proposal, proposed_by: int, random_number_func) -> Tuple[nx.DiGraph, int]:
     j = max(network.nodes) + 1
     network.add_node(j, item=p)
     network = setup_support_edges(network, random_number_func, j)
+    # The Participant who created this Proposal must have maximum affinity and need to be marked as author
+    network.add_edge(proposed_by, j, support=ParticipantSupport(affinity=1, tokens=0, conviction=0, is_author=True), type="support")
     return network, j
 
 
@@ -205,9 +218,9 @@ def setup_support_edges(network: nx.DiGraph, random_number_func, idx=None) -> nx
         n.add_edge(i, j, support=ParticipantSupport(affinity=a_rv, tokens=0, conviction=0), type="support")
         return n
     participants = dict(get_participants(network))
-    proposals = dict(get_proposals(network))
 
     if idx is None:
+        proposals = dict(get_proposals(network))
         for prop in proposals:
             for par in participants:
                 network = create_support_edge(network, par, prop, random_number_func)
@@ -217,6 +230,7 @@ def setup_support_edges(network: nx.DiGraph, random_number_func, idx=None) -> nx
             for par in participants:
                 network = create_support_edge(network, par, idx, random_number_func)
         elif isinstance(network.nodes[idx]['item'], Participant):
+            proposals = dict(get_proposals(network, ProposalStatus.CANDIDATE))
             for prop in proposals:
                 network = create_support_edge(network, idx, prop, random_number_func)
     return network
@@ -304,6 +318,6 @@ def get_proposals_conviction_list(network):
     conviction_list = []
     for i, j in support_edges:
         edge = network.edges[i, j]
-        conviction = edge["conviction"]
+        conviction = edge["support"].conviction
         conviction_list.append(conviction)
     return conviction_list
