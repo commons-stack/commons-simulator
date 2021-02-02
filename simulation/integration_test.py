@@ -105,3 +105,24 @@ class TestProposal(unittest.TestCase):
                 self.assertEqual(conviction_list, prior_conviction_list)
 
             prior_conviction_list = copy.deepcopy(conviction_list)
+
+class TestScore(unittest.TestCase):
+    def setUp(self):
+        c_bad = CommonsSimulationConfiguration(random_seed=42, hatchers=44,
+                                           proposals=1, hatch_tribute=0.01, 
+                                           max_proposal_request=0.5,
+                                           days_to_80p_of_max_voting_weight=30,
+                                           exit_tribute=0.01,
+                                           timesteps_days=1095)
+        c_good = CommonsSimulationConfiguration(random_seed=42, hatchers=20,
+                                           proposals=10, hatch_tribute=0.75, 
+                                           max_proposal_request=0.15,
+                                           days_to_80p_of_max_voting_weight=60,
+                                           exit_tribute=0.30,
+                                           timesteps_days=1095)
+        self.results_bad, _ = get_simulation_results(c_bad)
+        self.results_good, _ = get_simulation_results(c_good)
+    
+    def test_conviction_is_updated_once_by_timestep(self):
+        self.assertEqual(self.results_bad['score'], 485)
+        self.assertEqual(self.results_good['score'], 1511)
