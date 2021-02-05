@@ -248,7 +248,7 @@ class TestNetworkUtils(unittest.TestCase):
         This test ensures that the Proposal was added and that
         setup_conflict_edges() was executed for that particular node.
         """
-        n1, j = add_proposal(self.network, Proposal(23, 111), self.params["random_number_func"])
+        n1, j = add_proposal(self.network, Proposal(23, 111), 0, self.params["random_number_func"])
         self.assertEqual(n1.nodes[j]["item"].funds_requested, 23)
         self.assertEqual(n1.nodes[j]["item"].trigger, 111)
 
