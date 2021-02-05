@@ -10,19 +10,20 @@ class CommonsScore(object):
         Calculates a final score for a commons simulation run.
     """
 
-    def __init__(self, params: CommonsSimulationConfiguration, df_final, sigma=100):
+    def __init__(self, params: CommonsSimulationConfiguration, df_final, sigma=112):
         self.params = params
         self.df_final = df_final
         self.sigma = sigma
         self.metrics: Metrics = None
 
-    def calc_price_ratio(self) -> float:
+    def calc_final_price_ratio(self) -> float:
         '''
-            Calculates the ratio between price compared to hatch price
+            Calculates the ratio between final price compared to hatch price
         '''
         hatch_price = self.df_final.iloc[0, :]['token_price']
         final_price = self.df_final.iloc[-1, :]['token_price']
-        return final_price / hatch_price
+        final_price_ratio = final_price / hatch_price
+        return final_price_ratio if final_price_ratio < 1 else 1
 
     def calc_avg_price_to_initial_ratio(self) -> float:
         '''
@@ -31,22 +32,24 @@ class CommonsScore(object):
         hatch_price = self.df_final.iloc[0, :]['token_price']
         avg_price = self.df_final['token_price'].mean()
 #         return avg_price / hatch_price
-        return (avg_price - hatch_price) / self.df_final['token_price'].std()
+        avg_price_ratio = (avg_price - hatch_price) / self.df_final['token_price'].std()
+        return avg_price_ratio if avg_price_ratio < 1 else 1
 
     def calc_funded_proposals_ratio(self) -> float:
         '''
-            Calculates the number of proposals funded compared to 
+            Calculates the number of proposals funded compared to
             initial proposals
         '''
         init_proposals = self.params.proposals
 #         funded = self.metrics.candidates + self.metrics.actives + self.metrics.completed + self.metrics.failed
         funded = self.metrics.actives + self.metrics.completed + self.metrics.failed
 #         return funded / init_proposals
-        return (funded - init_proposals) / funded
+        funded_proposals_ratio = (funded - init_proposals) / funded
+        return funded_proposals_ratio if funded_proposals_ratio < 1 else 1
 
     def calc_funds_spent_ratio(self) -> float:
         '''
-            Calculates the total spent by the funding pool compared to 
+            Calculates the total spent by the funding pool compared to
             the amount received in the hatch phase
         '''
         hatch_funds = self.df_final.iloc[0, :]['funding_pool']
@@ -54,42 +57,48 @@ class CommonsScore(object):
         total_spent = self.metrics.funds_actives + \
             self.metrics.funds_completed + self.metrics.funds_failed
 #         return total_spent / hatch_funds
-        return (total_spent - hatch_funds) / total_spent
+        funds_spent_ratio =  (total_spent - hatch_funds) / total_spent
+        return funds_spent_ratio if funds_spent_ratio < 1 else 1
 
     def calc_avg_funds_to_initial_ratio(self) -> float:
         '''
-            Calculates the ration between  average amount in funding pool 
+            Calculates the ration between  average amount in funding pool
             over time compared to the amount received in the hatch phase
         '''
         hatch_funds = self.df_final.iloc[0, :]['funding_pool']
         avg_funds = self.df_final['funding_pool'].mean()
-        return avg_funds / hatch_funds
+        avg_funds_ratio = avg_funds / hatch_funds
+        return avg_funds_ratio if avg_funds_ratio < 1 else 1
 #         return (avg_funds - hatch_funds) / self.df_final['funding_pool'].std()
 
     def calc_final_sentiment(self) -> float:
         '''
             Obtains the final sentiment at the end of the simulation
         '''
-        return self.df_final.iloc[-1, :]['sentiment']
+        final_sentiment = self.df_final.iloc[-1, :]['sentiment']
+        return final_sentiment if final_sentiment < 1 else 1
 
     def calc_avg_sentiment(self) -> float:
         '''
             Obtains the average sentiment
         '''
-        return self.df_final['sentiment'].mean()
+        avg_sentiment = self.df_final['sentiment'].mean()
+        return avg_sentiment if avg_sentiment < 1 else 1
 
     def calc_success_to_failed_ratio(self) -> float:
         '''
             Calculates the ratio of successful projects to failed ones
         '''
-        return self.metrics.completed / self.metrics.failed
+        success_to_failed_ratio = self.metrics.completed / self.metrics.failed
+        return success_to_failed_ratio if success_to_failed_ratio < 1 else 1
 
     def calc_participant_to_hatchers_ratio(self) -> float:
         '''
             Calculates the ratio between No of final participants and No of hatchers
         '''
         hatchers = self.params.hatchers
-        return self.metrics.participants / hatchers
+        participants_ratio = self.metrics.participants / hatchers
+        return participants_ratio if participants_ratio < 1 else 1
 
     def eval(self) -> float:
         '''
