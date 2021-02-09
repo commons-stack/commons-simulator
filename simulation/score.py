@@ -22,13 +22,13 @@ class CommonsScore(object):
             Calculates the ratio between final price compared to hatch price
         '''
         hatch_price = self.df_final.iloc[0, :]['token_price']
-        final_price = self.df_final.iloc[-1, :]['token_price']            
+        final_price = self.df_final.iloc[-1, :]['token_price']         
         final_price_ratio = final_price / (self.multiplier_token_price * hatch_price)
         # Penalty if final price is smaller than 80% of the hatch price
         if final_price < 0.8 * hatch_price:
             return -0.5
         else:
-            return final_price_ratio if final_price_ratio < 1 else 1
+            return min(final_price_ratio, 1)
 
     def calc_avg_price_to_initial_ratio(self) -> float:
         '''
@@ -41,7 +41,7 @@ class CommonsScore(object):
             return -0.5
 #         return avg_price / hatch_price
         avg_price_ratio = (avg_price - hatch_price) / (self.multiplier_token_price * self.df_final['token_price'].std())
-        return avg_price_ratio if avg_price_ratio < 1 else 1
+        return min(avg_price_ratio, 1)
 
     def calc_funded_proposals_ratio(self) -> float:
         '''
@@ -53,7 +53,7 @@ class CommonsScore(object):
         funded = self.metrics.actives + self.metrics.completed + self.metrics.failed
 #         return funded / init_proposals
         funded_proposals_ratio = (funded - init_proposals) / (5 * funded)
-        return funded_proposals_ratio if funded_proposals_ratio < 1 else 1
+        return min(funded_proposals_ratio, 1)
 
     def calc_funds_spent_ratio(self) -> float:
         '''
@@ -66,7 +66,7 @@ class CommonsScore(object):
             self.metrics.funds_completed + self.metrics.funds_failed
 #         return total_spent / hatch_funds
         funds_spent_ratio =  (total_spent - hatch_funds) / total_spent
-        return funds_spent_ratio if funds_spent_ratio < 1 else 1
+        return min(funds_spent_ratio, 1)
 
     def calc_avg_funds_to_initial_ratio(self) -> float:
         '''
@@ -76,7 +76,7 @@ class CommonsScore(object):
         hatch_funds = self.df_final.iloc[0, :]['funding_pool']
         avg_funds = self.df_final['funding_pool'].mean()
         avg_funds_ratio = avg_funds / hatch_funds
-        return avg_funds_ratio if avg_funds_ratio < 1 else 1
+        return min(avg_funds_ratio, 1)
 #         return (avg_funds - hatch_funds) / self.df_final['funding_pool'].std()
 
     def calc_final_sentiment(self) -> float:
@@ -86,7 +86,7 @@ class CommonsScore(object):
         final_sentiment = self.df_final.iloc[-1, :]['sentiment']
         if final_sentiment < 0.75:
             return -0.5
-        return final_sentiment if final_sentiment < 1 else 1
+        return min(final_sentiment, 1)
 
     def calc_avg_sentiment(self) -> float:
         '''
@@ -96,14 +96,14 @@ class CommonsScore(object):
         min_sentiment = self.df_final['sentiment'].min()
         if min_sentiment < 0.5:
             return -0.5
-        return avg_sentiment if avg_sentiment < 1 else 1
+        return min(avg_sentiment, 1)
 
     def calc_success_to_failed_ratio(self) -> float:
         '''
             Calculates the ratio of successful projects to failed ones
         '''
         success_to_failed_ratio = self.metrics.completed / self.metrics.failed
-        return success_to_failed_ratio if success_to_failed_ratio < 1 else 1
+        return min(success_to_failed_ratio, 1)
 
     def calc_participant_to_hatchers_ratio(self) -> float:
         '''
@@ -111,7 +111,7 @@ class CommonsScore(object):
         '''
         hatchers = self.params.hatchers
         participants_ratio = self.metrics.participants / hatchers
-        return participants_ratio if participants_ratio < 1 else 1
+        return min(participants_ratio, 1)
 
     def eval(self) -> float:
         '''
