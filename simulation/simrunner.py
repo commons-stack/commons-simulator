@@ -64,7 +64,8 @@ def get_simulation_results(c):
             "candidates": candidates,
             "actives": actives,
             "completed": completed,
-            "failed": failed
+            "failed": failed,
+            "total": candidates + actives + completed + failed
         }
     }
     return result, df_final
