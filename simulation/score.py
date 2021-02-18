@@ -11,7 +11,7 @@ class CommonsScore(object):
     """
 
     def __init__(self, params: CommonsSimulationConfiguration, df_final,
-                 sigma=112, sigma_token_price=2, sigma_funded=5, penalty=-0.5,
+                 sigma=120, sigma_token_price=2, sigma_funded=5, penalty=-0.2,
                  final_sentiment_threshold=0.75, min_sentiment_threshold=0.5):
         self.params = params
         self.df_final = df_final
@@ -30,11 +30,11 @@ class CommonsScore(object):
         hatch_price = self.df_final.iloc[0, :]['token_price']
         final_price = self.df_final.iloc[-1, :]['token_price']
         final_price_ratio = final_price / (self.sigma_token_price * hatch_price)
+        final_result = final_price_ratio
         # Penalty if final price is smaller than 80% of the hatch price
         if final_price < 0.8 * hatch_price:
-            return self.penalty
-        else:
-            return min(final_price_ratio, 1)
+            final_result += self.penalty
+        return min(final_result, 1)
 
     def calc_avg_price_to_initial_ratio(self) -> float:
         '''
@@ -42,12 +42,13 @@ class CommonsScore(object):
         '''
         hatch_price = self.df_final.iloc[0, :]['token_price']
         avg_price = self.df_final['token_price'].mean()
+        avg_price_ratio = (avg_price - hatch_price) / (self.sigma_token_price * self.df_final['token_price'].std())
+        final_result = avg_price_ratio
         #  Penalty if average price is smaller than hatch price
         if avg_price < hatch_price:
-            return self.penalty
+            final_result += self.penalty
 #         return avg_price / hatch_price
-        avg_price_ratio = (avg_price - hatch_price) / (self.sigma_token_price * self.df_final['token_price'].std())
-        return min(avg_price_ratio, 1)
+        return min(final_result, 1)
 
     def calc_funded_proposals_ratio(self) -> float:
         '''
@@ -90,9 +91,10 @@ class CommonsScore(object):
             Obtains the final sentiment at the end of the simulation
         '''
         final_sentiment = self.df_final.iloc[-1, :]['sentiment']
+        final_result = final_sentiment
         if final_sentiment < self.final_sentiment_threshold:
-            return self.penalty
-        return min(final_sentiment, 1)
+            final_result += self.penalty
+        return min(final_result, 1)
 
     def calc_avg_sentiment(self) -> float:
         '''
@@ -159,7 +161,7 @@ class CommonsScore(object):
                                )
         methods = [attr for attr in dir(self) if callable(
             getattr(self, attr)) and attr.startswith('calc_')]
-        return round(sum([getattr(self, method)() for method in methods]) * self.sigma)
+        return min(round(sum([getattr(self, method)() for method in methods]) * self.sigma), 1000)
 
 
 class Metrics(NamedTuple):
