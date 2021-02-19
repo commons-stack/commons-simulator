@@ -11,7 +11,7 @@ class CommonsScore(object):
     """
 
     def __init__(self, params: CommonsSimulationConfiguration, df_final,
-                 sigma=120, sigma_token_price=2, sigma_funded=5, penalty=-0.2,
+                 sigma=130, sigma_token_price=2, sigma_funded=5, penalty=-0.2,
                  final_sentiment_threshold=0.75, min_sentiment_threshold=0.5):
         self.params = params
         self.df_final = df_final
