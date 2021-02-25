@@ -11,7 +11,9 @@ const stringHash = require("string-hash");
 // Creating data cache directory for the current deployment
 const upTime = new Date().toISOString()
 const DATA_DIR = `./data/production`
-fs.mkdirSync(DATA_DIR)
+if (!fs.existsSync(DATA_DIR)){
+    fs.mkdirSync(DATA_DIR);
+}
 
 app.use(cors())
 app.use(bodyParser.json())
