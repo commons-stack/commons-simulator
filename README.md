@@ -93,7 +93,7 @@ python -m unittest discover -s simulation -p '*_test.py'
 ## 4. Resources
 
 - [Play the game here!](https://sim.commonsstack.org/)
-- [Medium Post](https://medium.com/commonsstack/the-commons-simulator-game-is-live-e1986615a105)
-- [Gitcoin Grant](https://gitcoin.co/grants/277/commons-simulator-modeling-sustainable-funding-for)
-- [Telegram Channel](https://t.me/CSDdev)
-- [About the Commons Stack](https://commonsstack.org/)
+- [Read our Medium blog post](https://medium.com/commonsstack/the-commons-simulator-game-is-live-e1986615a105)
+- [Donate to our Gitcoin grant](https://gitcoin.co/grants/277/commons-simulator-modeling-sustainable-funding-for)
+- [Join out Telegram Channel](https://t.me/CSDdev)
+- [Learn more about the Commons Stack](https://commonsstack.org/)
