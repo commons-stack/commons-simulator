@@ -13,7 +13,7 @@
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "fs-json-store": "^7.0.0",
-    "moment": "^2.29.1",
+    "moment": "^2.29.2",
     "string-hash": "^1.1.3"
   },
   "devDependencies": {
